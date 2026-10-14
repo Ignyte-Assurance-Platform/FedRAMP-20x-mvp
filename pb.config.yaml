@@ -1,0 +1,5 @@
+# Pointer to the project brain (managed; do not edit by hand)
+brain_path: "../ignyte-project-brain"
+brain_repo: "ignyte-project-brain"
+project: maaz20x
+tools: {"playwright":true,"chrome_devtools":true,"linear":true,"openspec":true}
