@@ -1,0 +1,22 @@
+{
+  "source_commit": "3d11d103919e63b6a9aedcf1fc97623a9f19d17a",
+  "synced_at": "2026-10-14T19:17:30.379Z",
+  "skills": {
+    "pb-architecture": "1.0.0",
+    "pb-create-pr": "1.0.0",
+    "pb-delivery-board": "1.0.0",
+    "pb-documentation": "1.0.0",
+    "pb-integration-registry": "1.0.0",
+    "pb-logical-commits": "1.0.0",
+    "pb-mirror-file": "1.0.0",
+    "pb-project-directory": "1.0.0",
+    "pb-project-tickets": "1.0.0",
+    "pb-requirements-intake": "1.0.0",
+    "pb-review-pr": "1.0.0",
+    "pb-spec-compile": "1.0.0",
+    "pb-spec-gate": "1.0.0",
+    "pb-spec-handoff": "1.0.0",
+    "pb-update-base-files": "1.0.0",
+    "pb-zettel-linker": "1.0.0"
+  }
+}
