@@ -4,7 +4,7 @@ description: Freezes an approved work item (stage 3 passed) — verifies the app
 compatibility: Node >= 18 and git. Brain-owned; may commit directly to main under the Handoff Metadata Exception.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Spec Handoff
 

@@ -4,7 +4,7 @@ description: Regenerates the "work by stage" board in every projects/<p>/HUB.md 
 compatibility: Node >= 18. Linear API key via LINEAR_API_KEY (see .env.example); works without it using the mocked snapshot, clearly labeled.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Delivery Board
 

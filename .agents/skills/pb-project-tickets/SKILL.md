@@ -4,7 +4,7 @@ description: Linear work-item skill — query issues, projects and cycles; creat
 compatibility: Linear API (GraphQL) via LINEAR_API_KEY, or the Linear MCP server / CLI if configured in tooling/mcp.example.json. Never hardcodes credentials.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Project Tickets
 

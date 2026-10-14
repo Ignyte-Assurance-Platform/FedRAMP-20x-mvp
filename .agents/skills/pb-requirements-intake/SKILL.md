@@ -4,7 +4,7 @@ description: Stages 1–2 of the delivery process in the brain — Harvest every
 compatibility: Node >= 18. Works from the brain or from a project repo (writes into the brain).
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Requirements Intake
 

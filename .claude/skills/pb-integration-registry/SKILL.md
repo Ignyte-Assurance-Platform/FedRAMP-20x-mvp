@@ -4,7 +4,7 @@ description: Creates and maintains integration notes (one per contract between t
 compatibility: Node >= 18. Works from the brain or from a project repo (writes into the brain on a branch).
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Integration Registry
 

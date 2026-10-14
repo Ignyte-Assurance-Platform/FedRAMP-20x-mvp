@@ -4,7 +4,7 @@ description: Turns staged/unstaged changes into focused conventional commits —
 compatibility: git. Any repo. Never pushes.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Logical Commits
 

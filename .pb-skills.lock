@@ -1,6 +1,6 @@
 {
-  "source_commit": "3d11d103919e63b6a9aedcf1fc97623a9f19d17a",
-  "synced_at": "2026-10-14T19:17:30.379Z",
+  "source_commit": "a1fe0b65f7af6f2916d5405a0bc354d978b4575c",
+  "synced_at": "2026-10-14T19:19:52.972Z",
   "skills": {
     "pb-architecture": "1.0.0",
     "pb-create-pr": "1.0.0",
@@ -9,6 +9,7 @@
     "pb-integration-registry": "1.0.0",
     "pb-logical-commits": "1.0.0",
     "pb-mirror-file": "1.0.0",
+    "pb-onboarding": "1.0.0",
     "pb-project-directory": "1.0.0",
     "pb-project-tickets": "1.0.0",
     "pb-requirements-intake": "1.0.0",

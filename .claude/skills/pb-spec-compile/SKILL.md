@@ -4,7 +4,7 @@ description: Stage 4, run INSIDE the target project repo — reads the frozen br
 compatibility: Node >= 18 and git; OpenSpec CLI optional (npm i -g @fission-ai/openspec@latest, Node 20.19+). Project repo only.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Spec Compile
 

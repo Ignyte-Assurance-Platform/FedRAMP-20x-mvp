@@ -4,7 +4,7 @@ description: After meaningful changes, detects which base files (README, AGENTS/
 compatibility: git. Any repo.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Update Base Files
 

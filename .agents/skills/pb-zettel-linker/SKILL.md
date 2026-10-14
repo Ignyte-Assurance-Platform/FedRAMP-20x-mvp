@@ -4,7 +4,7 @@ description: Validates and repairs the knowledge graph of the project brain — 
 compatibility: Node >= 18, no dependencies. Works from the brain or from any sibling project repo.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Zettel Linker
 

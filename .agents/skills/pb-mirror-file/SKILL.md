@@ -4,7 +4,7 @@ description: Publishes ONE file to ONE cloud destination (e.g. "upload docs/x.md
 compatibility: Node >= 18, pandoc, optional Mermaid CLI (mmdc). Brain notes only (writes sync metadata into the brain).
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Mirror File
 

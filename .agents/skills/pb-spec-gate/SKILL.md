@@ -4,7 +4,7 @@ description: Stage 3 of the delivery process — prepares the gate-3 checklist f
 compatibility: Node >= 18. Brain-owned; works from a project repo via the brain path.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Spec Gate
 

@@ -4,7 +4,7 @@ description: Writes ADRs, architecture views (C4-style, Mermaid) and diagram not
 compatibility: Node >= 18. Works from the brain or from a project repo (writes into the brain on a branch).
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Architecture
 

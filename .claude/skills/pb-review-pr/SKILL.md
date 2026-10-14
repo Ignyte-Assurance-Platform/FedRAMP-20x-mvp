@@ -4,7 +4,7 @@ description: AI review of a PR diff against the linked approved spec (does the c
 compatibility: git + gh (gh pr diff). Any repo. Read-only on the PR; may post a comment only if asked.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Review PR
 

@@ -4,7 +4,7 @@ description: Regenerates the root README project table, every projects/<p>/HUB.m
 compatibility: Node >= 18. Brain only (from a project repo it runs against the resolved brain path).
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Project Directory
 

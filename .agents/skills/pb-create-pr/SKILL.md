@@ -4,7 +4,7 @@ description: Opens a pull request from the current branch — checks branch nami
 compatibility: git + GitHub CLI (gh auth login). Any repo.
 version: 1.0.0
 ---
-<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills · source commit 3d11d10 -->
+<!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
 # PB - Create PR
 
