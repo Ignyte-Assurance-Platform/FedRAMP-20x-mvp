@@ -6,6 +6,8 @@
 
 This repo is a sub-project of **Ignyte Project Brain** at `../ignyte-project-brain` (ignyte-project-brain). The brain owns intent; this repo owns execution.
 
+**Consult the brain first.** Context, decisions (ADRs), integration contracts, specs, harvested knowledge and the reasons behind them live in the brain, not here. Before implementing, answering a "why", or making any non-trivial choice, read the brain (project README → HUB → linked notes) and the compiled spec's brain reference. If the brain does not cover it, raise it there (note, ADR, work item); never decide it silently in code. Onboarding: `docs/onboarding/onboarding.md` in the brain.
+
 **Spec-First Gate.** No implementation starts without an approved work-item spec in the brain. Two human gates per work item (spec, triage).
 
 **Handoff Rule.** Approved specs are handed off frozen (`handoff.brain_commit`). Run `PB - Spec Compile` here with the work-item id; it compiles the frozen spec into `openspec/changes/<name>/` and links back. Never keep an editable copy of a spec here.
