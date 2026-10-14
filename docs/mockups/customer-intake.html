@@ -1,0 +1,337 @@
+<title>Customer Intake</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column, sticky header with progress; three tabs; form generated from the FedRAMP Package Overview schema. */
+:root{
+  --bg:#f6f5f2; --surface:#ffffff; --fg:#1b1f26; --muted:#5d6672; --line:#dcd9d2; --line-strong:#b9b4aa;
+  --accent:#c2410c; --accent-fg:#ffffff; --accent-soft:#fbe9df;
+  --ok:#1f7a4d; --ok-soft:#e2f3ea; --warn:#8a5a00; --warn-soft:#fff3d6; --err:#b42318; --err-soft:#fde8e6;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#15171b; --surface:#1e2127; --fg:#e8e6e1; --muted:#9aa2ad; --line:#2f333b; --line-strong:#4a5059;
+  --accent:#f0813f; --accent-fg:#1b1f26; --accent-soft:#3a2416;
+  --ok:#5fcf8e; --ok-soft:#163626; --warn:#f2c35b; --warn-soft:#3a2f12; --err:#f27d73; --err-soft:#3b1b19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15171b; --surface:#1e2127; --fg:#e8e6e1; --muted:#9aa2ad; --line:#2f333b; --line-strong:#4a5059;
+  --accent:#f0813f; --accent-fg:#1b1f26; --accent-soft:#3a2416;
+  --ok:#5fcf8e; --ok-soft:#163626; --warn:#f2c35b; --warn-soft:#3a2f12; --err:#f27d73; --err-soft:#3b1b19; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--sans);margin:0}
+.wrap{max-width:900px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.note{background:var(--warn-soft);color:var(--warn);font-size:13px;padding:8px 0;border-bottom:1px solid var(--line)}
+.note .wrap{padding-block:0}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);border-bottom:1px solid var(--line);z-index:5}
+header.top .wrap{padding-block:14px 0}
+.brand{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.brand h1{font-size:19px;font-weight:600;margin:0;text-wrap:balance}
+.brand .svc{color:var(--muted);font-size:14px}
+.brand .by{font-size:12px;color:var(--muted)}
+.brand .by b{color:var(--fg);font-weight:600}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{font:inherit;font-weight:500;border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);padding:8px 14px;border-radius:var(--r);cursor:pointer}
+.btn:hover{border-color:var(--fg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover{filter:brightness(.95)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.tab:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.progress{display:flex;align-items:center;gap:12px;margin-top:12px;font-size:13px;color:var(--muted)}
+.bar{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.tabs{display:flex;gap:4px;margin-top:12px;overflow-x:auto}
+.tab{font:inherit;font-weight:500;background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:10px 12px;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tab .n{display:inline-block;min-width:20px;text-align:center;font-size:12px;border-radius:10px;padding:0 6px;margin-left:6px;background:var(--line);color:var(--muted);font-variant-numeric:tabular-nums}
+.tab[aria-selected="true"] .n{background:var(--accent-soft);color:var(--accent)}
+main .wrap{padding-block:24px 64px}
+.panel{display:none}.panel.on{display:block}
+.intro{color:var(--muted);max-width:65ch;margin:0 0 24px}
+fieldset{border:0;padding:0;margin:0 0 28px}
+legend{font-weight:600;font-size:16px;padding:0;margin-bottom:4px}
+.hint{font-size:13px;color:var(--muted);margin:0 0 14px;max-width:65ch}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+.grid .full{grid-column:1/-1}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;min-width:0}
+label.f .req{color:var(--accent)}
+label.f small{font-weight:400;color:var(--muted)}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:8px 10px;width:100%;min-width:0}
+textarea{min-height:88px;resize:vertical}
+input[readonly]{background:var(--bg);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer;background:var(--surface)}
+.chip input{width:auto;margin:0}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:13px;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td input,td select{padding:6px 8px}
+.tbl{overflow-x:auto;margin-bottom:8px}
+.add{font:inherit;background:none;border:0;color:var(--accent);font-weight:500;cursor:pointer;padding:4px 0}
+.consult{background:var(--bg);border:1px dashed var(--line-strong);border-radius:var(--r);padding:12px 14px;font-size:13px;color:var(--muted)}
+details.ksi{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin-bottom:10px}
+details.ksi summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
+details.ksi summary::-webkit-details-marker{display:none}
+details.ksi summary .code{font:13px var(--mono);color:var(--muted);min-width:118px}
+details.ksi summary .name{font-weight:600;flex:1;min-width:0}
+details.ksi summary .st{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--line);color:var(--muted);white-space:nowrap}
+details.ksi summary .st.done{background:var(--ok-soft);color:var(--ok)}
+details.ksi summary .st.help{background:var(--warn-soft);color:var(--warn)}
+details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
+.q{margin-top:14px}
+.q p{margin:0 0 6px;font-weight:500}
+.q .why{font-weight:400;color:var(--muted);font-size:13px;margin:0 0 8px}
+.help{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:8px}
+.help input{width:auto}
+.drop{border:2px dashed var(--line-strong);border-radius:var(--r);padding:32px 20px;text-align:center;color:var(--muted);background:var(--surface);cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop b{color:var(--fg)}
+.files{list-style:none;padding:0;margin:16px 0}
+.files li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.files .ic{font:12px var(--mono);color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 5px;min-width:44px;text-align:center}
+.files .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.files .sz{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
+.files .del{font:inherit;background:none;border:0;color:var(--muted);cursor:pointer}
+.files .del:hover{color:var(--err)}
+.examples{columns:2;column-gap:24px;font-size:14px;color:var(--muted);padding-left:18px;margin:8px 0 24px}
+@media (max-width:640px){.examples{columns:1}}
+.foot{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:28px;padding-top:16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:var(--r);font-size:14px;opacity:0;pointer-events:none;transition:.25s}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.banner{display:none;background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok);border-radius:var(--r);padding:12px 14px;margin-bottom:20px}
+.locked .banner{display:block}
+.locked input,.locked select,.locked textarea,.locked .chip,.locked .drop,.locked .add,.locked .del{pointer-events:none;opacity:.7}
+.confirm{display:none;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:16px;margin-bottom:20px}
+.confirm.on{display:block}
+.confirm p{margin:0 0 12px}
+.confirm .actions{justify-content:flex-end}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="note"><div class="wrap">Mockup for approval · Oct 14, 2026 · Not functional. Field list and dropdown values come from the FedRAMP Package Overview schema v0.1.6. Example data is fictional. This is what the customer sees from the link, with no login. <a href="https://claude.ai/artifact/N18wcZ6j6EuuUydAqGVJk5" style="color:inherit;font-weight:600">Open the Ignyte side (screens A–D)</a></div></div>
+
+<header class="top"><div class="wrap">
+  <div class="brand">
+    <div>
+      <h1>Example Cloud Co. <span class="svc">· Example Records Platform</span></h1>
+      <div class="by">FedRAMP 20x Class A intake · prepared with <b>Ignyte</b></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="save">Save</button>
+      <button class="btn primary" id="submit">Submit to Ignyte</button>
+    </div>
+  </div>
+  <div class="progress"><span id="pct">0% complete</span><div class="bar"><i id="barfill"></i></div><span id="saved">Not saved yet</span></div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="company">Company &amp; service<span class="n" id="n1">0/14</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="ksi">Security indicators<span class="n" id="n2">0/7</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="docs">Documents<span class="n" id="n3">0</span></button>
+  </div>
+</div></header>
+
+<main><div class="wrap" id="form">
+  <div class="banner">Submitted on Oct 14, 2026. Your answers are locked. Your Ignyte consultant can unlock the form if anything needs to change.</div>
+  <div class="confirm" id="confirm"><p><b>Submit your intake?</b> You won't be able to edit after submitting. Empty optional fields and questions marked "need help" become follow-ups with your consultant.</p><div class="actions"><button class="btn" id="cancel">Keep editing</button><button class="btn primary" id="confirmgo">Submit</button></div></div>
+
+  <!-- TAB 1 -->
+  <section class="panel on" id="p-company">
+    <p class="intro">This information becomes your public FedRAMP Package Overview. Use the exact names you use in marketing. Fields marked <span style="color:var(--accent)">*</span> are required by the FedRAMP schema.</p>
+
+    <fieldset><legend>Service identification</legend><p class="hint">Who you are and what the service is.</p>
+    <div class="grid">
+      <label class="f">Provider name <span class="req">*</span><input id="providerName" value="Example Cloud Co." data-req></label>
+      <label class="f">UEI number <small>SAM.gov Unique Entity Identifier, if you have one</small><input id="uei" placeholder="e.g. ABC123DEF456"></label>
+      <label class="f">Service name <span class="req">*</span><input id="serviceName" value="Example Records Platform" data-req></label>
+      <label class="f">Service acronym <span class="req">*</span><input id="acronym" value="ERP" data-req></label>
+      <label class="f full">Service description <span class="req">*</span><small>What the service does, for an agency reader. Markdown allowed.</small><textarea id="desc" data-req>Records management service for federal agencies.</textarea></label>
+      <label class="f">Certification type <span class="req">*</span><select id="cert" data-req><option>20x</option><option>Rev5</option></select></label>
+      <label class="f">FedRAMP package ID <span class="req">*</span><small>Leave as provider name and acronym if FedRAMP has not assigned one</small><input id="pkgid" value="EXCSO" data-req></label>
+      <label class="f">Website <span class="req">*</span><input id="website" type="url" value="https://www.example.com" data-req></label>
+      <label class="f">Logo URL <span class="req">*</span><small>PNG, JPEG, SVG or WebP</small><input id="logo" type="url" value="https://www.example.com/logo.png" data-req></label>
+    </div></fieldset>
+
+    <fieldset><legend>Service properties</legend><p class="hint">Technical and operational properties, as FedRAMP lists them on the Marketplace.</p>
+    <div class="grid">
+      <div class="full"><label class="f">Service type <span class="req">*</span><small>Select all that apply</small></label>
+        <div class="chips" id="stype"><label class="chip on"><input type="checkbox" checked>SaaS</label><label class="chip"><input type="checkbox">PaaS</label><label class="chip"><input type="checkbox">IaaS</label></div></div>
+      <label class="f">Deployment model <span class="req">*</span><select id="deploy" data-req><option>Public Cloud</option><option>Government-Only Cloud</option><option>Hybrid Cloud</option><option>Community Cloud</option><option selected>Government Community Cloud</option></select></label>
+      <label class="f">Next ongoing certification report date<input id="nextreport" type="date" value="2027-01-15"></label>
+      <div class="full"><label class="f">Business categories<small>Pick the ones agencies would search for</small></label>
+        <div class="chips" id="bizcat"></div></div>
+    </div></fieldset>
+
+    <fieldset><legend>Trust center</legend><p class="hint">Where agencies find your FedRAMP documents. If sign-in is required, say how to request access.</p>
+    <div class="grid">
+      <label class="f full">URL<input id="tcurl" type="url" value="https://trust.example.com"></label>
+      <label class="f full">What is in it<input id="tcdesc" value="Public trust center with package documents."></label>
+      <label class="f">Sign-in required?<select id="tcauth"><option>Yes</option><option>No</option></select></label>
+      <label class="f">How to request access<input id="tcinstr" value="Request access through the portal sign-up form."></label>
+    </div></fieldset>
+
+    <fieldset><legend>Secure configuration guidance</legend><p class="hint">Your guide for agencies on configuring the service securely. Optional.</p>
+    <div class="grid">
+      <label class="f full">URL<input id="scgurl" type="url" value="https://docs.example.com/scg"></label>
+      <label class="f full">What is in it<input id="scgdesc" value="Recommended secure configuration guide."></label>
+      <label class="f">Sign-in required?<select id="scgauth"><option>Yes</option><option selected>No</option></select></label>
+    </div></fieldset>
+
+    <fieldset><legend>Contacts <span class="req">*</span></legend><p class="hint">FedRAMP needs at least one Security and one Sales contact. Use shared mailboxes where you can, not personal inboxes. Phone as 202-555-0123.</p>
+    <div class="tbl"><table id="contacts"><thead><tr><th style="width:130px">Type</th><th>Name or role</th><th>Email</th><th style="width:150px">Phone</th><th></th></tr></thead><tbody>
+      <tr><td><select><option>Security</option><option>Sales</option><option>Primary</option></select></td><td><input value="Security Team"></td><td><input type="email" value="security@example.com"></td><td><input value="202-555-0123"></td><td><button class="del" title="Remove">✕</button></td></tr>
+      <tr><td><select><option>Security</option><option selected>Sales</option><option>Primary</option></select></td><td><input value="Federal Sales"></td><td><input type="email" value="sales@example.com"></td><td><input value="202-555-0199"></td><td><button class="del" title="Remove">✕</button></td></tr>
+      <tr><td><select><option>Security</option><option>Sales</option><option selected>Primary</option></select></td><td><input value="Dana Whitfield, CISO"></td><td><input type="email" value="dana.whitfield@example.com"></td><td><input value="202-555-0147"></td><td><button class="del" title="Remove">✕</button></td></tr>
+    </tbody></table></div><button class="add" data-add="contacts">+ Add contact</button></fieldset>
+
+    <fieldset><legend>Certified services</legend><p class="hint">Every service or module included in this certification, named as on your website.</p>
+    <div class="tbl"><table id="services"><thead><tr><th>Service name</th><th>Description</th><th style="width:160px">Available since</th><th></th></tr></thead><tbody>
+      <tr><td><input value="Records Platform"></td><td><input value="Core records service."></td><td><input type="date" value="2026-08-01"></td><td><button class="del" title="Remove">✕</button></td></tr>
+    </tbody></table></div><button class="add" data-add="services">+ Add service</button></fieldset>
+
+    <fieldset><legend>Third-party services that touch federal data</legend><p class="hint">Hosting, monitoring, email, support, AI, analytics. Say whether each one is FedRAMP certified.</p>
+    <div class="tbl"><table id="thirdparty"><thead><tr><th>Name</th><th>Provider</th><th style="width:150px">FedRAMP certified?</th><th>Used for</th><th></th></tr></thead><tbody>
+      <tr><td><input value="Object Storage Service"></td><td><input value="Example Storage Inc."></td><td><select><option>Yes</option><option selected>No</option></select></td><td><input value="Stores encrypted backups."></td><td><button class="del" title="Remove">✕</button></td></tr>
+    </tbody></table></div><button class="add" data-add="thirdparty">+ Add third party</button></fieldset>
+
+    <fieldset><legend>Independent assessor</legend>
+    <div class="consult">Filled in by your Ignyte consultant. You don't need to do anything here.<div class="grid" style="margin-top:10px"><label class="f">Assessor name<input readonly value="Ignyte"></label><label class="f">FedRAMP assessor ID<input readonly value="—"></label></div></div></fieldset>
+
+    <div class="foot"><span style="color:var(--muted);font-size:13px">Your progress is saved when you click Save. You can come back to this link any time.</span><button class="btn" data-go="ksi">Next: Security indicators</button></div>
+  </section>
+
+  <!-- TAB 2 -->
+  <section class="panel" id="p-ksi">
+    <p class="intro">FedRAMP 20x Class A asks for seven Key Security Indicators. Answer in your own words; your consultant turns this into the formal package. If you're not sure, tick "I don't know, I need help" and move on.</p>
+    <div id="ksis"></div>
+    <div class="foot"><button class="btn" data-go="company">Back</button><button class="btn" data-go="docs">Next: Documents</button></div>
+  </section>
+
+  <!-- TAB 3 -->
+  <section class="panel" id="p-docs">
+    <p class="intro">Upload what you already have. Nothing is processed automatically; your consultant reads these to prepare the package.</p>
+    <div class="drop" id="drop" tabindex="0"><b>Drop files here or click to choose</b><br>PDF, Word or Excel · up to 100 MB each<input type="file" id="fileinput" multiple hidden></div>
+    <ul class="files" id="files">
+      <li><span class="ic">PDF</span><span class="nm">SOC2_TypeII_Report_2026.pdf</span><span class="sz">4.2 MB</span><button class="del" title="Remove">✕</button></li>
+      <li><span class="ic">PDF</span><span class="nm">ERP_Authorization_Boundary_Diagram_v3.pdf</span><span class="sz">812 KB</span><button class="del" title="Remove">✕</button></li>
+      <li><span class="ic">DOCX</span><span class="nm">Information_Security_Policy_2026.docx</span><span class="sz">268 KB</span><button class="del" title="Remove">✕</button></li>
+    </ul>
+    <fieldset><legend>Useful things to upload</legend>
+    <ul class="examples">
+      <li>Authorization boundary or architecture diagram</li>
+      <li>Security policies and procedures</li>
+      <li>SOC 2 Type II, GovRAMP or FedRAMP Rev5 report</li>
+      <li>Previous FedRAMP package, if any</li>
+      <li>Security Assessment Report (SAR)</li>
+      <li>Incident response plan and last test</li>
+      <li>Vulnerability scan summaries</li>
+      <li>Cryptographic module inventory</li>
+    </ul></fieldset>
+    <div class="foot"><button class="btn" data-go="ksi">Back</button><button class="btn primary" id="submit2">Submit to Ignyte</button></div>
+  </section>
+</div></main>
+<div class="toast" id="toast">Saved</div>
+
+<script>
+const BIZ=["Accounting","Analytics","Artificial Intelligence (AI)","Collaboration","Communication","Construction","Contact Center","Content Management System (CMS)","Customer Relations Management (CRM)","Customer Service","Cybersecurity & Risk Management","Data Management","Design & Multimedia","Development Tools","Education & Training","Finance","Fleet Management","Governance, Risk, and Compliance (GRC)","Grant Management","Health & Wellness","Human Resources","Law Enforcement","Learning Management","Legal & Policy","Marketing & Sales","Media","Mobile Device Management (MDM)","Network Management","Operations Management","Research","Storage","System Administration","Talent Development","Talent Management","Travel Management","Virtual Private Network (VPN)"];
+const PRE=["Data Management","Artificial Intelligence (AI)"];
+document.getElementById('bizcat').innerHTML=BIZ.map(b=>`<label class="chip ${PRE.includes(b)?'on':''}"><input type="checkbox" ${PRE.includes(b)?'checked':''}>${b}</label>`).join('');
+
+// 7 Class A KSIs, questions from the S1-01 intake questionnaire (mapping in the project brain). Draft, pending Christina's confirmation of which questions go to the customer.
+const KSI=[
+ {code:"KSI-CED-RAT",name:"Reviewing All Training",qs:[{q:"How is security training delivered to your staff, and how do you review that everyone completed it?",why:"Class A checks that training is reviewed, not just assigned."}],a:"All staff complete annual security awareness in KnowBe4. Completion is reviewed quarterly by HR and the CISO; engineers also take secure coding training on hire."},
+ {code:"KSI-CMT-LMC",name:"Logging Changes",qs:[{q:"How are production changes approved and recorded?",why:"Shows that every change to the service is logged and traceable."}],a:"All changes go through GitHub pull requests with required review. Deploys run from CI; the deploy log and PR link are kept in the change record."},
+ {code:"KSI-CNA-RNT",name:"Restricting Network Traffic",qs:[{q:"How is production network traffic restricted? For example, firewalls, security groups, private subnets, allow-lists.",why:"Class A indicator on restricting traffic to what the service needs."}],a:""},
+ {code:"KSI-IAM-AAM",name:"Automating Account Management",qs:[{q:"How are accounts created, reviewed and removed, for both administrators and users?",why:"Class A looks for automated joiner, mover and leaver handling."}],a:"Okta is the source of truth. Accounts are provisioned by SCIM from the HR system and removed on termination the same day. Access is reviewed quarterly."},
+ {code:"KSI-IAM-APM",name:"Adopting Passwordless Methods",qs:[{q:"How do administrators and users sign in? Is MFA phishing-resistant (for example FIDO2 keys, passkeys, PIV)?",why:"Class A indicator on identity and authentication."}],a:"",help:true},
+ {code:"KSI-INR-RIR",name:"Reviewing Incident Response Procedures",qs:[{q:"Do you have an incident response plan, and when was it last tested?",why:"Class A requires evaluating reportability and producing final reports."},{q:"Do you have documented recovery procedures and tests?",why:"Recovery is part of the incident response indicator."}],a:"IR plan v2.3 approved March 2026, tabletop exercise held June 2026 with engineering and legal. Recovery runbooks exist per service; last restore test was August 2026."},
+ {code:"KSI-SVC-SIN",name:"Securing Information",qs:[{q:"Which encryption modules protect data at rest and in transit, and are they CMVP validated?",why:"Module documentation goes into the package."}],a:""}
+];
+document.getElementById('ksis').innerHTML=KSI.map((k,i)=>`<details class="ksi" ${i<2?'open':''} id="k${i}">
+ <summary><span class="code">${k.code}</span><span class="name">${k.name}</span><span class="st" id="st${i}">Not answered</span></summary>
+ <div class="body">${k.qs.map((q,j)=>`<div class="q"><p>${q.q}</p><p class="why">${q.why}</p><textarea id="a${i}_${j}" data-k="${i}" placeholder="Describe how it works today, in your own words.">${j===0?k.a:''}</textarea></div>`).join('')}
+ <label class="help"><input type="checkbox" id="h${i}" data-k="${i}" ${k.help?'checked':''}> I don't know, I need help from Ignyte with this one</label></div></details>`).join('');
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+function go(t){$$('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));$$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+t));window.scrollTo({top:0});try{location.hash=t}catch(e){}}
+$$('.tab').forEach(b=>b.onclick=()=>go(b.dataset.tab));
+$$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+if(['company','ksi','docs'].includes(location.hash.slice(1)))go(location.hash.slice(1));
+
+function recalc(){
+  const req=$$('[data-req]'); const done=req.filter(e=>e.value.trim()).length + ($$('#stype input:checked').length?1:0) + ($$('#contacts tbody tr').length>=2?1:0);
+  const tot=req.length+2; $('#n1').textContent=`${done}/${tot}`;
+  let kd=0; KSI.forEach((k,i)=>{const h=$('#h'+i).checked; const ans=k.qs.some((_,j)=>$(`#a${i}_${j}`).value.trim()); const st=$('#st'+i); st.className='st'+(h?' help':ans?' done':''); st.textContent=h?'Needs help':ans?'Answered':'Not answered'; if(h||ans)kd++;});
+  $('#n2').textContent=`${kd}/7`; const nf=$$('#files li').length; $('#n3').textContent=nf;
+  const pct=Math.round(((done/tot)*0.6+(kd/7)*0.3+(nf?0.1:0))*100); $('#pct').textContent=pct+'% complete'; $('#barfill').style.width=pct+'%';
+}
+document.addEventListener('input',e=>{if(e.target.closest('.chip'))e.target.closest('.chip').classList.toggle('on',e.target.checked);recalc();});
+$$('.add').forEach(b=>b.onclick=()=>{const tb=$('#'+b.dataset.add+' tbody');const r=tb.lastElementChild.cloneNode(true);r.querySelectorAll('input').forEach(i=>i.value='');tb.appendChild(r);r.querySelector('input').focus();});
+document.addEventListener('click',e=>{if(e.target.classList.contains('del')){const tr=e.target.closest('tr,li');if(tr)tr.remove();recalc();}});
+let t; function toast(m){$('#toast').textContent=m;$('#toast').classList.add('show');clearTimeout(t);t=setTimeout(()=>$('#toast').classList.remove('show'),1800);}
+$('#save').onclick=()=>{toast('Saved');$('#saved').textContent='Saved just now';};
+const ask=()=>{$('#confirm').classList.add('on');window.scrollTo({top:0});}; $('#submit').onclick=ask;$('#submit2').onclick=ask;
+$('#cancel').onclick=()=>$('#confirm').classList.remove('on');
+$('#confirmgo').onclick=()=>{$('#confirm').classList.remove('on');document.body.classList.add('locked');$('#save').disabled=true;$('#submit').disabled=true;$('#submit2').disabled=true;$('#submit').textContent='Submitted';$('#saved').textContent='Submitted · locked';toast('Submitted to Ignyte');};
+const drop=$('#drop'); drop.onclick=()=>$('#fileinput').click(); drop.onkeydown=e=>{if(e.key==='Enter')drop.click()};
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+function addFiles(list){[...list].forEach(f=>{const ext=(f.name.split('.').pop()||'').toUpperCase().slice(0,4);const kb=f.size/1024;const li=document.createElement('li');li.innerHTML=`<span class="ic">${ext}</span><span class="nm">${f.name}</span><span class="sz">${kb>1024?(kb/1024).toFixed(1)+' MB':Math.round(kb)+' KB'}</span><button class="del" title="Remove">✕</button>`;$('#files').appendChild(li);});recalc();toast('Uploaded');}
+drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files)); $('#fileinput').onchange=e=>addFiles(e.target.files);
+recalc();
+</script>
+
+<script>
+const TOUR_ID='intake';
+const TOUR=[
+ {sel:'.brand',title:'This is what your customer sees',text:'They open it from the link Ignyte sends. No account, no password. Company and service are already filled in from what you entered when creating the customer.'},
+ {sel:'.tabs',title:'Three tabs, in the order FedRAMP needs them',text:'Company & service follows the FedRAMP Package Overview schema field by field. Security indicators covers the 7 Class A KSIs. Documents is for uploads.',before(){go('company')}},
+ {sel:'.progress',title:'Progress updates as they type',text:'Required fields, answered KSIs and uploaded files all count. The customer can stop and come back later with the same link.'},
+ {sel:'#k0',title:'One block per Key Security Indicator',text:'Each KSI asks one or two plain-language questions from the intake. If the customer gets stuck, they tick "I need help" and your consultant follows up.',before(){go('ksi')},wait:150},
+ {sel:'#drop',title:'Documents are stored, not processed',text:'Drag and drop PDF, Word or Excel up to 100 MB. Nothing is analyzed in this release; the consultant downloads them from the Ignyte side.',before(){go('docs')},wait:150},
+ {sel:'.actions',title:'Save keeps progress, Submit locks it',text:'Submit asks for confirmation, then locks the form and marks the customer as Submitted in your list. You can unlock it from the Ignyte side if something needs to change. Try it now.',before(){go('company')}}
+];
+const TOUR_END=null;
+</script>
+
+<style>
+.tour-spot{position:absolute;z-index:50;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.55);pointer-events:none;transition:all .25s;outline:2px solid var(--accent)}
+.tour-tip{position:absolute;z-index:51;background:var(--surface);color:var(--fg);border:1px solid var(--line-strong);border-radius:8px;padding:14px 16px;width:min(340px,calc(100vw - 32px));box-shadow:0 12px 32px rgba(0,0,0,.25);font-size:14px;line-height:1.5}
+.tour-tip .step{font-size:12px;color:var(--accent);font-weight:600;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.tour-tip h3{margin:0 0 4px;font-size:15px;font-weight:600}
+.tour-tip p{margin:0 0 12px;color:var(--muted)}
+.tour-tip .row{display:flex;gap:8px;align-items:center}
+.tour-tip .skip{margin-right:auto;font:inherit;font-size:13px;background:none;border:0;color:var(--muted);cursor:pointer;padding:0}
+.tour-tip .skip:hover{color:var(--fg)}
+.tour-tip .arrow{position:absolute;width:12px;height:12px;background:var(--surface);border-left:1px solid var(--line-strong);border-top:1px solid var(--line-strong);transform:rotate(45deg);left:24px;top:-7px}
+.tour-tip.above .arrow{top:auto;bottom:-7px;transform:rotate(225deg)}
+.tour-replay{font:inherit;font-size:13px;font-weight:600;background:none;border:0;color:inherit;cursor:pointer;text-decoration:underline;padding:0;margin-left:8px}
+@media (prefers-reduced-motion:reduce){.tour-spot{transition:none}}
+</style>
+<script>
+(function(){
+  const KEY='tour-seen-'+TOUR_ID; let i=0, spot, tip;
+  const seen=()=>{try{return localStorage.getItem(KEY)==='1'}catch(e){return false}};
+  const mark=()=>{try{localStorage.setItem(KEY,'1')}catch(e){}};
+  function place(){const s=TOUR[i]; const el=document.querySelector(s.sel); if(!el){next();return;}
+    el.scrollIntoView({block:'center',behavior:'auto'});
+    const r=el.getBoundingClientRect(), sx=window.scrollX, sy=window.scrollY, pad=6;
+    spot.style.cssText=`top:${r.top+sy-pad}px;left:${r.left+sx-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px`;
+    tip.innerHTML=`<span class="arrow"></span><div class="step">Step ${i+1} of ${TOUR.length}</div><h3>${s.title}</h3><p>${s.text}</p><div class="row"><button class="skip" id="tskip">Skip tour</button>${i>0?'<button class="btn sm" id="tback">Back</button>':''}<button class="btn sm primary" id="tnext">${i===TOUR.length-1?'Done':'Next'}</button></div>`;
+    const below=r.bottom+sy+16, tipH=tip.offsetHeight||160; const fits=r.bottom+tipH+24<window.innerHeight;
+    tip.classList.toggle('above',!fits);
+    tip.style.top=(fits?below:r.top+sy-tipH-16)+'px';
+    tip.style.left=Math.max(16,Math.min(r.left+sx,window.innerWidth-tip.offsetWidth-16))+'px';
+    document.getElementById('tnext').onclick=next; document.getElementById('tskip').onclick=end; const b=document.getElementById('tback'); if(b)b.onclick=back;
+    document.getElementById('tnext').focus({preventScroll:true});
+  }
+  function show(){const s=TOUR[i]; const go=()=>{setTimeout(place,s.wait||0)}; if(s.before){s.before();}go();}
+  function next(){if(i>=TOUR.length-1){end();return;}i++;show();}
+  function back(){if(i>0){i--;show();}}
+  function end(){mark();if(spot)spot.remove();if(tip)tip.remove();spot=tip=null;window.removeEventListener('resize',place);if(TOUR_END)TOUR_END();}
+  function start(){if(tip)return;i=0;spot=document.createElement('div');spot.className='tour-spot';tip=document.createElement('div');tip.className='tour-tip';document.body.append(spot,tip);window.addEventListener('resize',place);show();}
+  window.startTour=start;
+  const note=document.querySelector('.note .wrap'); if(note){const b=document.createElement('button');b.className='tour-replay';b.textContent='Replay the guided tour';b.onclick=start;note.appendChild(b);}
+  if(!seen())setTimeout(start,600);
+})();
+</script>
