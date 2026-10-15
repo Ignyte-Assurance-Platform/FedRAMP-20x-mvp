@@ -85,6 +85,13 @@ details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
 .q .why{font-weight:400;color:var(--muted);font-size:13px;margin:0 0 8px}
 .help{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:8px}
 .help input{width:auto}
+.logo-f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500}
+.logo-f small{font-weight:400;color:var(--muted)}
+.logo-up{display:flex;gap:16px;align-items:center;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:var(--r);padding:12px;background:var(--surface)}
+.logo-prev{width:150px;height:64px;display:grid;place-items:center;background:#fff;color:#1b1f26;border:1px solid var(--line);border-radius:4px}
+.logo-prev img{max-width:130px;max-height:52px}
+.logo-meta{display:flex;flex-direction:column;gap:4px;font-weight:400}
+.logo-meta span{color:var(--muted)}
 .drop{border:2px dashed var(--line-strong);border-radius:var(--r);padding:32px 20px;text-align:center;color:var(--muted);background:var(--surface);cursor:pointer}
 .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .drop b{color:var(--fg)}
@@ -147,9 +154,12 @@ details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
       <label class="f">Service acronym <span class="req">*</span><input id="acronym" value="ERP" data-req></label>
       <label class="f full">Service description <span class="req">*</span><small>What the service does, for an agency reader. Markdown allowed.</small><textarea id="desc" data-req>Records management service for federal agencies.</textarea></label>
       <label class="f">Certification type <span class="req">*</span><select id="cert" data-req><option>20x</option><option>Rev5</option></select></label>
-      <label class="f">FedRAMP package ID <span class="req">*</span><small>Leave as provider name and acronym if FedRAMP has not assigned one</small><input id="pkgid" value="EXCSO" data-req></label>
+      <label class="f" id="classwrap">FedRAMP 20x class <span class="req">*</span><small>The class you are applying for. Ask your consultant if unsure.</small><select id="fclass"><option selected>Class A</option><option>Class B</option><option>Class C</option><option>Class D</option></select></label>
+      <label class="f">FedRAMP package ID <small>Optional. Only if FedRAMP already assigned you one. If empty, we use your provider name and acronym.</small><input id="pkgid" placeholder="e.g. FR2401234567"></label>
       <label class="f">Website <span class="req">*</span><input id="website" type="url" value="https://www.example.com" data-req></label>
-      <label class="f">Logo URL <span class="req">*</span><small>PNG, JPEG, SVG or WebP</small><input id="logo" type="url" value="https://www.example.com/logo.png" data-req></label>
+      <div class="f full logo-f"><span>Company logo <span class="req">*</span></span><small>Upload your logo and Ignyte hosts it for your FedRAMP listing. PNG, SVG or WebP, at least 256 px wide, transparent or white background, up to 2 MB.</small>
+        <div class="logo-up"><div class="logo-prev" id="logoprev"><svg viewBox="0 0 120 40" width="120" height="40" aria-label="Example Cloud Co. logo"><rect x="2" y="8" width="24" height="24" rx="5" fill="#2563eb"/><path d="M8 20h12M14 14v12" stroke="#fff" stroke-width="3"/><text x="32" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="currentColor">Example</text></svg></div>
+        <div class="logo-meta"><b id="logoname">example-cloud-logo.svg</b><span id="logosize">14 KB · uploaded</span><label class="btn sm" for="logoinput" style="width:max-content">Replace logo</label><input type="file" id="logoinput" accept=".png,.svg,.webp,image/png,image/svg+xml,image/webp" hidden></div></div></div>
     </div></fieldset>
 
     <fieldset><legend>Service properties</legend><p class="hint">Technical and operational properties, as FedRAMP lists them on the Marketplace.</p>
@@ -278,6 +288,8 @@ const drop=$('#drop'); drop.onclick=()=>$('#fileinput').click(); drop.onkeydown=
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
 function addFiles(list){[...list].forEach(f=>{const ext=(f.name.split('.').pop()||'').toUpperCase().slice(0,4);const kb=f.size/1024;const li=document.createElement('li');li.innerHTML=`<span class="ic">${ext}</span><span class="nm">${f.name}</span><span class="sz">${kb>1024?(kb/1024).toFixed(1)+' MB':Math.round(kb)+' KB'}</span><button class="del" title="Remove">✕</button>`;$('#files').appendChild(li);});recalc();toast('Uploaded');}
 drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files)); $('#fileinput').onchange=e=>addFiles(e.target.files);
+$('#cert').addEventListener('change',e=>{$('#classwrap').hidden=e.target.value!=='20x'});
+$('#logoinput').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#logoprev').innerHTML=`<img alt="Uploaded logo" src="${r.result}">`;$('#logoname').textContent=f.name;$('#logosize').textContent=Math.max(1,Math.round(f.size/1024))+' KB · uploaded';toast('Logo uploaded')};r.readAsDataURL(f)};
 recalc();
 </script>
 
@@ -285,7 +297,7 @@ recalc();
 const TOUR_ID='intake';
 const TOUR=[
  {sel:'.brand',title:'This is what your customer sees',text:'They open it from the link Ignyte sends. No account, no password. Company and service are already filled in from what you entered when creating the customer.'},
- {sel:'.tabs',title:'Three tabs, in the order FedRAMP needs them',text:'Company & service follows the FedRAMP Package Overview schema field by field. Security indicators covers the 7 Class A KSIs. Documents is for uploads.',before(){go('company')}},
+ {sel:'.tabs',title:'Three tabs, in the order FedRAMP needs them',text:'Company & service follows the FedRAMP Package Overview schema, plus the 20x class. The customer uploads their logo and Ignyte hosts it. Security indicators covers the 7 Class A KSIs. Documents is for uploads.',before(){go('company')}},
  {sel:'.progress',title:'Progress updates as they type',text:'Required fields, answered KSIs and uploaded files all count. The customer can stop and come back later with the same link.'},
  {sel:'#k0',title:'One block per Key Security Indicator',text:'Each KSI asks one or two plain-language questions from the intake. If the customer gets stuck, they tick "I need help" and your consultant follows up.',before(){go('ksi')},wait:150},
  {sel:'#drop',title:'Documents are stored, not processed',text:'Drag and drop PDF, Word or Excel up to 100 MB. Nothing is analyzed in this release; the consultant downloads them from the Ignyte side.',before(){go('docs')},wait:150},
