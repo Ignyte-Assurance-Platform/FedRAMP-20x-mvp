@@ -40,7 +40,8 @@ export function createApp({ getBuild, mode }: AppOptions): Hono {
   });
 
   if (mode === "production") {
-    const staticRoot = path.relative(process.cwd(), clientDir);
+    // Absolute, so the entry point works from any working directory.
+    const staticRoot = clientDir;
     const cacheFound =
       (value: string): MiddlewareHandler =>
       async (c, next) => {
