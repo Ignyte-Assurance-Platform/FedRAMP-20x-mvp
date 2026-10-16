@@ -19,7 +19,7 @@ How approved work arrives in this repo. The rules come from the project brain (`
    ```bash
    node ../ignyte-project-brain/scripts/spec-compile.mjs <wi-id> --dry-run
    node ../ignyte-project-brain/scripts/spec-compile.mjs <wi-id>
-   openspec validate <name>
+   openspec validate <name> --strict
    ```
 
 4. Implement on a branch, ticking `tasks.md`. `openspec archive <name>` when merged moves it to `changes/archive/` and updates `specs/`.
@@ -32,7 +32,7 @@ How approved work arrives in this repo. The rules come from the project brain (`
 
 ## Setup
 
-OpenSpec CLI (Node 20.19+): `npm i -g @fission-ai/openspec@latest`. Initialised with `openspec init --tools none`, so it adds no slash commands or instruction files; `AGENTS.md` and `CLAUDE.md` stay managed by the brain.
+OpenSpec CLI 1.14.2 or later (Node 20.19+): `npm i -g @fission-ai/openspec@latest`. Compiled changes must pass `openspec validate <name> --strict`. Initialised with `openspec init --tools none`, so it adds no slash commands or instruction files; `AGENTS.md` and `CLAUDE.md` stay managed by the brain.
 
 ## Status
 
