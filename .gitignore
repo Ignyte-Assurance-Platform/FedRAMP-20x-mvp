@@ -1,1 +1,10 @@
 .pb-cache/
+node_modules/
+build/
+.react-router/
+.env
+.env.*
+!.env.example
+.data/
+coverage/
+*.log
