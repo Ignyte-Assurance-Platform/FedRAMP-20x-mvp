@@ -18,6 +18,20 @@ export function getSignInOptions(): SignInOptions {
   return { devLogin: env.devLoginEnabled, google: env.googleEnabled };
 }
 
+/**
+ * Readable text for the `?error=` code Better Auth puts on /login after a failed Google
+ * sign-in. The exact codes are verified with WI-002 once the OAuth client exists.
+ */
+export function signInErrorMessage(code: string | null): string | null {
+  if (!code) return null;
+  const normalized = code.toLowerCase();
+  if (normalized.includes("not_ignyte")) return "Only verified Ignyte Google Workspace accounts can sign in.";
+  if (normalized.includes("signup_disabled") || normalized.includes("sign_up")) {
+    return "Your Google account is not on the Maaz 20x staff list. Ask an admin to add you.";
+  }
+  return "Sign-in failed. Please try again.";
+}
+
 /** The signed-in staff user for a request, or null. */
 export async function getSessionUser(request: Request): Promise<SessionUser | null> {
   const session = await getAuth().api.getSession({ headers: request.headers });

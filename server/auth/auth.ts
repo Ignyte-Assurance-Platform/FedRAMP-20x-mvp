@@ -1,10 +1,12 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError } from "better-auth/api";
 import type { Env } from "~server/config";
 import { schema, type Database } from "~server/db";
 import { devLoginPlugin } from "./dev-login-plugin";
 
 const EIGHT_HOURS = 8 * 60 * 60;
+export const NOT_IGNYTE = "Only verified Ignyte Google Workspace accounts can sign in.";
 
 interface GoogleProfile {
   email?: string;
@@ -45,15 +47,21 @@ export function createAuth(env: Env, db: Database) {
             hd: env.GOOGLE_ALLOWED_DOMAIN,
             prompt: "select_account",
             disableSignUp: true,
+            // TODO(WI-002): verify once the OAuth client exists (at-risk note 13).
             mapProfileToUser: (profile: GoogleProfile) => {
               if (profile.hd !== env.GOOGLE_ALLOWED_DOMAIN || profile.email_verified !== true) {
-                throw new Error("Only verified Ignyte Google Workspace accounts can sign in.");
+                throw new APIError("FORBIDDEN", { message: NOT_IGNYTE, code: "NOT_IGNYTE_ACCOUNT" });
               }
               return {};
             },
           },
         }
       : {},
+    // Seeded staff have a `users` row but no `accounts` row; the first Google sign-in links
+    // the Google account to that user by verified email instead of being refused as a sign-up.
+    account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
+    // OAuth errors redirect to /login?error=<code>, which shows a readable message.
+    onAPIError: { errorURL: "/login" },
     session: {
       expiresIn: EIGHT_HOURS,
       updateAge: 60 * 60,
