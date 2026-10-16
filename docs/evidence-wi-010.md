@@ -2,13 +2,13 @@
 
 Real command output for each acceptance criterion in brain work item `wi-maaz20x-010-repo-skeleton-local-dev` §5, captured on 2026-10-16 on branch `feat/wi-010-local-skeleton` (Windows 11, Node 24.16.0).
 
-**Environment caveat.** Docker Desktop is installed on this machine but its engine cannot run, because WSL is not installed, and Podman is not installed. So `npm run db:up` (compose) was **not** exercised here. To get a real database, a stand-in Postgres 17 was used (the `embedded-postgres` npm package, run from a scratch folder outside the repo) with the same user, password, database and port as `compose.yaml`. The compose path itself is exercised by CI, which uses a `postgres:17-alpine` service container. Criterion 5 also depends on CI and on branch protection; see the notes under it.
+**Database.** Criteria were first checked against a stand-in Postgres 17 (Docker could not run before WSL was installed). After WSL was installed they were rerun on the real compose path: `npm run db:up` with Docker Desktop. See the update under criterion 1.
 
 ## Summary
 
 | # | Criterion | Result |
 | --- | --- | --- |
-| 1 | Clean machine to a running, seeded app in under 10 minutes | Met, except the image pull: 53 s measured with the stand-in database; `db:up` (compose) not run here |
+| 1 | Clean machine to a running, seeded app in under 10 minutes | Met: about 1.5 min including the Postgres image pull |
 | 2 | Dev sign-in without Google when `DEV_LOGIN=1` and `NODE_ENV=development` | Met |
 | 3 | Production with `DEV_LOGIN` set refuses to start with a clear error | Met |
 | 4 | Local upload lands at `customers/<id>/intake/<document-id>/<filename>` with a `documents` row (path, size, type, SHA-256) | Met |
@@ -40,7 +40,29 @@ login 200 dev-button=True
 home 200 signed-in=True cache=no-store
 ```
 
-That totals about 53 s. Not measured: pulling `postgres:17-alpine` (about 100 MB) on a machine with a working container runtime.
+That totals about 53 s without the database container.
+
+**Update, compose path with Docker Desktop (WSL 2):**
+
+```text
+> npm run db:up
+ Container maaz20x-postgres-1 Healthy
+migrations applied
+seeded 1 user(s): dev@ignyteplatform.com
+seeded customer: Example Cloud Co (fictional seed) (c3ca9e03-45d4-49b4-b5c7-0d1ea5ba4464)
+db:up exit=0 in 35s   (includes pulling postgres:17-alpine)
+
+> npm run test:smoke
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+
+> npm run dev
+Maaz 20x (development) listening on http://localhost:3000 (dev sign-in ON)
+dev-login 303
+home 200 no-store  (shows dev@ignyteplatform.com)
+```
+
+Clean machine total: clone 2 s + npm ci 39 s + db:up 35 s + dev ready 7 s, about 1.5 minutes.
 
 ## 2. Dev sign-in without Google
 
