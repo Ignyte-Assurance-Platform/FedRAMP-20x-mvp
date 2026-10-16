@@ -82,6 +82,9 @@ export class LocalDocumentStore implements DocumentStore {
     if (!body) return new Response("empty body", { status: 400 });
 
     const file = this.resolve(grant.path);
+    // An object is final once stored: a replayed URL must not change bytes whose size and
+    // SHA-256 are already recorded. A failed partial upload leaves nothing, so it can retry.
+    if (await this.stat(grant.path)) return new Response("object already uploaded", { status: 409 });
     await mkdir(path.dirname(file), { recursive: true });
     const hash = createHash("sha256");
     const max = grant.max ?? Number.POSITIVE_INFINITY;

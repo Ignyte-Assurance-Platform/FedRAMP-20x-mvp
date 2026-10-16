@@ -30,20 +30,20 @@ export class GcsDocumentStore implements DocumentStore {
   async createUploadUrl(input: UploadUrlInput): Promise<SignedUrl> {
     assertObjectPath(input.objectPath);
     const expiresAt = urlExpiry(input.expiresInSeconds);
-    const lengthRange = `0,${input.maxBytes}`;
+    // Signed preconditions: size cap, and "only if the object does not exist yet", so a
+    // replayed URL gets 412 instead of overwriting bytes whose SHA-256 is already recorded.
+    const signed = {
+      "x-goog-content-length-range": `0,${input.maxBytes}`,
+      "x-goog-if-generation-match": "0",
+    };
     const [url] = await (await this.bucket()).file(input.objectPath).getSignedUrl({
       version: "v4",
       action: "write",
       expires: expiresAt,
       contentType: input.contentType,
-      extensionHeaders: { "x-goog-content-length-range": lengthRange },
+      extensionHeaders: signed,
     });
-    return {
-      url,
-      method: "PUT",
-      headers: { "content-type": input.contentType, "x-goog-content-length-range": lengthRange },
-      expiresAt,
-    };
+    return { url, method: "PUT", headers: { "content-type": input.contentType, ...signed }, expiresAt };
   }
 
   async createDownloadUrl(objectPath: string, options: DownloadUrlOptions = {}): Promise<SignedUrl> {

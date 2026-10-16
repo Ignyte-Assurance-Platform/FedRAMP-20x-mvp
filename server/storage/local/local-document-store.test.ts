@@ -76,6 +76,24 @@ describe("LocalDocumentStore", () => {
     expect(await store.stat(objectPath)).toBeNull();
   });
 
+  it("rejects a replayed upload URL and keeps the stored content", async () => {
+    const upload = await store.createUploadUrl({ objectPath, contentType: pdf, maxBytes: 1024 });
+    const token = tokenOf(upload.url);
+    expect((await store.receive(token, pdf, bodyOf("original"))).status).toBe(200);
+    const before = await store.stat(objectPath);
+
+    expect((await store.receive(token, pdf, bodyOf("replaced"))).status).toBe(409);
+    expect(await readFile(store.resolve(objectPath), "utf8")).toBe("original");
+    expect((await store.stat(objectPath))?.sha256).toBe(before?.sha256);
+  });
+
+  it("lets a failed upload be retried with the same URL", async () => {
+    const upload = await store.createUploadUrl({ objectPath, contentType: pdf, maxBytes: 4 });
+    const token = tokenOf(upload.url);
+    expect((await store.receive(token, pdf, bodyOf("too long"))).status).toBe(413);
+    expect((await store.receive(token, pdf, bodyOf("ok"))).status).toBe(200);
+  });
+
   it("deletes an object", async () => {
     const upload = await store.createUploadUrl({ objectPath, contentType: pdf, maxBytes: 1024 });
     await store.receive(tokenOf(upload.url), pdf, bodyOf("a"));
