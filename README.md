@@ -24,4 +24,4 @@ Why this way, in one paragraph: a route is a feature, so the top level says what
 
 ## Status
 
-Skeleton only. The app, database and CI are built under brain work item WI-010 once its spec is approved. Clickable mockups of screens A–E: `docs/mockups/`.
+Folder tree only (empty folders per ADR-0006) and OpenSpec initialised (`openspec/README.md`). The app, database and CI are built under brain work item WI-010 once its spec is approved. Clickable mockups of screens A–E: `docs/mockups/`.

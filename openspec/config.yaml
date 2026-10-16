@@ -1,0 +1,17 @@
+schema: spec-driven
+
+# Shown to AI when creating or applying OpenSpec artifacts in this repo.
+context: |
+  Project: Maaz 20x (FedRAMP 20x MVP) for Ignyte. Intent, specs and decisions live in the project brain
+  (../ignyte-project-brain/projects/maaz20x); this repo owns execution only.
+  Changes under openspec/changes/ are COMPILED from an approved, frozen brain work item by PB - Spec Compile
+  (pinned to handoff.brain_commit). Do not create changes by hand with /opsx:propose and do not edit
+  proposal.md or design.md to change intent: escalate to the brain instead. tasks.md checkboxes are updated here.
+  Stack (brain ADR-0001): one TypeScript app, React Router framework mode on Hono, Postgres via Drizzle,
+  Better Auth with Google sign-in for staff, shadcn UI, Valibot for forms, ajv only for the final FedRAMP JSON,
+  Cloud Run and Cloud Storage. Folder structure and import rules: docs/architecture/folder-structure.md (ADR-0006).
+  Conventional commits, atomic.
+
+rules:
+  tasks:
+    - The last two tasks are the automated review (PB - Review PR) and the human findings triage (gate 7)
