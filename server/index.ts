@@ -82,7 +82,7 @@ export async function startServer(): Promise<Server> {
   }
 
   await new Promise<void>((resolve) => server.listen(env.PORT, resolve));
-  console.log(`Maaz 20x (${mode}) listening on ${env.APP_URL}` + (env.devLoginEnabled ? " — dev sign-in ON" : ""));
+  console.log(`Maaz 20x (${mode}) listening on ${env.APP_URL}` + (env.devLoginEnabled ? " (dev sign-in ON)" : ""));
 
   const shutdown = () => {
     server.close(() => void closeDb().finally(() => process.exit(0)));
