@@ -15,6 +15,7 @@ export const intakeAnswers = pgTable(
     section: text("section").notNull(),
     formDefinitionVersion: text("form_definition_version").notNull(),
     answers: jsonb("answers").$type<Record<string, unknown>>().notNull().default({}),
+    /** Optimistic-lock counter: a row is created at 1 by its first save (at-risk note 14). */
     version: integer("version").notNull().default(1),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

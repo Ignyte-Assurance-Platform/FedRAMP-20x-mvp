@@ -2,7 +2,9 @@ import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
  * Ignyte staff (ADR-0004). Better Auth's "user" model is mapped onto this table.
- * No password column: staff sign in with Google; locally with the dev-only sign-in.
+ * No password column here: staff sign in with Google; locally with the dev-only sign-in.
+ * (`accounts.password` below is part of Better Auth's account model. It stays null because
+ * emailAndPassword is off; keep it so the adapter's schema matches.)
  */
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
