@@ -28,9 +28,15 @@ describe("parseEnv", () => {
     );
   });
 
-  it("accepts production without DEV_LOGIN", () => {
-    const env = parseEnv({ ...base, NODE_ENV: "production" });
+  it("accepts production without DEV_LOGIN, on Cloud Storage", () => {
+    const env = parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs" });
     expect(env.devLoginEnabled).toBe(false);
+  });
+
+  it.each([undefined, "local"])("refuses production with STORAGE_DRIVER=%j", (driver) => {
+    expect(() => parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: driver })).toThrowError(
+      /Refusing to start: STORAGE_DRIVER must be gcs in production/,
+    );
   });
 
   it("reports every invalid variable at once", () => {

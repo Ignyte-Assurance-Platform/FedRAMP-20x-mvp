@@ -1,3 +1,4 @@
+import path from "node:path";
 import * as v from "valibot";
 
 /** Optional text where an empty value (`GCS_BUCKET=` in .env) means "not set". */
@@ -62,6 +63,12 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
         "The dev-only sign-in exists for local development only; remove DEV_LOGIN from the environment.",
     );
   }
+  // Local disk on Cloud Run is ephemeral: customer files would vanish on the next restart.
+  if (env.NODE_ENV === "production" && env.STORAGE_DRIVER !== "gcs") {
+    throw new ConfigError(
+      "Refusing to start: STORAGE_DRIVER must be gcs in production (local disk on Cloud Run is ephemeral).",
+    );
+  }
   if (env.STORAGE_DRIVER === "gcs" && !env.GCS_BUCKET) {
     throw new ConfigError("Invalid environment:\n  - GCS_BUCKET: required when STORAGE_DRIVER=gcs");
   }
@@ -84,7 +91,8 @@ export function getEnv(): Env {
   if (cached) return cached;
   if (process.env.NODE_ENV !== "production") {
     try {
-      process.loadEnvFile(".env");
+      // Resolved from the repo root, so the entry point works from any working directory.
+      process.loadEnvFile(path.resolve(import.meta.dirname, "../../.env"));
     } catch {
       // no .env file: rely on the real environment
     }
