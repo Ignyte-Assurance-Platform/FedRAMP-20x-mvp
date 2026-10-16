@@ -87,15 +87,11 @@ sequenceDiagram
 - Accessibility: labels bound to inputs, keyboard navigable (shadcn defaults).
 
 ===== openspec/changes/intake-company-service/specs/maaz20x-intake-company-service/spec.md
-# maaz20x-intake-company-service
-
-> Brain work item: [[wi-maaz20x-004-intake-company-service]] · brain_commit 3fa07f4f39b0d7101468c7fa891c1a2f4e2a0f26 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-004-intake-company-service.md
-
 ## ADDED Requirements
 
 ### Requirement: Screen E tab 1 — Company & service intake generated from the Package Overview schema
 
-In: the customer-facing form for every Package Overview field except `assessor` (Ignyte-only), rendered from the vendored schema; save/resume by link; submit; read-only view on Screen D (display only; JSON generation is [[wi-maaz20x-007-package-overview-json]]).
+The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-004-intake-company-service]] at brain_commit 3fa07f4; scope in proposal.md).
 
 #### Scenario: the intake link is opened without a session
 - **WHEN** the intake link is opened without a session

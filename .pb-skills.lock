@@ -1,6 +1,6 @@
 {
-  "source_commit": "397738fbf5642a6d77c958b74bdfce89350eda54",
-  "synced_at": "2026-10-15T20:00:58.678Z",
+  "source_commit": "4c5b05f170db7fffb57093d09ab3b32cde89efb8",
+  "synced_at": "2026-10-16T16:08:47.418Z",
   "skills": {
     "pb-architecture": "1.0.0",
     "pb-create-pr": "1.0.0",
@@ -15,7 +15,7 @@
     "pb-project-tickets": "1.0.0",
     "pb-requirements-intake": "1.0.0",
     "pb-review-pr": "1.0.0",
-    "pb-spec-compile": "1.0.0",
+    "pb-spec-compile": "1.0.1",
     "pb-spec-gate": "1.0.0",
     "pb-spec-handoff": "1.0.0",
     "pb-update-base-files": "1.0.0",

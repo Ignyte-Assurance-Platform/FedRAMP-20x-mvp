@@ -2,7 +2,7 @@
 name: pb-spec-compile
 description: Stage 4, run INSIDE the target project repo — reads the frozen brain spec (pinned to handoff.brain_commit) and compiles it into an OpenSpec change (proposal, design, specs, tasks) that references the brain work item; writes handoff.spec_artifacts back into the brain. Refuses to run unless the work item is handed-off with an approved spec gate. Triggers: "compile the spec", "openspec change from the brain", "start implementation of wi-…".
 compatibility: Node >= 18 and git; OpenSpec CLI optional (npm i -g @fission-ai/openspec@latest, Node 20.19+). Project repo only.
-version: 1.0.0
+version: 1.0.1
 ---
 <!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
@@ -29,7 +29,7 @@ node $BRAIN/scripts/spec-compile.mjs <wi-id> --dry-run        # show what would 
 node $BRAIN/scripts/spec-compile.mjs <wi-id>                  # write openspec/changes/<name>/… here
 ```
 
-Output (OpenSpec adapter, structure verified against the OpenSpec README on 2026-10-14):
+Output (OpenSpec adapter, structure verified against the OpenSpec README on 2026-10-14; `openspec validate --strict` clean on CLI 1.14.2 on 2026-10-16):
 
 ```
 openspec/changes/<name>/
@@ -39,7 +39,7 @@ openspec/changes/<name>/
 └── tasks.md             checklist; last items are automated review + human triage
 ```
 
-Then: verify the brain diff touches only `handoff.spec_artifacts` + a History line and commit it in the brain with `chore(handoff): link <wi-id> artifacts`. If OpenSpec CLI is installed, run `openspec validate <name>` in the project repo (optional).
+Then: verify the brain diff touches only `handoff.spec_artifacts` + a History line and commit it in the brain with `chore(handoff): link <wi-id> artifacts`. If OpenSpec CLI is installed, run `openspec validate <name> --strict` in the project repo (optional; must be clean).
 
 ## 3. Adapter boundary
 
