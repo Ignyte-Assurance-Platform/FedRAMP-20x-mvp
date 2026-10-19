@@ -62,7 +62,7 @@ Enforced by ESLint `no-restricted-imports` and React Router's `.server` conventi
 4. **FedRAMP knowledge lives in `server/fedramp` and `form-definitions/`.** Screens render a form definition, never a JSON Schema.
 5. **Storage goes through `DocumentStore`.** No route touches disk or Cloud Storage directly.
 6. **The worker is a second entry point, not a second package.**
-7. **Naming:** folders and route files kebab-case; React components PascalCase; one component per file; tests `*.test.ts(x)` next to the code.
+7. **Naming:** folders and route files kebab-case; React components PascalCase; one component per file; tests `*.test.ts(x)` next to the code. Exception: tests of a cross-cutting rule that belongs to no single file (the ESLint import rules, the production start-up guard that spawns `server/index.ts`) live in `tests/unit/`; smoke tests live in `tests/smoke/`.
 8. **Monorepo-ready without a monorepo.** Imports into `server/` use one alias per module (`~server/db`, `~server/fedramp`, `~server/storage`), never relative paths across modules; `server/index.ts` is the only start-up point.
 
 ## Monorepo: not now, and when
