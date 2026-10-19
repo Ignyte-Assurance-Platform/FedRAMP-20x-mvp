@@ -98,6 +98,13 @@ td a.name:hover{text-decoration:underline}
 .ksirow .ans{color:var(--fg);margin-top:2px}
 .ksirow .ans.help{color:var(--warn)}
 .ksirow .ans.none{color:var(--muted);font-style:italic}
+.ksirow .often{color:var(--muted);font-size:13px;margin-top:2px}
+.ign{margin-top:8px;padding:8px 10px;border:1px dashed var(--line-strong);border-radius:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.ign b{color:var(--muted);font-weight:500}
+.ign select,.ign input,.ign textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px}
+.ign input{flex:1;min-width:160px}
+.ign textarea{width:100%;min-height:56px}
+.fups{font-size:13px;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:8px 10px;margin-bottom:8px}
 .files{list-style:none;padding:0;margin:0}
 .files li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
 .files li:last-child{border-bottom:0}
@@ -122,7 +129,7 @@ pre{font:12.5px/1.45 var(--mono);background:var(--bg);border:1px solid var(--lin
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
-<div class="note"><div class="wrap">Mockup for approval · Oct 14, 2026 · Not functional. Screens A–D of the Ignyte side. Sign in with any username and password. <a href="https://claude.ai/artifact/WDpuTu3NEkoX474inoT2dG" style="color:inherit;font-weight:600">Open the customer intake (screen E)</a></div></div>
+<div class="note"><div class="wrap">Mockup for approval · Oct 14, 2026, updated Oct 19, 2026 after Christina's review · Not functional. Screens A–D of the Ignyte side. Sign in with any username and password. <a href="https://claude.ai/artifact/WDpuTu3NEkoX474inoT2dG" style="color:inherit;font-weight:600">Open the customer intake (screen E)</a></div></div>
 
 <div class="topbar" id="topbar" hidden><div class="wrap">
   <a class="logo" href="#customers" style="color:inherit;text-decoration:none"><i></i>Ignyte <span>FedRAMP 20x</span></a>
@@ -209,7 +216,7 @@ const BAD_ERRS=[["/contactInformation/1/contactPhone","must match ###-###-#### f
 const BASE='https://20x.ignyteplatform.com/intake/';
 const tok=()=>Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join('');
 let CUST=[
- {id:1,company:"Example Cloud Co.",service:"Example Records Platform",desc:"Records management service for federal agencies.",contact:"Dana Whitfield",email:"dana.whitfield@example.com",status:"sub",token:"7f3a9c2e51b84d06a9e1c47b2d8f0e63",created:"Oct 9, 2026",submitted:"Oct 13, 2026",tab1:14,tab1tot:14,ksi:6,files:3},
+ {id:1,company:"Example Cloud Co.",service:"Example Records Platform",desc:"Records management service for federal agencies.",contact:"Dana Whitfield",email:"dana.whitfield@example.com",status:"sub",token:"7f3a9c2e51b84d06a9e1c47b2d8f0e63",created:"Oct 9, 2026",submitted:"Oct 13, 2026",tab1:14,tab1tot:14,ksi:7,files:3},
  {id:2,company:"Tandem Learning Inc.",service:"Tandem Platform",desc:"Student information platform for K-12 districts.",contact:"Jordan Lee",email:"jordan.lee@tandem.example",status:"ip",token:"c41e0b7d9a2f4e8b86d3f15a0c9e7b24",created:"Oct 12, 2026",submitted:null,tab1:9,tab1tot:14,ksi:2,files:1},
  {id:3,company:"ClassLink",service:"ClassLink LaunchPad",desc:"Single sign-on and rostering for education.",contact:"Priya Natarajan",email:"priya@classlink.example",status:"ns",token:"e9b2d6f04c7a41e3b5d8a0f6c2e19b77",created:"Oct 14, 2026",submitted:null,tab1:0,tab1tot:14,ksi:0,files:0}
 ];
@@ -227,14 +234,19 @@ function renderDetail(id){const c=CUST.find(x=>x.id==id)||CUST[0];current=c;
   $('#unlock').hidden=c.status!=='sub';
   $('#meta').innerHTML=`<span>Status <b>${ST[c.status][0]}</b></span><span>Created <b>${c.created}</b></span><span>Submitted <b>${c.submitted||'—'}</b></span><span>Primary contact <b>${c.contact}</b> · ${c.email}</span><span>Intake link</span>`;
   const full=c.status==='sub'; $('#d1pill').textContent=`${c.tab1}/${c.tab1tot} fields`;$('#d1pill').className='pill '+(c.tab1===c.tab1tot?'ok':'ns');
-  $('#d2pill').textContent=`${c.ksi}/7 answered`;$('#d2pill').className='pill '+(c.ksi===7?'ok':'ns');$('#d3pill').textContent=`${c.files} files`;$('#d3pill').className='pill ns';
+  $('#d2pill').textContent=`${c.ksi}/7 KSIs answered`;$('#d2pill').className='pill '+(c.ksi===7?'ok':'ns');$('#d3pill').textContent=`${c.files} files`;$('#d3pill').className='pill ns';
   const g=GOLD.serviceIdentification,p=GOLD.serviceProperties; const em='<dd class="empty">Not answered yet</dd>';
   const rows=full?[["Provider name",c.company],["Service name",c.service],["Acronym",g.serviceAcronym],["Description",g.serviceDescription],["Certification type","20x · Class A"],["Package ID","Not assigned yet · JSON uses EXCSO (name + acronym)"],["Website",g.website],["Logo","example-cloud-logo.svg · hosted by Ignyte"],["Service type",p.serviceType.join(', ')],["Deployment model",p.deploymentModel],["Business categories",p.businessCategory.join(', ')],["Trust center",p.trustCenter.url+' · sign-in required'],["Secure configuration guidance",p.secureConfigurationGuidance.url],["Next report date",p.nextOngoingCertificationReportDate],["Contacts","Security Team · security@example.com · 202-555-0123<br>Federal Sales · sales@example.com · 202-555-0199<br>Dana Whitfield, CISO · dana.whitfield@example.com"],["Certified services","Records Platform (since 2026-08-01)"],["Third parties","Object Storage Service, Example Storage Inc. · not FedRAMP certified · stores encrypted backups"],["Assessor","Ignyte · ID — (filled by Ignyte)"]]
    :c.status==='ip'?[["Provider name",c.company],["Service name",c.service],["Acronym","TDM"],["Description",c.desc],["Certification type","20x · Class A"],["Package ID","Not assigned yet"],["Website","https://www.tandem.example"],["Logo",null],["Service type","SaaS"],["Deployment model","Government Community Cloud"],["Business categories","Education & Training, Learning Management"],["Trust center",null],["Contacts","Jordan Lee · jordan.lee@tandem.example"],["Assessor","Ignyte · ID — (filled by Ignyte)"]]
    :[["Provider name",c.company],["Service name",c.service],["Description",c.desc],["Contacts",c.contact+' · '+c.email]];
   $('#kv').innerHTML=rows.map(([k,v])=>`<dt>${k}</dt>${v?`<dd>${v}</dd>`:em}`).join('');
-  const K=[["KSI-CED-RAT","Reviewing All Training","All staff complete annual security awareness in KnowBe4. Completion is reviewed quarterly by HR and the CISO."],["KSI-CMT-LMC","Logging Changes","All changes go through GitHub pull requests with required review. Deploy log and PR link kept in the change record."],["KSI-CNA-RNT","Restricting Network Traffic","Production runs in private subnets; only the load balancer is public. Security groups deny by default."],["KSI-IAM-AAM","Automating Account Management","Okta is the source of truth, SCIM from HR, same-day removal, quarterly access review."],["KSI-IAM-APM","Adopting Passwordless Methods",{help:true}],["KSI-INR-RIR","Reviewing Incident Response Procedures","IR plan v2.3 (March 2026), tabletop June 2026. Recovery runbooks per service, last restore test August 2026."],["KSI-SVC-SIN","Securing Information","AES-256 at rest (AWS KMS, FIPS 140-3 validated), TLS 1.2+ in transit."]];
-  $('#ksilist').innerHTML=K.map((k,i)=>{const answered=i<c.ksi||(full);const help=k[2].help; return `<div class="ksirow"><span class="code">${k[0]}</span><div><div class="nm">${k[1]}</div><div class="ans ${help?'help':answered?'':'none'}">${help?'Customer asked for help from Ignyte':answered?k[2]:'Not answered yet'}</div></div></div>`}).join('');
+  // Short excerpts of the sample answers in the customer form (wi-maaz20x-005, Christina's review Oct 19, 2026). Third item: "How often?" line, where the box has one.
+  const K=[["KSI-CED-RAT","Reviewing All Training","Yearly awareness training and monthly phishing tests; scored lab for admins; yearly secure delivery training for engineers; quarterly restore drills. CISO reviews all four results quarterly."],["KSI-CMT-LMC","Logging Changes","Reviewed pull requests, deploy only from the pipeline; console and API changes in the cloud audit log. Changes outside the pipeline alert on-call. Security lead reviews weekly; last quarter 412 pipeline and 3 manual changes, all explained."],["KSI-CNA-RNT","Restricting Network Traffic","Only the load balancer is public (443); private subnets, deny by default. Outbound through a proxy with 14 approved destinations. Daily drift check; infrastructure lead reviews quarterly."],["KSI-IAM-AAM","Automating Account Management","HR system creates, changes and disables accounts; leavers lose access within one hour. Access via groups in code; unused accounts disabled after 30 days. Still manual: one legacy billing tool (Q1).","Managers confirm their team’s access quarterly"],["KSI-IAM-APM","Adopting Passwordless Methods","Passkeys or hardware keys through SSO; passwords disabled. Agencies federate (PIV) or use passkeys. Two break-glass accounts use passwords plus hardware keys, alert on use.","Logins and MFA methods reported monthly"],["KSI-INR-RIR","Reviewing Incident Response Procedures","Plan v3.2 (May). Twice-yearly tabletops, review after every incident within 5 business days, quarterly look at detection times. April tabletop added a 30-minute escalation rule."],["KSI-SVC-SIN","Securing Information","TLS 1.2+ everywhere; databases, storage and backups encrypted with cloud KMS keys; write-once backups for 35 days.","Keys rotate yearly"],["VDR-CSO-DET","Vulnerability detection",null]];
+  const fups=full?['Vulnerability detection (needs help)']:[];
+  $('#ksilist').innerHTML=(fups.length?`<div class="fups">Follow-ups: ${fups.join(', ')}</div>`:'')+K.map((k,i)=>{const vdr=k[0]==='VDR-CSO-DET';const answered=!vdr&&(i<c.ksi||full);const help=vdr&&full;
+    const cmvp=k[0]==='KSI-SVC-SIN'&&answered?`<div class="ign"><b>Ignyte only · CMVP validated?</b><select aria-label="CMVP validated"><option>Not checked</option><option>Yes</option><option>No</option></select><input placeholder="Certificate numbers or note"></div>`:'';
+    return `<div class="ksirow"><span class="code">${k[0]}</span><div><div class="nm">${k[1]}</div><div class="ans ${help?'help':answered?'':'none'}">${help?'Customer asked for help from Ignyte':answered?k[2]:'Not answered yet'}</div>${answered&&k[3]?`<div class="often">How often: ${k[3]}</div>`:''}${cmvp}</div></div>`}).join('')
+    +`<div class="ign" style="margin-top:12px"><b>Ignyte only · Log retention and review (optional context, Intake question 17)</b><textarea placeholder="Where logs go, how long they are kept, who reviews them"></textarea></div>`;
   const F=[["PDF","SOC2_TypeII_Report_2026.pdf","4.2 MB"],["PDF","ERP_Authorization_Boundary_Diagram_v3.pdf","812 KB"],["DOCX","Information_Security_Policy_2026.docx","268 KB"]].slice(0,c.files);
   $('#dfiles').innerHTML=F.length?F.map(f=>`<li><span class="ic">${f[0]}</span><span class="nm">${f[1]}</span><span class="date">${f[2]}</span><a href="#customer-${c.id}" onclick="return false">Download</a></li>`).join(''):'<li style="color:var(--muted);font-style:italic">No documents uploaded yet</li>';
   $('#val').classList.remove('on'); badMode=false; $('#gen').textContent='Generate JSON';
@@ -271,6 +283,15 @@ const TOUR=[
  {sel:'.note .wrap a',title:'See the customer side',text:'The intake is a separate page, because customers never see this console. Open it to walk through what they fill in.'}
 ];
 const TOUR_END=()=>{};
+// Tour of the changes made after Christina's review of document 05 (Oct 19, 2026).
+const TOUR_05=[
+ {sel:'#kv',title:'1. Class A only',text:'Certification type always shows "20x · Class A": the first version is for Class A customers only, so the customer no longer picks a class.',before(){location.hash='customer-1'},wait:150},
+ {sel:'#ksilist .fups',title:'2. Follow-ups at the top',text:'Boxes the customer marked "need help" or left empty are listed here for the consultant.'},
+ {sel:'#ksilist .often',title:'3. "How often?" answers',text:'Where a KSI has a separate "How often?" line, the answer shows under the summary.'},
+ {sel:'#ksilist .ign',title:'4. CMVP check is Ignyte\'s',text:'On Securing Information, the consultant records whether the customer\'s crypto modules are CMVP-validated. The customer never sees this.'},
+ {sel:'#ksilist > .ign:last-child',title:'5. Question 17 stays with Ignyte',text:'Log retention and review is an optional note for the consultant, not a question in the customer form.'},
+ {sel:'.note .wrap a',title:'See the customer side',text:'Open the customer form and click "What changed after review 05" there for the rest: FedRAMP statements, new questions and the vulnerability detection box.'}
+];
 </script>
 
 <style>
@@ -284,19 +305,23 @@ const TOUR_END=()=>{};
 .tour-tip .skip:hover{color:var(--fg)}
 .tour-tip .arrow{position:absolute;width:12px;height:12px;background:var(--surface);border-left:1px solid var(--line-strong);border-top:1px solid var(--line-strong);transform:rotate(45deg);left:24px;top:-7px}
 .tour-tip.above .arrow{top:auto;bottom:-7px;transform:rotate(225deg)}
+.tour-btns{display:inline-flex;gap:6px;margin-left:8px;flex-wrap:wrap;vertical-align:middle}
+.tour-btn{font:inherit;font-size:12px;font-weight:600;color:var(--warn);background:var(--surface);border:1px solid var(--warn);border-radius:999px;padding:2px 10px;cursor:pointer}
+.tour-btn.new{background:var(--warn);color:var(--surface)}
+.tour-btn:hover{filter:brightness(.95)}
 .tour-replay{font:inherit;font-size:13px;font-weight:600;background:none;border:0;color:inherit;cursor:pointer;text-decoration:underline;padding:0;margin-left:8px}
 @media (prefers-reduced-motion:reduce){.tour-spot{transition:none}}
 </style>
 <script>
 (function(){
-  const KEY='tour-seen-'+TOUR_ID; let i=0, spot, tip;
+  const KEY='tour-seen-'+TOUR_ID; let i=0, spot, tip, T=TOUR;
   const seen=()=>{try{return localStorage.getItem(KEY)==='1'}catch(e){return false}};
   const mark=()=>{try{localStorage.setItem(KEY,'1')}catch(e){}};
-  function place(){const s=TOUR[i]; const el=document.querySelector(s.sel); if(!el){next();return;}
+  function place(){const s=T[i]; const el=document.querySelector(s.sel); if(!el){next();return;}
     el.scrollIntoView({block:'center',behavior:'auto'});
     const r=el.getBoundingClientRect(), sx=window.scrollX, sy=window.scrollY, pad=6;
     spot.style.cssText=`top:${r.top+sy-pad}px;left:${r.left+sx-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px`;
-    tip.innerHTML=`<span class="arrow"></span><div class="step">Step ${i+1} of ${TOUR.length}</div><h3>${s.title}</h3><p>${s.text}</p><div class="row"><button class="skip" id="tskip">Skip tour</button>${i>0?'<button class="btn sm" id="tback">Back</button>':''}<button class="btn sm primary" id="tnext">${i===TOUR.length-1?'Done':'Next'}</button></div>`;
+    tip.innerHTML=`<span class="arrow"></span><div class="step">Step ${i+1} of ${T.length}</div><h3>${s.title}</h3><p>${s.text}</p><div class="row"><button class="skip" id="tskip">Skip tour</button>${i>0?'<button class="btn sm" id="tback">Back</button>':''}<button class="btn sm primary" id="tnext">${i===T.length-1?'Done':'Next'}</button></div>`;
     const below=r.bottom+sy+16, tipH=tip.offsetHeight||160; const fits=r.bottom+tipH+24<window.innerHeight;
     tip.classList.toggle('above',!fits);
     tip.style.top=(fits?below:r.top+sy-tipH-16)+'px';
@@ -304,13 +329,14 @@ const TOUR_END=()=>{};
     document.getElementById('tnext').onclick=next; document.getElementById('tskip').onclick=end; const b=document.getElementById('tback'); if(b)b.onclick=back;
     document.getElementById('tnext').focus({preventScroll:true});
   }
-  function show(){const s=TOUR[i]; const go=()=>{setTimeout(place,s.wait||0)}; if(s.before){s.before();}go();}
-  function next(){if(i>=TOUR.length-1){end();return;}i++;show();}
+  function show(){const s=T[i]; const go=()=>{setTimeout(place,s.wait||0)}; if(s.before){s.before();}go();}
+  function next(){if(i>=T.length-1){end();return;}i++;show();}
   function back(){if(i>0){i--;show();}}
   function end(){mark();if(spot)spot.remove();if(tip)tip.remove();spot=tip=null;window.removeEventListener('resize',place);if(TOUR_END)TOUR_END();}
-  function start(){if(tip)return;i=0;spot=document.createElement('div');spot.className='tour-spot';tip=document.createElement('div');tip.className='tour-tip';document.body.append(spot,tip);window.addEventListener('resize',place);show();}
+  function start(list){if(tip){spot.remove();tip.remove();spot=tip=null;window.removeEventListener('resize',place);}T=Array.isArray(list)?list:TOUR;i=0;spot=document.createElement('div');spot.className='tour-spot';tip=document.createElement('div');tip.className='tour-tip';document.body.append(spot,tip);window.addEventListener('resize',place);show();}
   window.startTour=start;
-  const note=document.querySelector('.note .wrap'); if(note){const b=document.createElement('button');b.className='tour-replay';b.textContent='Replay the guided tour';b.onclick=start;note.appendChild(b);}
+  const note=document.querySelector('.note .wrap'); if(note){const bar=document.createElement('span');bar.className='tour-btns';
+    [['Main tour',()=>start(TOUR)],['What changed after review 05',()=>start(TOUR_05)]].forEach(([l,f],n)=>{const b=document.createElement('button');b.className='tour-btn'+(n?' new':'');b.textContent=l;b.onclick=f;bar.appendChild(b);});note.appendChild(bar);}
   if(!seen())setTimeout(start,600);
 })();
 </script>
