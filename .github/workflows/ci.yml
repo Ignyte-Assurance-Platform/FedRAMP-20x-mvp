@@ -15,7 +15,7 @@ concurrency:
 jobs:
   check:
     name: lint, typecheck, test, build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     services:
@@ -38,8 +38,8 @@ jobs:
       BETTER_AUTH_SECRET: ci-only-secret-0123456789abcdef0123456789
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -50,7 +50,7 @@ jobs:
       - run: npm run typecheck
       - name: Unit tests with coverage floor
         run: npm run test:coverage
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: coverage-report
