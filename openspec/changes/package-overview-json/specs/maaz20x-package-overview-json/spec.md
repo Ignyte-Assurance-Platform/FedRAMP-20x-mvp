@@ -2,7 +2,7 @@
 
 ### Requirement: Screen D — generate, validate and download the Package Overview JSON
 
-The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-007-package-overview-json]] at brain_commit 424d93a; scope in proposal.md).
+The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-007-package-overview-json]] at brain_commit 0aa1953; scope in proposal.md).
 
 #### Scenario: the golden answers are present with a fixed logo URL and the default advisor
 - **WHEN** the golden answers are present with a fixed logo URL and the default advisor
@@ -18,7 +18,7 @@ The system SHALL behave as every scenario below states (brain work item [[wi-maa
 
 #### Scenario: the form is blank
 - **WHEN** the form is blank
-- **THEN** validation lists every missing required field by its question name and the only download offered is `DRAFT-<acronym>-package-overview.json` (or generation is refused when the acronym itself is missing)
+- **THEN** validation lists every missing required field by its question name and the only download offered is `<acronym>-package-overview-DRAFT.json` (or generation is refused when the acronym itself is missing)
 
 #### Scenario: the next ongoing certification report date is today or earlier (America/New_York)
 - **WHEN** the next ongoing certification report date is today or earlier (America/New_York)
@@ -55,3 +55,23 @@ The system SHALL behave as every scenario below states (brain work item [[wi-maa
 #### Scenario: a customer link token calls any route of this item
 - **WHEN** a customer link token calls any route of this item
 - **THEN** it is refused
+
+#### Scenario: an assessor name is entered and "Assessor Confirmed on FedRAMP Marketplace" is not ticked
+- **WHEN** an assessor name is entered and "Assessor Confirmed on FedRAMP Marketplace" is not ticked
+- **THEN** the file is a draft with a problem naming the assessor; WHEN it is ticked THEN Screen D shows who ticked it and the date; WHEN the assessor name or ID changes THEN the tick is cleared
+
+#### Scenario: the Ignyte-hosted logo URL does not answer with an image
+- **WHEN** the Ignyte-hosted logo URL does not answer with an image
+- **THEN** the file is a draft with a problem naming the logo
+
+#### Scenario: a file is shown on Screen D
+- **WHEN** a file is shown on Screen D
+- **THEN** its schema version, rules version and creation date and time are shown next to it
+
+#### Scenario: the latest file is valid
+- **WHEN** the latest file is valid
+- **THEN** the Publishing checklist with the five FRC-CSO-JSN items is shown next to it; WHEN it is a draft THEN the checklist is not shown
+
+#### Scenario: the file is a draft
+- **WHEN** the file is a draft
+- **THEN** the button reads "Download draft" and the file is named `<acronym>-package-overview-DRAFT.json`

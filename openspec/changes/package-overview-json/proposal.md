@@ -1,6 +1,6 @@
 # Screen D — generate, validate and download the Package Overview JSON
 
-> Brain work item: [[wi-maaz20x-007-package-overview-json]] · brain_commit 424d93a75b8261c8c4c4305da5f7b97d2c5c3fa5 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-007-package-overview-json.md
+> Brain work item: [[wi-maaz20x-007-package-overview-json]] · brain_commit 0aa195347a95be589ff132ffeb6428df3365c41d · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-007-package-overview-json.md
 > Compiled by PB - Spec Compile. Do NOT edit intent here; intent changes go back to the brain (Escalation Rule).
 
 ## Why
@@ -28,12 +28,19 @@
   - E2 question name in errors: the form label when the form definition has one, else the schema `title` (all 37 Package Overview properties have one in v0.2.0), else the field path. Keeps this item independent of [[wi-maaz20x-011-form-engine]].
   - E3 golden example: compared by deep equality (key order ignored) against a fixture whose logo URL and advisor are fixed, not byte-for-byte against the converter's example.
   - E4 fault cases: each of Christina's seven faults is assigned to the layer that catches it (table in §9); three are prevented by the form (wi-004), not reported here.
+- **Jesús's replies to Christina in review copy 07 (2026-10-20, final copy received 2026-10-21; 26 comments)** extend the approved spec. Reopened after handoff and applied with decisions F-a…F-f (Jesús, 2026-10-21); Christina has not answered the replies yet ([[maaz20x-gate3-review-2026-10-15]]):
+  - F-a draft file name `<acronym>-package-overview-DRAFT.json`; buttons "Download" (valid) and "Download draft" (not valid); a file that fails any check, FedRAMP's or ours, is a draft.
+  - F-b checkbox "Assessor Confirmed on FedRAMP Marketplace" next to the assessor boxes, showing who checked it and when; while an assessor name is entered and the box is not checked, the file stays a draft.
+  - F-c the phone fault stays `555-0199` (Jesús's reply proposed `202-555-019`; both fail the pattern). Tell Christina.
+  - F-d each generated file shows, next to it on Screen D, the schema version, the rules version and the date and time it was created.
+  - F-e a "Publishing checklist" on Screen D next to a passing file, in FedRAMP's words (FRC-CSO-JSN): public web address, `Content-Type: application/json`, `X-Content-Type-Options: nosniff`, readable by other websites (CORS), logo link opens as an image. A "Check published file" button is for a later version ([[wi-maaz20x-014-website-live-check]]).
+  - F-f generation checks that the Ignyte-hosted logo URL (fixed host, ends with the file name, e.g. `…/logo.png`) answers with an image. A logo URL on the customer's own site, typed by the consultant, is checked in [[wi-maaz20x-014-website-live-check]] (needs SSRF protection), not in the MVP.
 
 ## What changes
 
-In: build the object from tab 1 answers + assessor and advisor fields entered by Ignyte; validate against the vendored schema plus the business checks below; show plain-language errors per question; download a passing file as `<acronym>-package-overview.json` or a failing one as `DRAFT-<acronym>-package-overview.json`; record the schema and rules versions; flag files built on an older vendored schema.
+In: build the object from tab 1 answers + assessor and advisor fields entered by Ignyte; validate against the vendored schema plus the business checks below; show plain-language errors per question; download a passing file as `<acronym>-package-overview.json` or a failing one as `<acronym>-package-overview-DRAFT.json`; record and show the schema and rules versions per file; assessor confirmation checkbox; hosted logo URL check; publishing checklist next to a passing file; flag files built on an older vendored schema.
 
-Out: KSI JSON, SDR, submission to FedRAMP, publishing the file (CORS and headers belong to the customer's publishing checklist), "website is live" check ([[wi-maaz20x-014-website-live-check]]), detecting new FedRAMP releases ([[wi-maaz20x-012-fedramp-rules-sync]]).
+Out: KSI JSON, SDR, submission to FedRAMP, publishing the file (CORS and headers belong to the customer's publishing checklist), "website is live", customer-hosted logo URL and "Check published file" ([[wi-maaz20x-014-website-live-check]]), detecting new FedRAMP releases ([[wi-maaz20x-012-fedramp-rules-sync]]).
 
 ## Out of scope
 
