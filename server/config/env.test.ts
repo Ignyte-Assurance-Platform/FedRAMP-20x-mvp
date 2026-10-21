@@ -67,4 +67,10 @@ describe("parseEnv", () => {
       "b@ignyteplatform.com",
     ]);
   });
+
+  it("treats an empty logo base URL as not set and rejects one that is not a URL", () => {
+    expect(parseEnv({ ...base, LOGO_PUBLIC_BASE_URL: "" }).LOGO_PUBLIC_BASE_URL).toBeUndefined();
+    expect(parseEnv({ ...base, LOGO_PUBLIC_BASE_URL: "https://logos.example.com/" }).LOGO_PUBLIC_BASE_URL).toBe("https://logos.example.com/");
+    expect(() => parseEnv({ ...base, LOGO_PUBLIC_BASE_URL: "not a url" })).toThrow(ConfigError);
+  });
 });
