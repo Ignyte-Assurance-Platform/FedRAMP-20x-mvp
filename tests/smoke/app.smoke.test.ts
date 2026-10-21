@@ -123,4 +123,56 @@ describe("app against the local database", () => {
     const onDisk = path.join(storageDir, "customers", customer!.id, "intake", started.documentId, "Smoke Test.pdf");
     expect(await readFile(onDisk, "utf8")).toBe(content);
   });
+
+  it("generates, stores and downloads a Package Overview file (WI-007)", async () => {
+    const services = await import("~server/services");
+    const { getDb, schema } = await import("~server/db");
+    const goldenAnswers = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
+    const db = getDb();
+    const [customer] = await db.select().from(schema.customers).limit(1);
+    const [user] = await db.select().from(schema.users).limit(1);
+    expect(customer && user, "seed missing: run npm run db:seed").toBeTruthy();
+
+    const logoBaseUrl = "https://logos.example.test/";
+    const deps = {
+      db,
+      generator: services.getPackageOverviewGenerator(),
+      logoBaseUrl,
+      fetch: async () => new Response("png", { status: 200, headers: { "content-type": "image/png" } }),
+      now: () => new Date("2026-10-21T15:00:00Z"),
+    };
+    await services.savePackageOverviewInputs(
+      { customerId: customer!.id, assessorName: "Example Assessor LLC", assessorId: "000123", advisorName: "Ignyte" },
+      deps,
+    );
+    const request = {
+      customerId: customer!.id,
+      userId: user!.id,
+      answers: goldenAnswers,
+      answersUpdatedAt: new Date("2026-10-21T14:00:00Z"),
+      logoUrl: `${logoBaseUrl}customers/${customer!.id}/logo/logo.png`,
+    };
+
+    const draft = await services.generatePackageOverview(request, deps);
+    expect(draft.file.valid).toBe(false);
+    expect(draft.file.fileName).toBe("ERP-package-overview-DRAFT.json");
+    expect(draft.problems.map((p) => p.message)).toEqual(["Assessor Name has not been confirmed on the FedRAMP Marketplace"]);
+
+    await services.setAssessorConfirmed(customer!.id, true, user!.id, deps);
+    const passing = await services.generatePackageOverview(request, deps);
+    expect(passing.file).toMatchObject({ valid: true, fileName: "ERP-package-overview.json", schemaVersion: deps.generator.schemaVersion });
+
+    const status = await services.getPackageOverviewStatus(customer!.id, new Date("2026-10-21T16:00:00Z"), deps);
+    expect(status).toMatchObject({ downloadLabel: "Download", answersChanged: true, regenerate: undefined });
+    const download = await services.downloadPackageOverview(customer!.id, deps);
+    expect(download).toEqual({ fileName: "ERP-package-overview.json", body: passing.file.json });
+
+    // A changed assessor ID clears the confirmation tick.
+    await services.savePackageOverviewInputs(
+      { customerId: customer!.id, assessorName: "Example Assessor LLC", assessorId: "000124", advisorName: "Ignyte" },
+      deps,
+    );
+    const [after] = await db.select().from(schema.customers).where((await import("drizzle-orm")).eq(schema.customers.id, customer!.id));
+    expect(after?.assessorConfirmedAt).toBeNull();
+  });
 });

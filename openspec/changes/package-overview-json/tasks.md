@@ -13,14 +13,14 @@
 - [x] 2.5 WHEN the next ongoing certification report date is today or earlier (America/New_York) THEN validation reports it and the file is a draft
 - [x] 2.6 WHEN a field has a form label THEN its error uses that label; WHEN it has none THEN the schema `title` is used; no per-field message text exists in application code
 - [x] 2.7 WHEN a rule type has no message pattern THEN the generic fallback sentence is shown
-- [ ] 2.8 WHEN a file is generated THEN `schema_version` equals the vendored schema's `$schemaVersion`, `schema_commit` comes from the manifest, `rules_version` is stored (null until rules are vendored), and no version literal exists in application code
+- [x] 2.8 WHEN a file is generated THEN `schema_version` equals the vendored schema's `$schemaVersion`, `schema_commit` comes from the manifest, `rules_version` is stored (null until rules are vendored), and no version literal exists in application code
 - [ ] 2.9 WHEN the vendored schema version is raised THEN customers whose latest file used the older version show the "Regenerate" flag on Screen D, and the flag clears after regenerating (the flag in the customers list follows when [[wi-maaz20x-003-customers-list-and-create]] ships)
 - [ ] 2.10 WHEN answers change after a generation THEN Download still serves the stored file and Screen D shows "Answers changed since this file was generated"
 - [x] 2.11 WHEN the customer listed advisor "Ignyte" on tab 1 and the Advisor box says "Ignyte" THEN `advisors` contains "Ignyte" once; WHEN the box is emptied and the customer listed none THEN the JSON has no `advisors`
 - [x] 2.12 WHEN the same inputs and versions are generated twice THEN the two JSON files are identical byte for byte (stable key order)
 - [ ] 2.13 WHEN a customer link token calls any route of this item THEN it is refused
 - [ ] 2.14 WHEN an assessor name is entered and "Assessor Confirmed on FedRAMP Marketplace" is not ticked THEN the file is a draft with a problem naming the assessor; WHEN it is ticked THEN Screen D shows who ticked it and the date; WHEN the assessor name or ID changes THEN the tick is cleared
-- [ ] 2.15 WHEN the Ignyte-hosted logo URL does not answer with an image THEN the file is a draft with a problem naming the logo
+- [x] 2.15 WHEN the Ignyte-hosted logo URL does not answer with an image THEN the file is a draft with a problem naming the logo
 - [ ] 2.16 WHEN a file is shown on Screen D THEN its schema version, rules version and creation date and time are shown next to it
 - [ ] 2.17 WHEN the latest file is valid THEN the Publishing checklist with the five FRC-CSO-JSN items is shown next to it; WHEN it is a draft THEN the checklist is not shown
 - [ ] 2.18 WHEN the file is a draft THEN the button reads "Download draft" and the file is named `<acronym>-package-overview-DRAFT.json`
