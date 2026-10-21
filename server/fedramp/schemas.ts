@@ -14,7 +14,7 @@ export type JsonSchema = Record<string, unknown>;
 export interface VendoredSchemas {
   packageOverview: JsonSchema;
   commonDefinitions: JsonSchema;
-  /** `$schemaVersion` of the Package Overview schema, e.g. "0.2.0". */
+  /** `$schemaVersion` of the Package Overview schema, read from the vendored file. */
   schemaVersion: string;
   /** FedRAMP/schemas commit the files were taken from. */
   schemaCommit: string;
