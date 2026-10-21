@@ -1,0 +1,17 @@
+{
+  "source": "https://github.com/FedRAMP/schemas",
+  "commit": "0e836c0dabfa4b59a47504892f9b94512abf5fdc",
+  "takenAt": "2026-10-21",
+  "files": [
+    {
+      "role": "package-overview",
+      "file": "fedramp-certification-package-overview-schema-2026-06-24.json",
+      "sha256": "37e796345509c3528fc369233d986a0e7a31fcbcc9187229729b8ba05fe32f12"
+    },
+    {
+      "role": "common-definitions",
+      "file": "fedramp-common-definitions-schema-2026-06-24.json",
+      "sha256": "d2493889df82f94bdf5302f6d296e0111547daf20169c1948e75fa67b1956d84"
+    }
+  ]
+}
