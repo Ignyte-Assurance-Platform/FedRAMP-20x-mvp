@@ -176,3 +176,78 @@ describe("app against the local database", () => {
     expect(after?.assessorConfirmedAt).toBeNull();
   });
 });
+
+describe("Screen D routes (WI-007 §6, §3)", () => {
+  async function seedCustomerId(): Promise<string> {
+    const { getDb, schema } = await import("~server/db");
+    const [customer] = await getDb().select().from(schema.customers).limit(1);
+    expect(customer, "seeded customer missing: run npm run db:seed").toBeDefined();
+    return customer!.id;
+  }
+
+  async function staffCookie(): Promise<string> {
+    const signIn = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+    return signIn.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  }
+
+  it("refuses the page and the download without a staff session, even with a customer link token", async () => {
+    const customerId = await seedCustomerId();
+    const page = await app.request(`/customers/${customerId}/package?token=link-abc`, {
+      headers: { authorization: "Bearer link-abc" },
+    });
+    expect(page.status).toBe(302);
+    expect(page.headers.get("location")).toBe("/login");
+
+    const download = await app.request(`/api/customers/${customerId}/package-overview/download?token=link-abc`, {
+      headers: { authorization: "Bearer link-abc" },
+    });
+    expect(download.status).toBe(401);
+  });
+
+  it("shows the answers, generates a draft with its problems and downloads it under the DRAFT name", async () => {
+    const customerId = await seedCustomerId();
+    const cookie = await staffCookie();
+    const { getDb } = await import("~server/db");
+    const { intakeAnswersRepo } = await import("~server/repositories");
+    const { TAB1_SECTION, savePackageOverviewInputs, setAssessorConfirmed } = await import("~server/services");
+    const goldenAnswers = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
+
+    await intakeAnswersRepo.upsertIntakeSection(getDb(), {
+      customerId,
+      section: TAB1_SECTION,
+      formDefinitionVersion: "test",
+      answers: goldenAnswers,
+    });
+    // An assessor typed but not confirmed, and no hosted logo: both make the file a draft.
+    await savePackageOverviewInputs({ customerId, assessorName: "Example Assessor LLC", assessorId: "000123", advisorName: "Ignyte" });
+    await setAssessorConfirmed(customerId, false, "smoke");
+
+    const page = await app.request(`/customers/${customerId}/package`, { headers: { cookie } });
+    expect(page.status).toBe(200);
+    expect(page.headers.get("cache-control")).toBe("no-store");
+    const html = await page.text();
+    expect(html).toContain("Example Records Platform");
+    expect(html).toContain("Assessor Confirmed on FedRAMP Marketplace");
+    expect(html).toMatch(/Generate JSON|Regenerate JSON/);
+
+    const generated = await app.request(`http://localhost:3000/customers/${customerId}/package`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/x-www-form-urlencoded" },
+      body: "intent=generate",
+    });
+    expect(generated.status).toBe(200);
+    const result = await generated.text();
+    expect(result).toContain("ERP-package-overview-DRAFT.json");
+    expect(result).toContain("Download draft");
+    expect(result).toContain("has not been confirmed on the FedRAMP Marketplace");
+    expect(result).not.toContain("Publishing checklist");
+
+    const download = await app.request(`/api/customers/${customerId}/package-overview/download`, { headers: { cookie } });
+    expect(download.status).toBe(200);
+    expect(download.headers.get("content-type")).toBe("application/json; charset=utf-8");
+    expect(download.headers.get("content-disposition")).toBe("attachment; filename*=UTF-8''ERP-package-overview-DRAFT.json");
+    expect(download.headers.get("x-content-type-options")).toBe("nosniff");
+    const body = (await download.json()) as { serviceIdentification: { serviceAcronym: string } };
+    expect(body.serviceIdentification.serviceAcronym).toBe("ERP");
+  });
+});
