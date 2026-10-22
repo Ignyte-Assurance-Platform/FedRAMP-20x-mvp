@@ -7,6 +7,7 @@ export { loadVendoredSchemas, SchemaManifestError, SCHEMAS_DIR, type JsonSchema,
 export { createSchemaValidator, type SchemaValidator } from "./validate";
 export { problemsFromSchemaErrors, SchemaNavigator, type FormLabels, type Problem } from "./messages";
 export { buildPackageOverview, type PackageOverviewInputs } from "./mapping/package-overview";
+export { answerSections, type AnswerLabels, type AnswerRow, type AnswerSection } from "./answer-rows";
 export {
   createPackageOverviewGenerator,
   MissingAcronymError,

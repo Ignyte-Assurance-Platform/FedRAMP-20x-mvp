@@ -96,6 +96,8 @@ function businessProblems(nav: SchemaNavigator, doc: Record<string, unknown>, in
 export interface PackageOverviewGenerator {
   schemaVersion: string;
   schemaCommit: string;
+  /** The vendored schemas the generator was compiled from (for navigation, never mutated). */
+  schemas: VendoredSchemas;
   generate(input: GenerateInput): GeneratedPackageOverview;
 }
 
@@ -105,6 +107,7 @@ export function createPackageOverviewGenerator(schemas: VendoredSchemas = loadVe
   return {
     schemaVersion: schemas.schemaVersion,
     schemaCommit: schemas.schemaCommit,
+    schemas,
     generate(input) {
       const built = buildPackageOverview(input);
       const acronym = (built.serviceIdentification as Record<string, unknown> | undefined)?.serviceAcronym;
