@@ -16,6 +16,7 @@ import { createRequestHandler, type ServerBuild } from "react-router";
 import { getAuth } from "~server/auth";
 import { getEnv } from "~server/config";
 import { closeDb } from "~server/db";
+import { getPackageOverviewGenerator } from "~server/services";
 
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const NO_STORE = "no-store";
@@ -63,6 +64,7 @@ export function createApp({ getBuild, mode }: AppOptions): Hono {
 
 export async function startServer(): Promise<Server> {
   const env = getEnv(); // throws, and the process exits, on a bad config or DEV_LOGIN in production
+  getPackageOverviewGenerator(); // throws, and the process exits, when a vendored schema does not match schemas/manifest.json (WI-007 §5)
   const mode = env.NODE_ENV === "production" ? "production" : "development";
 
   let server: Server;
