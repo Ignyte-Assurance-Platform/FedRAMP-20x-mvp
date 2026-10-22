@@ -27,7 +27,7 @@ Why this way, in one paragraph: a route is a feature, so the top level says what
 You need Node 22.22+ (24 recommended) and a running container runtime: Docker Desktop, or Podman (`podman machine start` on macOS/Windows). No Google Cloud access is needed.
 
 ```bash
-git clone https://github.com/jesusp-eng/FedRAMP-20x-mvp.git && cd FedRAMP-20x-mvp
+git clone https://github.com/Ignyte-Assurance-Platform/FedRAMP-20x-mvp.git && cd FedRAMP-20x-mvp
 cp .env.example .env
 npm ci
 npm run db:up     # starts Postgres (compose.yaml), runs migrations, seeds a dev user and a sample customer
