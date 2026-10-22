@@ -21,13 +21,14 @@ This repo is a sub-project of **Ignyte Project Brain** at `../ignyte-project-bra
 | Skill | Version | Purpose |
 |---|---|---|
 | pb-architecture | 1.0.0 | Writes ADRs, architecture views (C4-style, Mermaid) and diagram notes in the project brain |
-| pb-create-pr | 1.0.0 | Opens a pull request from the current branch — checks branch naming, fills the repo PR template from the commits and the linked work item/ticket, links spec artifacts, opens as draft by default |
+| pb-create-pr | 1.0.1 | Opens a pull request from the current branch — checks branch naming, fills the repo PR template from the commits and the linked work item/ticket, links spec artifacts, opens as draft by default |
 | pb-delivery-board | 1.0.0 | Regenerates the "work by stage" board in every projects/<p>/HUB |
 | pb-documentation | 1.0.0 | Writes or updates any knowledge note in the project brain (doc, runbook, onboarding, zettel, architecture, diagram) with front-matter, TOC and links, then refreshes HUB and README |
 | pb-integration-registry | 1.0.0 | Creates and maintains integration notes (one per contract between two systems) in shared/integrations/, regenerates the integration map and the HUB integration tables |
-| pb-logical-commits | 1.0.0 | Turns staged/unstaged changes into focused conventional commits — groups by logical change, derives type(scope|ticket) from the diff and the branch name, presents the plan, then commits with the repo's real git identity |
+| pb-logical-commits | 1.0.1 | Turns staged/unstaged changes into focused conventional commits — groups by logical change, derives type(scope|ticket) from the diff and the branch name, presents the plan, then commits with the repo's real git identity |
 | pb-mirror-file | 1.0.0 | Publishes ONE file to ONE cloud destination (e |
 | pb-onboarding | 1.0.0 | Role-based onboarding to the project brain and its sibling repos — detects the role (developer, architect, PM, SME, admin), confirms the projects root, clones what is missing, runs doctor, configures the assistant and MCPs, syncs skills, explains access rules and walks through the delivery process with the seeded example, ending in a first contribution |
+| pb-os-flag | 1.0.0 | Detects which workstation and operating system the current session runs on (Windows laptop, WSL, Linux, macOS) and gives the flag that commit subjects and pull-request titles and labels carry so one person's daily changes can be told apart per machine at stand-up (Windows → LP-OS by default) |
 | pb-plain-language-brief | 1.0.0 | Writes and exports a fool-proof, plain-English review brief of a spec or decision for a non-technical reviewer (business owner, subject-matter expert, customer) — defines every tool, file, screen and term it mentions, shows screenshots instead of describing screens, uses the exact on-screen labels, turns every decision into a numbered Keep/Change/Remove statement, lints for jargon and symbols, and exports a Word file ready for Google Docs comments |
 | pb-project-directory | 1.0.0 | Regenerates the root README project table, every projects/<p>/HUB |
 | pb-project-tickets | 1.0.0 | Linear work-item skill — query issues, projects and cycles; create issues with per-team field recipes; link related issues; bridge brain work items ↔ Linear issues with write-back of IDs into the work-item front-matter |
