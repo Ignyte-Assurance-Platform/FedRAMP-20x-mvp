@@ -45,7 +45,14 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Dependency vulnerability scan (fails on high or critical)
-        run: npm run audit:deps
+        # The npm advisory endpoint times out now and then; retry before failing.
+        run: |
+          for attempt in 1 2 3; do
+            npm run audit:deps && exit 0
+            echo "npm audit attempt $attempt failed, retrying in 15s"
+            sleep 15
+          done
+          exit 1
       - run: npm run lint
       - run: npm run typecheck
       - name: Unit tests with coverage floor
