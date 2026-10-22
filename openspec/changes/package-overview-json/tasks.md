@@ -27,4 +27,4 @@
 
 ## 3. Verify
 - [ ] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear <TEAM_KEY-NNN>
+- [ ] 3.2 Human triage (gate 7) recorded in Linear IGN-8
