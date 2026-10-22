@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PackageOverviewFileRow } from "~server/repositories";
-import { checkHostedLogo, compareVersions, packageOverviewStatus, type FetchLike } from "./package-overview";
+import { checkHostedLogo, compareVersions, logoCheckFor, packageOverviewStatus, type FetchLike } from "./package-overview";
 
 const BASE = "https://storage.googleapis.com/maaz20x-logos/";
 const LOGO = `${BASE}customers/8a3c2f9e-1b2d-4c5e-9f00-112233445566/logo/0f1e2d3c.png`;
@@ -42,6 +42,20 @@ describe("checkHostedLogo (WI-007 F-f)", () => {
 
   it("leaves a missing logo to the schema", async () => {
     expect(await checkHostedLogo(null, { logoBaseUrl: BASE, fetch: fakeFetch(500, null) })).toEqual({ ok: true });
+  });
+});
+
+describe("logoCheckFor", () => {
+  it("reports an uploaded logo with no public address as a missing logo host, without requesting anything", async () => {
+    const seen: string[] = [];
+    const result = await logoCheckFor({ logoUrl: null, logoUploaded: true }, { logoBaseUrl: undefined, fetch: fakeFetch(200, "image/png", seen) });
+    expect(result).toEqual({ ok: false, reason: "the logo host is not configured" });
+    expect(seen).toEqual([]);
+  });
+
+  it("leaves a missing logo to the schema and checks a hosted one", async () => {
+    expect(await logoCheckFor({ logoUrl: null, logoUploaded: false }, { logoBaseUrl: BASE, fetch: fakeFetch(500, null) })).toEqual({ ok: true });
+    expect(await logoCheckFor({ logoUrl: LOGO, logoUploaded: true }, { logoBaseUrl: BASE, fetch: fakeFetch(200, "image/png") })).toEqual({ ok: true });
   });
 });
 

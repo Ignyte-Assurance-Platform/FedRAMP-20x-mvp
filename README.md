@@ -48,7 +48,7 @@ Open http://localhost:3000 and choose **Dev sign-in (local only)**. That button 
 | `npm run build` | Production build into `build/` |
 | `npm run test:smoke` | Boots the built app against the local database (run `build` and `db:up` first) |
 | `npm run db:generate` | New Drizzle migration after a schema change |
-| `npm start` with `NODE_ENV=production` | Runs the built app; reads the real environment, not `.env`. Refuses to start if `DEV_LOGIN` is set or `STORAGE_DRIVER` is not `gcs` |
+| `npm start` with `NODE_ENV=production` | Runs the built app; reads the real environment, not `.env`. Refuses to start if `DEV_LOGIN` is set, `STORAGE_DRIVER` is not `gcs` or `LOGO_PUBLIC_BASE_URL` is empty |
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, build and the smoke test on every pull request and every push to `main`. It does not deploy.
 

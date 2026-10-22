@@ -29,8 +29,14 @@ describe("parseEnv", () => {
   });
 
   it("accepts production without DEV_LOGIN, on Cloud Storage", () => {
-    const env = parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs" });
+    const env = parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/" });
     expect(env.devLoginEnabled).toBe(false);
+  });
+
+  it.each([undefined, ""])("refuses production with LOGO_PUBLIC_BASE_URL=%j (WI-007: no file can carry a logo address)", (value) => {
+    expect(() => parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: value })).toThrowError(
+      /Refusing to start: LOGO_PUBLIC_BASE_URL must be set in production/,
+    );
   });
 
   it.each([undefined, "local"])("refuses production with STORAGE_DRIVER=%j", (driver) => {

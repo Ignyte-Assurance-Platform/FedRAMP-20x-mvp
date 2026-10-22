@@ -4,6 +4,7 @@ import { getDb, type Database } from "~server/db";
 import {
   answerSections,
   createPackageOverviewGenerator,
+  LOGO_HOST_NOT_CONFIGURED,
   SchemaNavigator,
   todayInNewYork,
   type AnswerSection,
@@ -101,6 +102,19 @@ export async function checkHostedLogo(url: string | null | undefined, deps: Pick
   }
 }
 
+/**
+ * The logo check for one generation. A logo that was uploaded but has no public address
+ * (LOGO_PUBLIC_BASE_URL empty) is never requested: the file cannot carry it, and the
+ * problem must name the missing host, not say "Logo is required".
+ */
+export async function logoCheckFor(
+  request: Pick<GenerateRequest, "logoUrl" | "logoUploaded">,
+  deps: Pick<PackageOverviewDeps, "logoBaseUrl" | "fetch">,
+): Promise<LogoCheck> {
+  if (request.logoUploaded && !request.logoUrl) return { ok: false, reason: LOGO_HOST_NOT_CONFIGURED };
+  return checkHostedLogo(request.logoUrl, deps);
+}
+
 export const AssessorInput = v.object({
   customerId: v.pipe(v.string(), v.uuid()),
   assessorName: v.pipe(v.string(), v.trim(), v.maxLength(200)),
@@ -145,6 +159,8 @@ export interface GenerateRequest {
   answers: Record<string, unknown>;
   answersUpdatedAt: Date | null;
   logoUrl: string | null;
+  /** Whether a logo was uploaded at all; with no public address it is reported as a logo-host problem. */
+  logoUploaded?: boolean;
   labels?: FormLabels;
 }
 
@@ -169,7 +185,7 @@ export async function generatePackageOverview(request: GenerateRequest, deps: Pa
     assessorId: inputs?.assessorId,
     assessorConfirmedAt: inputs?.assessorConfirmedAt,
     advisorName: inputs?.advisorName,
-    logoCheck: await checkHostedLogo(request.logoUrl, deps),
+    logoCheck: await logoCheckFor(request, deps),
     today: todayInNewYork(deps.now()),
     ...(request.labels ? { labels: request.labels } : {}),
   });
@@ -256,6 +272,7 @@ export interface Tab1Answers {
   answers: Record<string, unknown>;
   updatedAt: Date | null;
   logoUrl: string | null;
+  logoUploaded: boolean;
 }
 
 export async function loadTab1Answers(
@@ -268,6 +285,7 @@ export async function loadTab1Answers(
     answers: section?.answers ?? {},
     updatedAt: section?.updatedAt ?? null,
     logoUrl: logo && deps.logoBaseUrl ? publicObjectUrl(deps.logoBaseUrl, logo.objectPath) : null,
+    logoUploaded: Boolean(logo),
   };
 }
 
@@ -279,7 +297,7 @@ export async function generatePackageOverviewForCustomer(
 ): Promise<GenerateOutcome> {
   const tab1 = await loadTab1Answers(customerId, deps);
   return generatePackageOverview(
-    { customerId, userId, answers: tab1.answers, answersUpdatedAt: tab1.updatedAt, logoUrl: tab1.logoUrl },
+    { customerId, userId, answers: tab1.answers, answersUpdatedAt: tab1.updatedAt, logoUrl: tab1.logoUrl, logoUploaded: tab1.logoUploaded },
     deps,
   );
 }
@@ -297,6 +315,7 @@ export interface PackageOverviewScreen {
   /** Tab 1 answers, read-only, in schema order. */
   answers: AnswerSection[];
   logoUrl: string | null;
+  logoUploaded: boolean;
   /** The vendored Package Overview version the next generation will use. */
   schemaVersion: string;
   status: Omit<PackageOverviewStatus, "latest">;
@@ -335,6 +354,7 @@ export async function getPackageOverviewScreen(
     },
     answers: answerSections(getSchemaNavigator(), tab1.answers),
     logoUrl: tab1.logoUrl,
+    logoUploaded: tab1.logoUploaded,
     schemaVersion: deps.generator.schemaVersion,
     status,
     latest: latest
