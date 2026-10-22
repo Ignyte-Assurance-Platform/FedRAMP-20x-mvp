@@ -10,6 +10,7 @@ export { buildPackageOverview, type PackageOverviewInputs } from "./mapping/pack
 export { answerSections, type AnswerLabels, type AnswerRow, type AnswerSection } from "./answer-rows";
 export {
   createPackageOverviewGenerator,
+  LOGO_HOST_NOT_CONFIGURED,
   MissingAcronymError,
   packageOverviewFileName,
   todayInNewYork,
