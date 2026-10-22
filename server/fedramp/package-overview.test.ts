@@ -152,6 +152,16 @@ describe("question names (decision E2)", () => {
     const problem = generator.generate(input).problems.find((p) => p.path === "/serviceProperties/serviceType");
     expect(problem?.message).toMatch(/^Service Model does not meet FedRAMP's rule: /);
   });
+
+  it("names a $ref'd field by the referencing node's title and description, not the shared definition's", () => {
+    const input = withAnswer((a) => (a.serviceProperties.trustCenter = "https://trust.example.com"));
+    const problem = generator.generate(input).problems.find((p) => p.path === "/serviceProperties/trustCenter");
+    expect(problem?.question).toBe("Trust Center");
+    expect(problem?.message).toMatch(/^Trust Center does not meet FedRAMP's rule: The URL and any access instructions/);
+
+    const logo = generator.generate(golden({ logoUrl: "not a url" })).problems.find((p) => p.path === "/serviceIdentification/logo");
+    expect(logo?.message).toMatch(/^Logo is not in the expected format\. URL of the CSP logo/);
+  });
 });
 
 describe("business checks (WI-007 §5 step 2)", () => {

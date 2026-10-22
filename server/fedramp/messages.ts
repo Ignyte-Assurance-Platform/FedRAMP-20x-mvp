@@ -53,7 +53,13 @@ export class SchemaNavigator {
 
   private deref(node: Node, root: JsonSchema): { node: Node; root: JsonSchema } {
     let current = { node, root };
-    while (current.node && typeof current.node.$ref === "string") current = this.at(current.node.$ref, current.root);
+    while (current.node && typeof current.node.$ref === "string") {
+      // A referencing node's own title/description (e.g. "Trust Center" on a $ref to the
+      // repository def) describes the field; they win over the resolved node's (decision E2).
+      const { $ref, ...siblings } = current.node;
+      const resolved = this.at($ref, current.root);
+      current = { node: resolved.node ? { ...resolved.node, ...siblings } : undefined, root: resolved.root };
+    }
     return current;
   }
 
