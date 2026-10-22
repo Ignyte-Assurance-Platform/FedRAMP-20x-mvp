@@ -2,7 +2,7 @@
 name: pb-create-pr
 description: Opens a pull request from the current branch — checks branch naming, fills the repo PR template from the commits and the linked work item/ticket, links spec artifacts, opens as draft by default. Provider-agnostic, GitHub first via gh. Triggers: "create a PR", "open a pull request", "pushea y abre PR", "ready for review".
 compatibility: git + GitHub CLI (gh auth login). Any repo.
-version: 1.0.0
+version: 1.0.1
 ---
 <!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
@@ -27,11 +27,13 @@ Use the repo's `.github/pull_request_template.md` (fallback: `references/pull_re
 - **7 Types of changes**: tick from commit types.
 Mention tickets plainly; never `Fixes`/`Closes` unless the team asked.
 
+**Workstation flag** (PB - OS Flag): run `node <skill-folder>/../pb-os-flag/scripts/detect-os.mjs`. When it returns a `marker` (Windows laptop → `[LP-OS]`), the title ends with it and the PR gets the bare flag as a label (`--label LP-OS`, created once with `gh label create` if missing). Same reason as on commits: one person's work from different machines must be tellable apart at stand-up.
+
 ## 3. Open
 
 ```bash
 git push -u origin <branch>
-gh pr create --base <base_branch> --draft --title "<type(scope): summary>" --body-file <tmp>
+gh pr create --base <base_branch> --draft --title "<type(scope): summary> [<flag>]" --label <flag> --body-file <tmp>   # flag parts only when PB - OS Flag returns one
 ```
 Omit `--draft` only if the user says the PR is ready. Add `reviewers` from `project.md`. Print the URL. Then hand to PB - Review PR when the user wants an AI review.
 

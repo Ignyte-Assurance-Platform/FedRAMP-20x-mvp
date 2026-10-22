@@ -2,7 +2,7 @@
 name: pb-logical-commits
 description: Turns staged/unstaged changes into focused conventional commits — groups by logical change, derives type(scope|ticket) from the diff and the branch name, presents the plan, then commits with the repo's real git identity. Triggers: "commit", "commit this", "logical commits", "split into commits", "commitea".
 compatibility: git. Any repo. Never pushes.
-version: 1.0.0
+version: 1.0.1
 ---
 <!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
@@ -18,8 +18,9 @@ Read `pb.config.yaml` in the current repo root: `brain.marker: true` → brain; 
 2. **Group** hunks/files into logical changes: a feature, a fix, a refactor, docs, generated files, config. Generated sections (between `PB:*` markers, HUB/ARCHIVE, `.pb-skills.lock`) go in their own `chore(generated): …` commit.
 3. **IDs from the branch**: `<type>/<ID>-<desc>` → `ID` (Linear `ABC-123` or brain `wi-<p>-NNN`) via `id_patterns`. Put it in the scope slot: `feat(ABC-123): …` or `docs(wi-maaz20x-004): …`. If no ID, use a path scope from `scopes`.
 4. **Message**: `type(scope): imperative summary ≤ 72 chars`, language from `commit_language` (match `git log --oneline -5` if unsure). Body only when the why is not obvious. Types: feat, fix, docs, refactor, chore, test, perf, build, ci, style.
-5. **Present the plan** (files per commit + messages). On OK, `git reset`, then for each group `git add <files>` and `git commit -m`.
-6. `--no-verify` only when the user explicitly asks and `allow_no_verify` is true; say so in the body.
+5. **Workstation flag** (PB - OS Flag): run `node <skill-folder>/../pb-os-flag/scripts/detect-os.mjs` once; when it returns a `marker` (on the Windows laptop: `[LP-OS]`), end every subject with it, inside the 72 characters: `feat(wi-maaz20x-007): add the download route [LP-OS]`. It is how one person's changes from different machines are told apart at stand-up. An empty marker adds nothing.
+6. **Present the plan** (files per commit + messages). On OK, `git reset`, then for each group `git add <files>` and `git commit -m`.
+7. `--no-verify` only when the user explicitly asks and `allow_no_verify` is true; say so in the body.
 
 ## 2. Identity
 
