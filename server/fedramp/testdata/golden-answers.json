@@ -1,0 +1,71 @@
+{
+  "serviceIdentification": {
+    "fedRampPackageId": "EXCSO",
+    "providerName": "Example Cloud Co.",
+    "serviceName": "Example Records Platform",
+    "serviceAcronym": "ERP",
+    "serviceDescription": "Records management service for federal agencies.",
+    "certificationType": "20x",
+    "website": "https://www.example.com"
+  },
+  "serviceProperties": {
+    "serviceType": [
+      "SaaS"
+    ],
+    "deploymentModel": "Government Community Cloud",
+    "businessCategory": [
+      "Data Management",
+      "Artificial Intelligence (AI)"
+    ],
+    "trustCenter": {
+      "repositoryType": [
+        "Trust Center",
+        "Assessment Reports"
+      ],
+      "url": "https://trust.example.com",
+      "repositoryDescription": "Public trust center with package documents.",
+      "authenticationRequired": true,
+      "accessRequestInstructions": "Request access through the portal sign-up form."
+    },
+    "secureConfigurationGuidance": {
+      "repositoryType": [
+        "Secure Configuration Guidance"
+      ],
+      "url": "https://docs.example.com/scg",
+      "repositoryDescription": "Recommended secure configuration guide.",
+      "authenticationRequired": false
+    },
+    "nextOngoingCertificationReportDate": "2027-01-15"
+  },
+  "contactInformation": [
+    {
+      "contactType": "Security",
+      "contactName": "Security Team",
+      "contactEmail": "security@example.com",
+      "contactPhone": "202-555-0123"
+    },
+    {
+      "contactType": "Sales",
+      "contactName": "Federal Sales",
+      "contactEmail": "sales@example.com",
+      "contactPhone": "202-555-0199"
+    }
+  ],
+  "certifiedServices": [
+    {
+      "serviceName": "Records Platform",
+      "serviceDescription": "Core records service.",
+      "dateAvailable": "2026-08-01"
+    }
+  ],
+  "thirdPartyInformationResources": {
+    "nonCertified": [
+      {
+        "name": "Object Storage Service",
+        "provider": "Example Storage Inc.",
+        "website": "https://storage.example.net",
+        "useCase": "Stores encrypted backups."
+      }
+    ]
+  }
+}

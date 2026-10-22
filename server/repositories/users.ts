@@ -19,3 +19,7 @@ export async function ensureUser(db: Database, email: string, name: string): Pro
   if (!row) throw new Error(`could not create user ${normalized}`);
   return row;
 }
+
+export async function findUser(db: Database, id: string): Promise<UserRow | undefined> {
+  return db.query.users.findFirst({ where: eq(schema.users.id, id) });
+}

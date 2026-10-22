@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { schema, type Database } from "~server/db";
 
 export type DocumentRow = typeof schema.documents.$inferSelect;
@@ -12,4 +12,12 @@ export async function insertDocument(db: Database, row: NewDocumentRow): Promise
 
 export async function findDocument(db: Database, id: string): Promise<DocumentRow | undefined> {
   return db.query.documents.findFirst({ where: eq(schema.documents.id, id) });
+}
+
+/** The newest document of a customer whose object path starts with `prefix` (e.g. the hosted logo). */
+export async function findLatestDocumentUnder(db: Database, customerId: string, prefix: string): Promise<DocumentRow | undefined> {
+  return db.query.documents.findFirst({
+    where: and(eq(schema.documents.customerId, customerId), like(schema.documents.objectPath, `${prefix}%`)),
+    orderBy: [desc(schema.documents.uploadedAt)],
+  });
 }

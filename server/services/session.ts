@@ -74,3 +74,16 @@ function redirectWithCookies(location: string, from: Headers): Response {
   for (const cookie of from.getSetCookie()) headers.append("Set-Cookie", cookie);
   return new Response(null, { status: 303, headers });
 }
+
+/**
+ * Staff-only routes (WI-007 §6): the only credential accepted is the signed-in Ignyte
+ * user's session cookie. A customer link token (WI-004, carried by the intake routes) is
+ * not a session, so a request that presents one, or nothing, is refused: pages are sent
+ * to /login, resource routes answer 401. Thrown Responses are returned as-is by React Router.
+ */
+export async function requireStaffUser(request: Request, kind: "page" | "api" = "page"): Promise<SessionUser> {
+  const user = await getSessionUser(request);
+  if (user) return user;
+  if (kind === "api") throw new Response("Unauthorized", { status: 401 });
+  throw new Response(null, { status: 302, headers: { Location: "/login" } });
+}

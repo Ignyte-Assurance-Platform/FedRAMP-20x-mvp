@@ -27,6 +27,8 @@ const EnvSchema = v.object({
   STORAGE_DRIVER: v.optional(v.picklist(["local", "gcs"]), "local"),
   LOCAL_STORAGE_DIR: v.optional(v.string(), ".data/storage"),
   GCS_BUCKET: optionalText,
+  /** Public base URL of the logos Ignyte hosts (WI-007): the only host Generate JSON requests. */
+  LOGO_PUBLIC_BASE_URL: v.optional(v.pipe(v.string(), v.trim(), v.transform((s) => (s === "" ? undefined : s)), v.optional(v.pipe(v.string(), v.url())))),
 });
 
 type RawEnv = v.InferOutput<typeof EnvSchema>;
