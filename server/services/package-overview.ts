@@ -2,14 +2,25 @@ import * as v from "valibot";
 import { getEnv } from "~server/config";
 import { getDb, type Database } from "~server/db";
 import {
+  answerSections,
   createPackageOverviewGenerator,
+  SchemaNavigator,
   todayInNewYork,
+  type AnswerSection,
   type FormLabels,
   type LogoCheck,
   type PackageOverviewGenerator,
   type Problem,
 } from "~server/fedramp";
-import { customersRepo, packageOverviewRepo, type PackageOverviewFileRow } from "~server/repositories";
+import {
+  customersRepo,
+  documentsRepo,
+  intakeAnswersRepo,
+  packageOverviewRepo,
+  usersRepo,
+  type PackageOverviewFileRow,
+} from "~server/repositories";
+import { logoObjectPrefix, publicObjectUrl } from "~server/storage";
 
 /**
  * Screen D use-cases (WI-007): Ignyte-only inputs, Generate JSON, status flags and
@@ -33,6 +44,12 @@ let generator: PackageOverviewGenerator | undefined;
 export function getPackageOverviewGenerator(): PackageOverviewGenerator {
   generator ??= createPackageOverviewGenerator();
   return generator;
+}
+
+let navigator: SchemaNavigator | undefined;
+function getSchemaNavigator(): SchemaNavigator {
+  navigator ??= new SchemaNavigator(getPackageOverviewGenerator().schemas);
+  return navigator;
 }
 
 const defaultDeps = (): PackageOverviewDeps => ({
@@ -226,4 +243,111 @@ export async function downloadPackageOverview(
   const latest = await packageOverviewRepo.findLatestPackageOverviewFile(deps.db, customerId);
   if (!latest) throw new PackageOverviewError("no file generated yet", 404);
   return { fileName: latest.fileName, body: latest.json };
+}
+
+/**
+ * Tab 1 of the customer form (WI-004) stores a partial Package Overview object as the
+ * "company" section (form-definitions/company.v1.json). The hosted logo is the newest
+ * document under customers/<id>/logo/ (contract §1); its public URL needs the logo host.
+ */
+export const TAB1_SECTION = "company";
+
+export interface Tab1Answers {
+  answers: Record<string, unknown>;
+  updatedAt: Date | null;
+  logoUrl: string | null;
+}
+
+export async function loadTab1Answers(
+  customerId: string,
+  deps: Pick<PackageOverviewDeps, "db" | "logoBaseUrl"> = defaultDeps(),
+): Promise<Tab1Answers> {
+  const section = await intakeAnswersRepo.findIntakeSection(deps.db, customerId, TAB1_SECTION);
+  const logo = await documentsRepo.findLatestDocumentUnder(deps.db, customerId, logoObjectPrefix(customerId));
+  return {
+    answers: section?.answers ?? {},
+    updatedAt: section?.updatedAt ?? null,
+    logoUrl: logo && deps.logoBaseUrl ? publicObjectUrl(deps.logoBaseUrl, logo.objectPath) : null,
+  };
+}
+
+/** "Generate JSON" from Screen D: the stored tab 1 answers and hosted logo of the customer. */
+export async function generatePackageOverviewForCustomer(
+  customerId: string,
+  userId: string,
+  deps: PackageOverviewDeps = defaultDeps(),
+): Promise<GenerateOutcome> {
+  const tab1 = await loadTab1Answers(customerId, deps);
+  return generatePackageOverview(
+    { customerId, userId, answers: tab1.answers, answersUpdatedAt: tab1.updatedAt, logoUrl: tab1.logoUrl },
+    deps,
+  );
+}
+
+export interface PackageOverviewScreen {
+  customer: { id: string; name: string };
+  inputs: {
+    assessorName: string;
+    assessorId: string;
+    advisorName: string;
+    assessorConfirmedAt: Date | null;
+    /** Display name of who ticked the box; null until it is ticked. */
+    assessorConfirmedBy: string | null;
+  };
+  /** Tab 1 answers, read-only, in schema order. */
+  answers: AnswerSection[];
+  logoUrl: string | null;
+  /** The vendored Package Overview version the next generation will use. */
+  schemaVersion: string;
+  status: Omit<PackageOverviewStatus, "latest">;
+  latest: {
+    id: string;
+    fileName: string;
+    valid: boolean;
+    generatedAt: Date;
+    schemaVersion: string;
+    schemaCommit: string;
+    rulesVersion: string | null;
+    problems: Problem[];
+  } | null;
+}
+
+/** Everything Screen D shows for one customer (WI-007 §3). */
+export async function getPackageOverviewScreen(
+  customerId: string,
+  deps: PackageOverviewDeps = defaultDeps(),
+): Promise<PackageOverviewScreen> {
+  const customer = await customersRepo.findCustomer(deps.db, customerId);
+  if (!customer) throw new PackageOverviewError("customer not found", 404);
+  const inputs = await packageOverviewRepo.findPackageOverviewInputs(deps.db, customerId);
+  const confirmedBy = inputs?.assessorConfirmedBy ? await usersRepo.findUser(deps.db, inputs.assessorConfirmedBy) : undefined;
+  const tab1 = await loadTab1Answers(customerId, deps);
+  const { latest, ...status } = await getPackageOverviewStatus(customerId, tab1.updatedAt, deps);
+
+  return {
+    customer: { id: customer.id, name: customer.name },
+    inputs: {
+      assessorName: inputs?.assessorName ?? "",
+      assessorId: inputs?.assessorId ?? "",
+      advisorName: inputs?.advisorName ?? "",
+      assessorConfirmedAt: inputs?.assessorConfirmedAt ?? null,
+      assessorConfirmedBy: confirmedBy?.name ?? (inputs?.assessorConfirmedAt ? "an Ignyte user" : null),
+    },
+    answers: answerSections(getSchemaNavigator(), tab1.answers),
+    logoUrl: tab1.logoUrl,
+    schemaVersion: deps.generator.schemaVersion,
+    status,
+    latest: latest
+      ? {
+          id: latest.id,
+          fileName: latest.fileName,
+          valid: latest.valid,
+          generatedAt: latest.generatedAt,
+          schemaVersion: latest.schemaVersion,
+          schemaCommit: latest.schemaCommit,
+          rulesVersion: latest.rulesVersion,
+          problems: latest.errors,
+        }
+      : null,
+  };
 }
