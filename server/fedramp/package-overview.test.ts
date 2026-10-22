@@ -195,6 +195,11 @@ describe("helpers", () => {
     expect(todayInNewYork(new Date("2026-10-22T02:00:00Z"))).toBe("2026-10-21");
   });
 
+  it("finds the vendored schemas from the repo root, so the server bundle under build/ reads the same files", () => {
+    expect(SCHEMAS_DIR).toBe(path.resolve(import.meta.dirname, "schemas"));
+    expect(SCHEMAS_DIR).toBe(path.join(process.cwd(), "server", "fedramp", "schemas"));
+  });
+
   it("refuses a vendored schema that does not match the manifest", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "schemas-"));
     try {

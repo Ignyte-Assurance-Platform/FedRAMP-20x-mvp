@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 /**
@@ -35,7 +35,23 @@ export class SchemaManifestError extends Error {
   override name = "SchemaManifestError";
 }
 
-export const SCHEMAS_DIR = path.join(import.meta.dirname, "schemas");
+/**
+ * This module runs from two places: from source under tsx (server/fedramp) and inside the
+ * React Router server bundle (build/server), which the routes pull in through
+ * ~server/services. So the vendored files are found from the repo root, the nearest
+ * package.json above this file, never from this file's own directory.
+ */
+function repoRoot(from: string): string {
+  let dir = from;
+  while (!existsSync(path.join(dir, "package.json"))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) throw new SchemaManifestError(`cannot find package.json above ${from} to locate the vendored schemas`);
+    dir = parent;
+  }
+  return dir;
+}
+
+export const SCHEMAS_DIR = path.join(repoRoot(import.meta.dirname), "server", "fedramp", "schemas");
 
 function readManifest(dir: string): Manifest {
   const manifest = JSON.parse(readFileSync(path.join(dir, "manifest.json"), "utf8")) as Partial<Manifest>;
