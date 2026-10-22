@@ -48,3 +48,15 @@ export function assertObjectPath(objectPath: string): void {
     objectPath.includes("\\");
   if (bad) throw new Error(`invalid object path: ${objectPath}`);
 }
+
+/** customers/<customer-id>/logo/ — the only public-read objects (contract §1). */
+export function logoObjectPrefix(customerId: string): string {
+  if (!UUID.test(customerId)) throw new Error(`invalid customer id: ${customerId}`);
+  return `customers/${customerId}/logo/`;
+}
+
+/** The public address of a hosted object: the configured base URL followed by its object path. */
+export function publicObjectUrl(baseUrl: string, objectPath: string): string {
+  assertObjectPath(objectPath);
+  return new URL(objectPath, baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`).href;
+}
