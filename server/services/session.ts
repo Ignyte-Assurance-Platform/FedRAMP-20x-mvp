@@ -103,7 +103,7 @@ export async function signInDev(request: Request): Promise<Response | null> {
 export async function startGoogleSignIn(request: Request): Promise<Response | null> {
   if (!getEnv().googleEnabled) return null;
   const result = await getAuth().api.signInSocial({
-    body: { provider: "google", callbackURL: "/" },
+    body: { provider: "google", callbackURL: "/customers" },
     headers: request.headers,
     asResponse: true,
   });

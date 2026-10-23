@@ -2,12 +2,16 @@ import { data, Form, useNavigation, useSubmit } from "react-router";
 import * as v from "valibot";
 import { MissingAcronymError } from "~server/fedramp";
 import {
+  CustomerError,
   generatePackageOverviewForCustomer,
+  getIntakeLinkSection,
+  issueNewIntakeLink,
   getPackageOverviewScreen,
   PackageOverviewError,
   requireStaffUser,
   savePackageOverviewInputs,
   setAssessorConfirmed,
+  unlockIntake,
 } from "~server/services";
 import { AppShell } from "~/components/layout/app-shell";
 import { Button } from "~/components/ui/button";
@@ -16,6 +20,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { formatDateTime } from "~/lib/dates";
 import { AnswersReadOnly, LOGO_PATH } from "./components/answers-read-only";
+import { IntakeLinkSection } from "./components/intake-link-section";
 import { ProblemList } from "./components/problem-list";
 import { PublishingChecklist } from "./components/publishing-checklist";
 import type { Route } from "./+types/customer-package";
@@ -23,6 +28,7 @@ import type { Route } from "./+types/customer-package";
 /**
  * Screen D (WI-007): the customer's tab 1 answers read-only, the Ignyte-only boxes,
  * Generate JSON with its result, the latest file with its versions and the download.
+ * WI-003 adds the "Intake link" section (Copy, Issue new link, Unlock) above them.
  * Staff only; customer link tokens are refused (requireStaffUser).
  */
 
@@ -37,11 +43,14 @@ const ActionInput = v.variant("intent", [
   }),
   v.object({ intent: v.literal("confirm-assessor"), confirmed: v.optional(v.string()) }),
   v.object({ intent: v.literal("generate") }),
+  v.object({ intent: v.literal("issue-link") }),
+  v.object({ intent: v.literal("unlock") }),
 ]);
 
 interface ActionResult {
   error: string | null;
   saved?: boolean;
+  linkMessage?: string;
   generated: { fileId: string; valid: boolean; problemCount: number } | null;
 }
 
@@ -51,9 +60,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!customerId.success) throw data("Customer not found", { status: 404 });
   try {
     const screen = await getPackageOverviewScreen(customerId.output);
-    return { user, screen };
+    const intakeLink = await getIntakeLinkSection(customerId.output);
+    return { user, screen, intakeLink };
   } catch (error) {
-    if (error instanceof PackageOverviewError) throw data(error.message, { status: error.status });
+    if (error instanceof PackageOverviewError || error instanceof CustomerError) throw data(error.message, { status: error.status });
     throw error;
   }
 }
@@ -75,6 +85,12 @@ export async function action({ request, params }: Route.ActionArgs) {
       case "confirm-assessor":
         await setAssessorConfirmed(customerId.output, input.output.confirmed !== undefined, user.id);
         return data<ActionResult>({ error: null, generated: null });
+      case "issue-link":
+        await issueNewIntakeLink(customerId.output, user.id);
+        return data<ActionResult>({ error: null, generated: null, linkMessage: "A new link was issued. The old link no longer works." });
+      case "unlock":
+        await unlockIntake(customerId.output, user.id);
+        return data<ActionResult>({ error: null, generated: null, linkMessage: "Unlocked. The customer can edit the intake again." });
       case "generate": {
         const outcome = await generatePackageOverviewForCustomer(customerId.output, user.id);
         return data<ActionResult>({
@@ -85,7 +101,9 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
   } catch (error) {
     if (error instanceof MissingAcronymError) return data<ActionResult>({ error: error.message, generated: null }, { status: 400 });
-    if (error instanceof PackageOverviewError) return data<ActionResult>({ error: error.message, generated: null }, { status: error.status });
+    if (error instanceof PackageOverviewError || error instanceof CustomerError) {
+      return data<ActionResult>({ error: error.message, generated: null }, { status: error.status });
+    }
     if (error instanceof v.ValiError) return data<ActionResult>({ error: error.message, generated: null }, { status: 400 });
     console.error(error);
     return data<ActionResult>({ error: "Could not generate the file. Nothing was saved.", generated: null }, { status: 500 });
@@ -99,7 +117,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 const noticeClass = "rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm";
 
 export default function CustomerPackage({ loaderData, actionData }: Route.ComponentProps) {
-  const { user, screen } = loaderData;
+  const { user, screen, intakeLink } = loaderData;
   const { customer, inputs, answers, status, latest, schemaVersion } = screen;
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -116,6 +134,27 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
           <p className="text-sm text-muted-foreground">Customer page · Package Overview JSON</p>
           <h1 className="text-2xl font-semibold">{customer.name}</h1>
         </header>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Intake link</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <IntakeLinkSection
+              status={intakeLink.status}
+              statusLabel={intakeLink.statusLabel}
+              url={intakeLink.link.url}
+              expired={intakeLink.link.expired}
+              expiresAt={intakeLink.link.expiresAt}
+              busy={busy}
+            />
+            {actionData?.linkMessage && (
+              <p role="status" className="text-sm text-muted-foreground">
+                {actionData.linkMessage}
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

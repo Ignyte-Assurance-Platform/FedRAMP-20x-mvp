@@ -66,11 +66,12 @@ export function problemSummary(problems: ReadonlyArray<Pick<ProblemView, "path">
 
 /**
  * Problems found by Generate JSON (WI-007 §3, §10): a list of links that move focus to the
- * question named, announced to screen readers.
+ * question named. It is announced by the result block's one live region (role="status" around it on
+ * Screen D); it has no role of its own, so no alert is nested in a status region (IGN-8 pr-9 nit 8).
  */
 export function ProblemList({ problems, knownPaths }: { problems: ProblemView[]; knownPaths: ReadonlySet<string> }) {
   return (
-    <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+    <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
       <p className="text-sm font-medium text-destructive">
         {problemSummary(problems)} <span className="font-normal text-muted-foreground">The customer never sees this list.</span>
       </p>
