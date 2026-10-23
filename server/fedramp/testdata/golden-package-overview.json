@@ -1,6 +1,6 @@
 {
   "serviceIdentification": {
-    "fedRampPackageId": "EXCSO",
+    "fedRampPackageId": "Example Cloud Co. ERP",
     "providerName": "Example Cloud Co.",
     "serviceName": "Example Records Platform",
     "serviceAcronym": "ERP",
