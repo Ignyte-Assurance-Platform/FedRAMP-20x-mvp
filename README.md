@@ -30,13 +30,25 @@ You need Node 22.22+ (24 recommended) and a running container runtime: Docker De
 git clone https://github.com/Ignyte-Assurance-Platform/FedRAMP-20x-mvp.git && cd FedRAMP-20x-mvp
 cp .env.example .env
 npm ci
-npm run db:up     # starts Postgres (compose.yaml), runs migrations, seeds a dev user and a sample customer
+npm run db:up     # starts Postgres (compose.yaml), runs migrations, the allowlist seed (dev user) and a sample customer
 npm run dev       # http://localhost:3000
 ```
 
 Open http://localhost:3000 and choose **Dev sign-in (local only)**. That button exists only with `NODE_ENV=development` and `DEV_LOGIN=1` (both set in `.env.example`); in production the app refuses to start if `DEV_LOGIN` is set at all. Uploaded files land under `.data/storage/customers/<id>/intake/<document-id>/<filename>`.
 
 `npm run db:up` uses Docker if it is running, otherwise Podman; force one with `CONTAINER_RUNTIME=podman`. `npm run db:down` stops the database.
+
+### Screens and routes
+
+| Screen | Route | Who |
+| --- | --- | --- |
+| A, sign in | `/login` | Anyone; Ignyte Google Workspace accounts on the allowlist get in |
+| B, customers list | `/customers` (`/` redirects here) | Ignyte staff |
+| C, create customer | `/customers/new` | Ignyte staff |
+| D, customer page (intake link, Package Overview JSON) | `/customers/:customerId/package` | Ignyte staff |
+| E, customer intake | `/intake/:token` (arrives with WI-004) | The customer, with the link; no sign-in. The link expires 30 days after it is issued |
+
+Every staff route goes through one guard (`requireStaffUser`); a customer link token is never accepted there.
 
 ### Other commands
 
@@ -48,7 +60,9 @@ Open http://localhost:3000 and choose **Dev sign-in (local only)**. That button 
 | `npm run build` | Production build into `build/` |
 | `npm run test:smoke` | Boots the built app against the local database (run `build` and `db:up` first) |
 | `npm run db:generate` | New Drizzle migration after a schema change |
-| `npm start` with `NODE_ENV=production` | Runs the built app; reads the real environment, not `.env`. Refuses to start if `DEV_LOGIN` is set, `STORAGE_DRIVER` is not `gcs` or `LOGO_PUBLIC_BASE_URL` is empty |
+| `npm run db:seed:allowlist` | Makes exactly `ADMIN_EMAILS` the active staff (plus the dev user outside production); removed emails are set inactive and their sessions deleted. The only seed production runs; it fails on an email outside `@ignyteplatform.com` or an empty list in production |
+| `npm run db:seed` | Local fixture seed (a sample customer); refuses to run in production |
+| `npm start` with `NODE_ENV=production` | Runs the built app; reads the real environment, not `.env`. Refuses to start if `DEV_LOGIN` is set, `STORAGE_DRIVER` is not `gcs`, or `LOGO_PUBLIC_BASE_URL` or `INTAKE_LINK_KEY` is empty |
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, build and the smoke test on every pull request and every push to `main`. It does not deploy.
 

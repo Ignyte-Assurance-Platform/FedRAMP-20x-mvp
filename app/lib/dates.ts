@@ -8,6 +8,12 @@ const dateTime = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
 });
 
+const dateOnly = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "America/New_York" });
+
+export function formatDate(value: Date | string): string {
+  return dateOnly.format(typeof value === "string" ? new Date(value) : value);
+}
+
 export function formatDateTime(value: Date | string): string {
   const date = typeof value === "string" ? new Date(value) : value;
   return `${dateTime.format(date)} ET`;

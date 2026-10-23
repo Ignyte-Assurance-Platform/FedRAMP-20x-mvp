@@ -1,11 +1,11 @@
 import { data, Form, redirect } from "react-router";
-import { getSessionUser, getSignInOptions, signInErrorMessage, startGoogleSignIn } from "~server/services";
+import { getSignInOptions, resolveStaffUser, signInErrorMessage, startGoogleSignIn } from "~server/services";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import type { Route } from "./+types/login";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  if (await getSessionUser(request)) throw redirect("/");
+  if ("user" in (await resolveStaffUser(request))) throw redirect("/");
   const error = signInErrorMessage(new URL(request.url).searchParams.get("error"));
   return { ...getSignInOptions(), error };
 }

@@ -1,5 +1,17 @@
+import { decryptOAuthToken } from "better-auth/oauth2";
 import { getAuth } from "~server/auth";
+import { NOT_AUTHORIZED_CODE } from "~server/auth/auth";
+import { checkGoogleGrant } from "~server/auth/google-token";
+import { evaluateStaffSession, type StaffSessionDeps } from "~server/auth/staff-session";
 import { getEnv } from "~server/config";
+import { getDb } from "~server/db";
+import { sessionsRepo } from "~server/repositories";
+
+export const NOT_AUTHORIZED_MESSAGE = "This account is not authorized for Maaz 20x";
+export const SIGN_IN_UNFINISHED_MESSAGE = "Sign-in did not finish. Try again.";
+
+/** Codes Better Auth puts on /login?error= when the account itself fails a check (WI-002 error states). */
+const ACCOUNT_REFUSED = [NOT_AUTHORIZED_CODE, "signup_disabled", "account_not_linked", "email_not_found"];
 
 export interface SessionUser {
   id: string;
@@ -19,24 +31,60 @@ export function getSignInOptions(): SignInOptions {
 }
 
 /**
- * Readable text for the `?error=` code Better Auth puts on /login after a failed Google
- * sign-in. The exact codes are verified with WI-002 once the OAuth client exists.
+ * Text for the `?error=` code on /login (WI-002 error states): one message for any account
+ * that fails a check, with no detail on which one; anything else (cancelled at Google, an
+ * OAuth error, Google unreachable) is "did not finish". Codes are confirmed [pre-prod].
  */
 export function signInErrorMessage(code: string | null): string | null {
   if (!code) return null;
-  const normalized = code.toLowerCase();
-  if (normalized.includes("not_ignyte")) return "Only verified Ignyte Google Workspace accounts can sign in.";
-  if (normalized.includes("signup_disabled") || normalized.includes("sign_up")) {
-    return "Your Google account is not on the Maaz 20x staff list. Ask an admin to add you.";
-  }
-  return "Sign-in failed. Please try again.";
+  const normalized = code.toLowerCase().replaceAll(" ", "_");
+  return ACCOUNT_REFUSED.includes(normalized) ? NOT_AUTHORIZED_MESSAGE : SIGN_IN_UNFINISHED_MESSAGE;
 }
 
-/** The signed-in staff user for a request, or null. */
-export async function getSessionUser(request: Request): Promise<SessionUser | null> {
-  const session = await getAuth().api.getSession({ headers: request.headers });
-  if (!session) return null;
-  return { id: session.user.id, email: session.user.email, name: session.user.name };
+export type StaffResolution = { user: SessionUser } | { refused: "no_session" | "expired" | "revoked" | "not_authorized" };
+
+/**
+ * The staff session of a request, read from the database (never the cookie cache) and checked
+ * by the one staff guard (WI-002 E1–E3): fixed 8 hours, active user, Google re-check every 15 minutes.
+ */
+export async function resolveStaffUser(request: Request): Promise<StaffResolution> {
+  const found = await getAuth().api.getSession({ headers: request.headers, query: { disableCookieCache: true } });
+  if (!found) return { refused: "no_session" };
+  const verdict = await evaluateStaffSession(
+    {
+      id: found.session.id,
+      userId: found.session.userId,
+      expiresAt: new Date(found.session.expiresAt),
+      lastGoogleCheckAt: new Date(found.session.lastGoogleCheckAt ?? found.session.createdAt),
+    },
+    { id: found.user.id, active: found.user.active !== false },
+    staffSessionDeps(),
+  );
+  if (!verdict.ok) return { refused: verdict.reason };
+  return { user: { id: found.user.id, email: found.user.email, name: found.user.name } };
+}
+
+function staffSessionDeps(): StaffSessionDeps {
+  const env = getEnv();
+  const db = getDb();
+  return {
+    now: new Date(),
+    googleEnabled: env.googleEnabled,
+    devLoginEnabled: env.devLoginEnabled,
+    claimGoogleCheck: (id, now) => sessionsRepo.claimGoogleCheck(db, id, now),
+    releaseGoogleCheck: (id, claimedAt, previous) => sessionsRepo.releaseGoogleCheck(db, id, claimedAt, previous),
+    findRefreshToken: async (userId) => {
+      const stored = await sessionsRepo.findGoogleRefreshToken(db, userId);
+      if (!stored) return null;
+      // $context is typed with this app's options; decryptOAuthToken takes the generic AuthContext.
+      const context = (await getAuth().$context) as unknown as Parameters<typeof decryptOAuthToken>[1];
+      return decryptOAuthToken(stored, context);
+    },
+    checkGoogle: (refreshToken) =>
+      checkGoogleGrant(refreshToken, { clientId: env.GOOGLE_CLIENT_ID!, clientSecret: env.GOOGLE_CLIENT_SECRET! }),
+    deleteSession: (id) => sessionsRepo.deleteSession(db, id),
+    deleteUserSessions: (userId) => sessionsRepo.deleteUserSessions(db, userId),
+  };
 }
 
 /**
@@ -55,7 +103,7 @@ export async function signInDev(request: Request): Promise<Response | null> {
 export async function startGoogleSignIn(request: Request): Promise<Response | null> {
   if (!getEnv().googleEnabled) return null;
   const result = await getAuth().api.signInSocial({
-    body: { provider: "google", callbackURL: "/" },
+    body: { provider: "google", callbackURL: "/customers" },
     headers: request.headers,
     asResponse: true,
   });
@@ -76,14 +124,16 @@ function redirectWithCookies(location: string, from: Headers): Response {
 }
 
 /**
- * Staff-only routes (WI-007 §6): the only credential accepted is the signed-in Ignyte
- * user's session cookie. A customer link token (WI-004, carried by the intake routes) is
- * not a session, so a request that presents one, or nothing, is refused: pages are sent
- * to /login, resource routes answer 401. Thrown Responses are returned as-is by React Router.
+ * The one staff guard (WI-002 E1, WI-007 §6): every Ignyte loader and action calls it. The only
+ * credential accepted is a valid staff session; a customer link token (WI-004) is not a
+ * session, so a request that presents one, or nothing, is refused: pages are sent to /login
+ * (with "not authorized" when the account was refused), resource routes answer 401.
+ * Thrown Responses are returned as-is by React Router.
  */
 export async function requireStaffUser(request: Request, kind: "page" | "api" = "page"): Promise<SessionUser> {
-  const user = await getSessionUser(request);
-  if (user) return user;
+  const result = await resolveStaffUser(request);
+  if ("user" in result) return result.user;
   if (kind === "api") throw new Response("Unauthorized", { status: 401 });
-  throw new Response(null, { status: 302, headers: { Location: "/login" } });
+  const location = result.refused === "not_authorized" ? `/login?error=${NOT_AUTHORIZED_CODE}` : "/login";
+  throw new Response(null, { status: 302, headers: { Location: location } });
 }
