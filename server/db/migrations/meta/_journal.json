@@ -15,6 +15,13 @@
       "when": 1792603151962,
       "tag": "0001_package_overview",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792770715027,
+      "tag": "0002_ignyte_login",
+      "breakpoints": true
     }
   ]
 }
