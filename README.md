@@ -30,7 +30,7 @@ You need Node 22.22+ (24 recommended) and a running container runtime: Docker De
 git clone https://github.com/Ignyte-Assurance-Platform/FedRAMP-20x-mvp.git && cd FedRAMP-20x-mvp
 cp .env.example .env
 npm ci
-npm run db:up     # starts Postgres (compose.yaml), runs migrations, seeds a dev user and a sample customer
+npm run db:up     # starts Postgres (compose.yaml), runs migrations, the allowlist seed (dev user) and a sample customer
 npm run dev       # http://localhost:3000
 ```
 
@@ -48,6 +48,8 @@ Open http://localhost:3000 and choose **Dev sign-in (local only)**. That button 
 | `npm run build` | Production build into `build/` |
 | `npm run test:smoke` | Boots the built app against the local database (run `build` and `db:up` first) |
 | `npm run db:generate` | New Drizzle migration after a schema change |
+| `npm run db:seed:allowlist` | Makes exactly `ADMIN_EMAILS` the active staff (plus the dev user outside production); removed emails are set inactive and their sessions deleted. The only seed production runs; it fails on an email outside `@ignyteplatform.com` or an empty list in production |
+| `npm run db:seed` | Local fixture seed (a sample customer); refuses to run in production |
 | `npm start` with `NODE_ENV=production` | Runs the built app; reads the real environment, not `.env`. Refuses to start if `DEV_LOGIN` is set, `STORAGE_DRIVER` is not `gcs` or `LOGO_PUBLIC_BASE_URL` is empty |
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, build and the smoke test on every pull request and every push to `main`. It does not deploy.
