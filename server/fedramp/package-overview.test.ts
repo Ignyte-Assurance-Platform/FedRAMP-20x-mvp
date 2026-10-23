@@ -3,8 +3,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import goldenAnswers from "./testdata/golden-answers.json";
+import { fallbackPackageId } from "./mapping/package-overview";
 import goldenDocument from "./testdata/golden-package-overview.json";
 import {
+  ASSESSOR_NOT_CONFIRMED,
   createPackageOverviewGenerator,
   MissingAcronymError,
   packageOverviewFileName,
@@ -221,5 +223,64 @@ describe("helpers", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("package ID fallback (WI-007 §3, playbook S3-03, Christina 2026-10-22)", () => {
+  const PACKAGE_ID = "/serviceIdentification/fedRampPackageId";
+
+  it("fills an empty package ID with the provider name, a space and the service acronym", () => {
+    const input = withAnswer((a) => delete a.serviceIdentification.fedRampPackageId);
+    const result = generator.generate(input);
+    expect(result.document.serviceIdentification).toMatchObject({ fedRampPackageId: "Example Cloud Co. ERP" });
+    expect(result.problems.find((p) => p.path === PACKAGE_ID)).toBeUndefined();
+    expect(result.valid).toBe(true);
+    expect(result.document).toEqual({ ...goldenDocument, serviceIdentification: { ...goldenDocument.serviceIdentification, fedRampPackageId: "Example Cloud Co. ERP" } });
+  });
+
+  it("treats a blank package ID the same as a missing one", () => {
+    const input = withAnswer((a) => (a.serviceIdentification.fedRampPackageId = "   "));
+    expect(generator.generate(input).document.serviceIdentification).toMatchObject({ fedRampPackageId: "Example Cloud Co. ERP" });
+  });
+
+  it("copies a typed package ID as typed", () => {
+    expect(generator.generate(golden()).document.serviceIdentification).toMatchObject({ fedRampPackageId: goldenAnswers.serviceIdentification.fedRampPackageId });
+  });
+
+  it("leaves the package ID to the schema when the provider name is missing", () => {
+    const input = withAnswer((a) => {
+      delete a.serviceIdentification.fedRampPackageId;
+      delete a.serviceIdentification.providerName;
+    });
+    const result = generator.generate(input);
+    expect(result.document.serviceIdentification).not.toHaveProperty("fedRampPackageId");
+    expect(result.problems.map((p) => p.message)).toEqual(expect.arrayContaining(["Provider Name is required", "FedRAMP ID is required"]));
+    expect(fallbackPackageId("Example Cloud Co.", "")).toBe("");
+    expect(fallbackPackageId(" Example Cloud Co. ", " ERP ")).toBe("Example Cloud Co. ERP");
+  });
+});
+
+describe("logo host not configured (WI-007 follow-up)", () => {
+  it("names the missing logo host instead of 'Logo is required' when a logo exists but has no public address", () => {
+    const result = generator.generate(golden({ logoUrl: null, logoCheck: { ok: false, reason: "the logo host is not configured" } }));
+    const logoProblems = result.problems.filter((p) => p.path === "/serviceIdentification/logo");
+    expect(logoProblems).toHaveLength(1);
+    expect(logoProblems[0]?.message).toBe("Logo cannot be published: the logo host is not configured");
+    expect(result.problems.map((p) => p.message)).not.toContain("Logo is required");
+    expect(result.valid).toBe(false);
+  });
+
+  it("still says 'Logo is required' when nothing was uploaded", () => {
+    const result = generator.generate(golden({ logoUrl: null }));
+    expect(result.problems.map((p) => p.message)).toContain("Logo is required");
+  });
+});
+
+describe("assessor not confirmed (Screen D links it to the tick)", () => {
+  it("keeps the raw value Screen D matches on", () => {
+    // Pinned on both sides: app/routes/package/components/problem-list.tsx ASSESSOR_NOT_CONFIRMED_RAW.
+    expect(ASSESSOR_NOT_CONFIRMED).toBe("assessor not confirmed");
+    const result = generator.generate(golden({ assessorConfirmedAt: null }));
+    expect(result.problems.find((p) => p.path === "/assessor/name")?.raw).toBe(ASSESSOR_NOT_CONFIRMED);
   });
 });

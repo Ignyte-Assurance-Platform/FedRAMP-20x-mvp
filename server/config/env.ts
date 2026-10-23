@@ -74,6 +74,13 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
   if (env.STORAGE_DRIVER === "gcs" && !env.GCS_BUCKET) {
     throw new ConfigError("Invalid environment:\n  - GCS_BUCKET: required when STORAGE_DRIVER=gcs");
   }
+  // WI-007: the Package Overview carries the public address of the hosted logo; without the
+  // host no customer file can ever pass, so a production start without it is a mistake.
+  if (env.NODE_ENV === "production" && !env.LOGO_PUBLIC_BASE_URL) {
+    throw new ConfigError(
+      "Refusing to start: LOGO_PUBLIC_BASE_URL must be set in production (Generate JSON publishes the hosted logo address).",
+    );
+  }
   if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
     throw new ConfigError("Invalid environment:\n  - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together");
   }

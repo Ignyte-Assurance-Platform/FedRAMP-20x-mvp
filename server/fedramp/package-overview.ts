@@ -16,6 +16,9 @@ import { createSchemaValidator } from "./validate";
 
 export type LogoCheck = { ok: true } | { ok: false; reason: string };
 
+/** The reason a hosted logo cannot be published because LOGO_PUBLIC_BASE_URL is empty. */
+export const LOGO_HOST_NOT_CONFIGURED = "the logo host is not configured";
+
 export interface GenerateInput extends PackageOverviewInputs {
   /** When the "Assessor Confirmed on FedRAMP Marketplace" box was ticked; null if not. */
   assessorConfirmedAt?: Date | null;
@@ -54,8 +57,11 @@ export function packageOverviewFileName(acronym: string, valid: boolean): string
   return valid ? `${safe}-package-overview.json` : `${safe}-package-overview-DRAFT.json`;
 }
 
-const LOGO_PATH = "/serviceIdentification/logo";
+export const LOGO_PATH = "/serviceIdentification/logo";
 const ASSESSOR_NAME_PATH = "/assessor/name";
+
+/** The `raw` of the "not confirmed on the FedRAMP Marketplace" problem; Screen D links it to the tick, not the name box. */
+export const ASSESSOR_NOT_CONFIRMED = "assessor not confirmed";
 const NEXT_REPORT_PATH = "/serviceProperties/nextOngoingCertificationReportDate";
 
 function businessProblems(nav: SchemaNavigator, doc: Record<string, unknown>, input: GenerateInput): Problem[] {
@@ -77,18 +83,19 @@ function businessProblems(nav: SchemaNavigator, doc: Record<string, unknown>, in
       path: ASSESSOR_NAME_PATH,
       question: name(ASSESSOR_NAME_PATH),
       message: `${name(ASSESSOR_NAME_PATH)} has not been confirmed on the FedRAMP Marketplace`,
-      raw: "assessor not confirmed",
+      raw: ASSESSOR_NOT_CONFIRMED,
     });
   }
 
-  const identification = doc.serviceIdentification as Record<string, unknown> | undefined;
-  if (typeof identification?.logo === "string" && !input.logoCheck.ok) {
-    problems.push({
-      path: LOGO_PATH,
-      question: name(LOGO_PATH),
-      message: `${name(LOGO_PATH)} does not open as an image (${input.logoCheck.reason})`,
-      raw: input.logoCheck.reason,
-    });
+  if (!input.logoCheck.ok) {
+    const identification = doc.serviceIdentification as Record<string, unknown> | undefined;
+    // With no public address at all (logo uploaded, host not configured) the schema would
+    // say "Logo is required", which sends the consultant to the wrong place; name the cause.
+    const message =
+      typeof identification?.logo === "string"
+        ? `${name(LOGO_PATH)} does not open as an image (${input.logoCheck.reason})`
+        : `${name(LOGO_PATH)} cannot be published: ${input.logoCheck.reason}`;
+    problems.push({ path: LOGO_PATH, question: name(LOGO_PATH), message, raw: input.logoCheck.reason });
   }
   return problems;
 }
@@ -114,10 +121,11 @@ export function createPackageOverviewGenerator(schemas: VendoredSchemas = loadVe
       if (typeof acronym !== "string" || acronym.trim() === "") throw new MissingAcronymError();
 
       const document = orderBySchema(built, nav) as Record<string, unknown>;
-      const problems = [
-        ...problemsFromSchemaErrors(nav, validator.validate(document), input.labels),
-        ...businessProblems(nav, document, input),
-      ];
+      const schemaProblems = problemsFromSchemaErrors(nav, validator.validate(document), input.labels).filter(
+        // A failed logo check explains the logo better than the schema's "is required".
+        (problem) => input.logoCheck.ok || problem.path !== LOGO_PATH,
+      );
+      const problems = [...schemaProblems, ...businessProblems(nav, document, input)];
       const valid = problems.length === 0;
       return {
         document,

@@ -79,10 +79,20 @@ details.ksi summary .name{font-weight:600;flex:1;min-width:0}
 details.ksi summary .st{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--line);color:var(--muted);white-space:nowrap}
 details.ksi summary .st.done{background:var(--ok-soft);color:var(--ok)}
 details.ksi summary .st.help{background:var(--warn-soft);color:var(--warn)}
+details.ksi summary .st.partly{background:var(--accent-soft);color:var(--accent)}
 details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
 .q{margin-top:14px}
 .q p{margin:0 0 6px;font-weight:500}
 .q .why{font-weight:400;color:var(--muted);font-size:13px;margin:0 0 8px}
+.stmt{margin-top:14px;padding:10px 12px;border-left:3px solid var(--line-strong);background:var(--bg);border-radius:0 var(--r) var(--r) 0;font-size:14px}
+.stmt .lbl{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.stmt .ver{display:block;font-size:12px;color:var(--muted);margin-top:6px}
+.q .opt{font-weight:400;color:var(--muted);font-size:13px}
+.q input.often{max-width:420px}
+.tag{font-size:11px;font-weight:600;border-radius:999px;padding:1px 7px;background:var(--line);color:var(--muted);margin-left:6px;vertical-align:middle}
+.tag.req{background:var(--accent-soft);color:var(--accent)}
+.count{font-size:13px;color:var(--muted);margin:-12px 0 14px;font-variant-numeric:tabular-nums}
+.ksi-sep{margin:22px 0 10px;font-size:13px;color:var(--muted)}
 .help{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:8px}
 .help input{width:auto}
 .logo-f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500}
@@ -117,7 +127,7 @@ details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
-<div class="note"><div class="wrap">Mockup for approval · Oct 14, 2026 · Not functional. Field list and dropdown values come from the FedRAMP Package Overview schema v0.2.0. Example data is fictional. This is what the customer sees from the link, with no login. <a href="https://claude.ai/artifact/N18wcZ6j6EuuUydAqGVJk5" style="color:inherit;font-weight:600">Open the Ignyte side (screens A–D)</a></div></div>
+<div class="note"><div class="wrap">Mockup for approval · Oct 14, 2026, updated Oct 22, 2026 after Christina's review and her answers of Oct 22 · Not functional. Field list and dropdown values come from the FedRAMP Package Overview schema v0.2.0. Example data is fictional. This is what the customer sees from the link, with no login. <a href="https://claude.ai/artifact/N18wcZ6j6EuuUydAqGVJk5" style="color:inherit;font-weight:600">Open the Ignyte side (screens A–D)</a></div></div>
 
 <header class="top"><div class="wrap">
   <div class="brand">
@@ -153,9 +163,7 @@ details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
       <label class="f">Service name <span class="req">*</span><input id="serviceName" value="Example Records Platform" data-req></label>
       <label class="f">Service acronym <span class="req">*</span><input id="acronym" value="ERP" data-req></label>
       <label class="f full">Service description <span class="req">*</span><small>What the service does, for an agency reader. Markdown allowed.</small><textarea id="desc" data-req>Records management service for federal agencies.</textarea></label>
-      <label class="f">Certification type <span class="req">*</span><select id="cert" data-req><option>20x</option><option>Rev5</option></select></label>
-      <label class="f" id="classwrap">FedRAMP 20x class <span class="req">*</span><small>The class you are applying for. Ask your consultant if unsure.</small><select id="fclass"><option selected>Class A</option><option>Class B</option><option>Class C</option><option>Class D</option></select></label>
-      <label class="f">FedRAMP package ID <small>Optional. Only if FedRAMP already assigned you one. If empty, we use your provider name and acronym.</small><input id="pkgid" placeholder="e.g. FR2401234567"></label>
+      <label class="f">Certification type <span class="req">*</span><select id="cert" data-req><option>20x</option><option>Rev5</option></select></label>      <label class="f">FedRAMP package ID <small>Only if FedRAMP already assigned you one. Filled in automatically until FedRAMP assigns your ID.</small><input id="pkgid" value="Example Cloud Co. ERP" placeholder="e.g. FR2401234567"></label>
       <label class="f">Website <span class="req">*</span><input id="website" type="url" value="https://www.example.com" data-req></label>
       <div class="f full logo-f"><span>Company logo <span class="req">*</span></span><small>Upload your logo and Ignyte hosts it for your FedRAMP listing. PNG, SVG or WebP, at least 256 px wide, transparent or white background, up to 2 MB.</small>
         <div class="logo-up"><div class="logo-prev" id="logoprev"><svg viewBox="0 0 120 40" width="120" height="40" aria-label="Example Cloud Co. logo"><rect x="2" y="8" width="24" height="24" rx="5" fill="#2563eb"/><path d="M8 20h12M14 14v12" stroke="#fff" stroke-width="3"/><text x="32" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="currentColor">Example</text></svg></div>
@@ -199,7 +207,7 @@ details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
       <tr><td><input value="Records Platform"></td><td><input value="Core records service."></td><td><input type="date" value="2026-08-01"></td><td><button class="del" title="Remove">✕</button></td></tr>
     </tbody></table></div><button class="add" data-add="services">+ Add service</button></fieldset>
 
-    <fieldset><legend>Third-party services that touch federal data</legend><p class="hint">Hosting, monitoring, email, support, AI, analytics. Say whether each one is FedRAMP certified.</p>
+    <fieldset><legend>Third-party information resources within the Minimum Assessment Scope</legend><p class="hint">Not only services that touch federal data: hosting, monitoring, email, support, AI, analytics, anything inside the scope FedRAMP assesses. Say whether each one is FedRAMP certified.</p>
     <div class="tbl"><table id="thirdparty"><thead><tr><th>Name</th><th>Provider</th><th style="width:150px">FedRAMP certified?</th><th>Used for</th><th></th></tr></thead><tbody>
       <tr><td><input value="Object Storage Service"></td><td><input value="Example Storage Inc."></td><td><select><option>Yes</option><option selected>No</option></select></td><td><input value="Stores encrypted backups."></td><td><button class="del" title="Remove">✕</button></td></tr>
     </tbody></table></div><button class="add" data-add="thirdparty">+ Add third party</button></fieldset>
@@ -212,8 +220,11 @@ details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
 
   <!-- TAB 2 -->
   <section class="panel" id="p-ksi">
-    <p class="intro">FedRAMP 20x Class A asks for seven Key Security Indicators. Answer in your own words; your consultant turns this into the formal package. If you're not sure, tick "I don't know, I need help" and move on.</p>
+    <p class="intro">FedRAMP 20x Class A asks for seven Key Security Indicators, plus how you find vulnerabilities. Each box shows FedRAMP's own statement, then one or two questions. Answer in your own words; your consultant turns this into the formal package. If you're not sure, tick "I don't know, I need help" and move on.</p>
+    <p class="count" id="ksicount">0/7 answered, 0 need help</p>
     <div id="ksis"></div>
+    <p class="ksi-sep">Also required at Class A</p>
+    <div id="vdr"></div>
     <div class="foot"><button class="btn" data-go="company">Back</button><button class="btn" data-go="docs">Next: Documents</button></div>
   </section>
 
@@ -247,20 +258,51 @@ const BIZ=["Accounting","Analytics","Artificial Intelligence (AI)","Collaboratio
 const PRE=["Data Management","Artificial Intelligence (AI)"];
 document.getElementById('bizcat').innerHTML=BIZ.map(b=>`<label class="chip ${PRE.includes(b)?'on':''}"><input type="checkbox" ${PRE.includes(b)?'checked':''}>${b}</label>`).join('');
 
-// 7 Class A KSIs, questions from the S1-01 intake questionnaire (mapping in the project brain). Draft, pending Christina's confirmation of which questions go to the customer.
+// 7 Class A KSIs plus the vulnerability detection block (wi-maaz20x-005 §3 in the project brain).
+// stmt: FedRAMP's statement word for word from fedramp-consolidated-rules.json, version RULES_VERSION.
+// Questions, "why we ask" lines and the status rules are Christina's (review of Oct 19 and answers of Oct 22, 2026). "How often?" is required on Training, Network Traffic and Incident Response and is asked inside their questions; Account Management, Passwordless Methods and Securing Information keep a separate optional line. Sample answers are hers, word for word.
+const RULES_VERSION="2026.10.13.01";
+const HOW_WHY="FedRAMP expects ongoing activities to run on a known, documented cycle.";
 const KSI=[
- {code:"KSI-CED-RAT",name:"Reviewing All Training",qs:[{q:"How is security training delivered to your staff, and how do you review that everyone completed it?",why:"Class A checks that training is reviewed, not just assigned."}],a:"All staff complete annual security awareness in KnowBe4. Completion is reviewed quarterly by HR and the CISO; engineers also take secure coding training on hire."},
- {code:"KSI-CMT-LMC",name:"Logging Changes",qs:[{q:"How are production changes approved and recorded?",why:"Shows that every change to the service is logged and traceable."}],a:"All changes go through GitHub pull requests with required review. Deploys run from CI; the deploy log and PR link are kept in the change record."},
- {code:"KSI-CNA-RNT",name:"Restricting Network Traffic",qs:[{q:"How is production network traffic restricted? For example, firewalls, security groups, private subnets, allow-lists.",why:"Class A indicator on restricting traffic to what the service needs."}],a:""},
- {code:"KSI-IAM-AAM",name:"Automating Account Management",qs:[{q:"How are accounts created, reviewed and removed, for both administrators and users?",why:"Class A looks for automated joiner, mover and leaver handling."}],a:"Okta is the source of truth. Accounts are provisioned by SCIM from the HR system and removed on termination the same day. Access is reviewed quarterly."},
- {code:"KSI-IAM-APM",name:"Adopting Passwordless Methods",qs:[{q:"How do administrators and users sign in? Is MFA phishing-resistant (for example FIDO2 keys, passkeys, PIV)?",why:"Class A indicator on identity and authentication."}],a:"",help:true},
- {code:"KSI-INR-RIR",name:"Reviewing Incident Response Procedures",qs:[{q:"Do you have an incident response plan, and when was it last tested?",why:"Class A requires evaluating reportability and producing final reports."},{q:"Do you have documented recovery procedures and tests?",why:"Recovery is part of the incident response indicator."}],a:"IR plan v2.3 approved March 2026, tabletop exercise held June 2026 with engineering and legal. Recovery runbooks exist per service; last restore test was August 2026."},
- {code:"KSI-SVC-SIN",name:"Securing Information",qs:[{q:"Which encryption modules protect data at rest and in transit, and are they CMVP validated?",why:"Module documentation goes into the package."}],a:""}
+ {code:"KSI-CED-RAT",name:"Reviewing All Training",stmt:"The effectiveness of relevant cybersecurity education and training is persistently reviewed, including at least general training for all employees, role-specific training for employees in high risk roles, training for development and engineering staff on secure software delivery, and training for staff involved with incident response or disaster recovery.",qs:[
+   {q:"How do you check that security training works for all staff, high-risk roles, engineering staff, and incident response or recovery staff, and how often?",why:"FedRAMP asks whether your training actually works, not just whether people took it, for all staff, high-risk roles, engineers, and incident response or recovery staff.",a:"All staff take yearly awareness training and monthly phishing tests. Admins pass a scored lab before getting access. Engineers take yearly secure delivery training, and we track scanner findings before and after. Incident response and recovery staff do quarterly restore drills. Our CISO reviews all four results quarterly; in March we added a token-theft session after phishing results stalled."}]},
+ {code:"KSI-CMT-LMC",name:"Logging Changes",stmt:"Modifications to the cloud service offering are logged and monitored.",qs:[
+   {q:"How are production changes logged, who monitors those logs, and how often?",why:"FedRAMP asks that changes to your service are both logged and monitored, including changes made outside your normal deployment process.",a:"All production changes go through reviewed pull requests and deploy only from our pipeline, which logs who approved what. Console and API changes are captured by our cloud audit log. Any change outside the pipeline alerts on-call, who must explain it within one business day. Our security lead reviews all changes weekly. Last quarter: 412 pipeline changes and 3 manual ones, all explained."}]},
+ {code:"KSI-CNA-RNT",name:"Restricting Network Traffic",stmt:"Machine-based information resources are persistently reviewed to ensure they are appropriately configured to limit inbound and outbound network traffic.",qs:[
+   {q:"How do you restrict inbound and outbound traffic, and how often do you review those rules? For example, firewalls, security groups, private subnets, allow-lists.",why:"FedRAMP asks that you limit both incoming and outgoing traffic, and keep checking those limits over time.",a:"Only our load balancer accepts internet traffic, on port 443. Everything else sits in private subnets with deny-by-default rules. Outbound traffic goes through a proxy with 14 approved destinations; the rest is blocked. Rules live in code, a daily check alerts on drift, and our infrastructure lead reviews all rules quarterly. Last review removed 2 unused destinations."}]},
+ {code:"KSI-IAM-AAM",name:"Automating Account Management",stmt:"The lifecycle and privileges of all accounts, roles, and groups are securely managed using automation.",often:true,ho:"Managers confirm their team’s access quarterly",qs:[
+   {q:"Which parts of creating, changing and removing accounts, roles and groups are automated, and which are still manual?",why:"FedRAMP asks that accounts, roles and groups, and what they can access, are managed through automation rather than by hand.",a:"Our HR system automatically creates, changes and disables accounts through our identity provider. Leavers lose access within one hour. Access is granted only through groups defined in code, and service accounts are created only through code. Unused accounts are disabled after 30 days, and managers confirm their team’s access quarterly. Still manual: one legacy billing tool, which we’ll connect by Q1."}]},
+ {code:"KSI-IAM-APM",name:"Adopting Passwordless Methods",stmt:"Secure passwordless methods are used for user authentication and authorization when feasible, otherwise strong passwords with phishing-resistant MFA is used.",often:true,ho:"Logins and MFA methods are reported monthly",qs:[
+   {q:"How do administrators and users sign in? Is MFA phishing-resistant (for example FIDO2 keys, passkeys, PIV)?",why:"FedRAMP expects passwordless sign-in where it's feasible; where passwords remain, it expects strong passwords with phishing-resistant MFA, so we need to know where they are.",a:"Staff and administrators: single sign-on through our identity provider using passkeys or hardware security keys. Passwords are disabled for these accounts.\n\nCustomer users: agencies sign in through their own identity provider by federation (for example PIV), or with passkeys. We don’t support SMS or app-code MFA."},
+   {q:"Where are passwords still used, and why?",why:"FedRAMP expects passwordless sign-in where it's feasible; where passwords remain, it expects strong passwords with phishing-resistant MFA, so we need to know where they are.",a:""}]},
+ {code:"KSI-INR-RIR",name:"Reviewing Incident Response Procedures",stmt:"The effectiveness of documented incident response procedures is persistently reviewed.",qs:[
+   {q:"How do you review whether your incident response procedures work, how often, and what changed after the last review?",why:"FedRAMP asks that you keep checking whether your incident response procedures actually work, not only that a plan exists.",a:"Our incident response plan is reviewed in three ways.\n- Twice-yearly tabletop exercises with engineering, support and leadership, each based on a different scenario.\n- A written review after every real incident within 5 business days, with action items tracked to closure.\n- A quarterly look at detection and containment times.\n\nThe plan is versioned. After the April tabletop we found escalation to leadership took too long, so we added a 30-minute escalation rule and updated contact lists. That became version 3.2, approved in May."}]},
+ {code:"KSI-SVC-SIN",name:"Securing Information",stmt:"Information is encrypted or otherwise secured from unwanted access or modification.",often:true,ho:"Keys rotate yearly",help:true,qs:[
+   {q:"How is information protected from unwanted access or modification, at rest and in transit, and which crypto modules are used?",why:"FedRAMP asks that information is protected from unwanted access or changes. Your consultant checks the encryption modules you list.",a:"In transit: TLS 1.2 or higher on all external and internal connections. Older protocols are disabled at the load balancer.\n\nAt rest: all databases, storage and backups are encrypted with keys in our cloud provider’s key management service. Keys rotate yearly, and only two roles can manage them.\n\nIntegrity: backups are write-once and cannot be changed or deleted for 35 days, and database changes are logged."}]}
 ];
-document.getElementById('ksis').innerHTML=KSI.map((k,i)=>`<details class="ksi" ${i<2?'open':''} id="k${i}">
+// Below the seven: vulnerability detection (VDR-CSO-DET, required at Class A). Fixing timeframes (question 19) are recommended and do not count for the label.
+const VDR={code:"VDR-CSO-DET",name:"Vulnerability detection",note:"Not one of the seven Class A KSIs. FedRAMP requires vulnerability detection at Class A; fixing timeframes are recommended, not required.",qs:[
+   {q:"How do you find vulnerabilities, using which methods, and how often?",why:"FedRAMP requires you to keep finding vulnerabilities, using methods that fit your service, such as scanning, testing, threat intelligence and disclosure reports.",a:"Weekly authenticated scans of every host and container, dependency scanning on every pull request, an annual penetration test, and a public address for vulnerability reports. Every finding goes into one tracker with an owner."},
+   {q:"How are findings fixed, and within what timeframes?",tag:"Recommended",opt:true,why:"This helps us plan how quickly findings get fixed. FedRAMP recommends fix timeframes at Class A but doesn't require them.",a:""}]};
+const BLOCKS=[...KSI,VDR];
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const block=(k,i,open)=>`<details class="ksi" ${open?'open':''} id="k${i}">
  <summary><span class="code">${k.code}</span><span class="name">${k.name}</span><span class="st" id="st${i}">Not answered</span></summary>
- <div class="body">${k.qs.map((q,j)=>`<div class="q"><p>${q.q}</p><p class="why">${q.why}</p><textarea id="a${i}_${j}" data-k="${i}" placeholder="Describe how it works today, in your own words.">${j===0?k.a:''}</textarea></div>`).join('')}
- <label class="help"><input type="checkbox" id="h${i}" data-k="${i}" ${k.help?'checked':''}> I don't know, I need help from Ignyte with this one</label></div></details>`).join('');
+ <div class="body">${k.note?`<p class="why" style="margin-top:14px">${k.note}</p>`:`<div class="stmt"><span class="lbl">FedRAMP's statement</span>${k.stmt}<span class="ver">FedRAMP rules ${RULES_VERSION}</span></div>`}
+ ${k.qs.map((q,j)=>`<div class="q"><p>${q.q}${q.tag?` <span class="tag">${q.tag}</span>`:''}</p><p class="why">${q.why}</p><textarea id="a${i}_${j}" data-k="${i}" placeholder="Describe how it works today, in your own words.">${esc(q.a||'')}</textarea></div>`).join('')}
+ ${k.often?`<div class="q"><p>How often?<span class="tag">Optional</span></p><p class="why">${HOW_WHY}</p><input class="often" id="o${i}" value="${esc(k.ho||'')}" placeholder="For example: quarterly, or after every incident"></div>`:''}
+ <label class="help"><input type="checkbox" id="h${i}" data-k="${i}" ${k.help?'checked':''}> I don't know, I need help from Ignyte with this one</label></div></details>`;
+document.getElementById('ksis').innerHTML=KSI.map((k,i)=>block(k,i,i<2)).join('');
+document.getElementById('vdr').innerHTML=block(VDR,KSI.length,false);
+// Status rules (Christina, Oct 22, 2026): Needs help outranks everything; Answered needs every question (the required "How often?" sits inside those questions); Partly answered when something is typed but not all; Not answered otherwise. The optional "How often?" line never changes the label.
+function ksiState(i,k){
+  const h=document.getElementById('h'+i).checked;
+  const needed=k.qs.map((q,j)=>q.opt?null:!!document.getElementById(`a${i}_${j}`).value.trim()).filter(v=>v!==null);
+  const hoEl=document.getElementById('o'+i); const ho=hoEl?hoEl.value.trim():'';
+  const typed=k.qs.some((_,j)=>document.getElementById(`a${i}_${j}`).value.trim())||!!ho;
+  const all=needed.every(Boolean);
+  return {help:h, answered:all, partly:!all&&typed};
+}
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 function go(t){$$('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));$$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+t));window.scrollTo({top:0});try{location.hash=t}catch(e){}}
@@ -271,9 +313,10 @@ if(['company','ksi','docs'].includes(location.hash.slice(1)))go(location.hash.sl
 function recalc(){
   const req=$$('[data-req]'); const done=req.filter(e=>e.value.trim()).length + ($$('#stype input:checked').length?1:0) + ($$('#contacts tbody tr').length>=2?1:0);
   const tot=req.length+2; $('#n1').textContent=`${done}/${tot}`;
-  let kd=0; KSI.forEach((k,i)=>{const h=$('#h'+i).checked; const ans=k.qs.some((_,j)=>$(`#a${i}_${j}`).value.trim()); const st=$('#st'+i); st.className='st'+(h?' help':ans?' done':''); st.textContent=h?'Needs help':ans?'Answered':'Not answered'; if(h||ans)kd++;});
-  $('#n2').textContent=`${kd}/7`; const nf=$$('#files li').length; $('#n3').textContent=nf;
-  const pct=Math.round(((done/tot)*0.6+(kd/7)*0.3+(nf?0.1:0))*100); $('#pct').textContent=pct+'% complete'; $('#barfill').style.width=pct+'%';
+  // Two counts over the seven KSIs (a box can count in both); the vulnerability box has its own label and is outside the counts.
+  let kd=0, kh=0; BLOCKS.forEach((k,i)=>{const s=ksiState(i,k); const st=$('#st'+i); st.className='st'+(s.help?' help':s.answered?' done':s.partly?' partly':''); st.textContent=s.help?'Needs help':s.answered?'Answered':s.partly?'Partly answered':'Not answered'; if(i<KSI.length){if(s.answered)kd++; if(s.help)kh++;}});
+  $('#n2').textContent=`${kd}/${KSI.length}`; $('#ksicount').textContent=`${kd}/${KSI.length} answered, ${kh} need${kh===1?'s':''} help`; const nf=$('#files li').length; $('#n3').textContent=nf;
+  const pct=Math.round(((done/tot)*0.6+(kd/KSI.length)*0.3+(nf?0.1:0))*100); $('#pct').textContent=pct+'% complete'; $('#barfill').style.width=pct+'%';
 }
 document.addEventListener('input',e=>{if(e.target.closest('.chip'))e.target.closest('.chip').classList.toggle('on',e.target.checked);recalc();});
 $$('.add').forEach(b=>b.onclick=()=>{const tb=$('#'+b.dataset.add+' tbody');const r=tb.lastElementChild.cloneNode(true);r.querySelectorAll('input').forEach(i=>i.value='');tb.appendChild(r);r.querySelector('input').focus();});
@@ -288,7 +331,6 @@ const drop=$('#drop'); drop.onclick=()=>$('#fileinput').click(); drop.onkeydown=
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
 function addFiles(list){[...list].forEach(f=>{const ext=(f.name.split('.').pop()||'').toUpperCase().slice(0,4);const kb=f.size/1024;const li=document.createElement('li');li.innerHTML=`<span class="ic">${ext}</span><span class="nm">${f.name}</span><span class="sz">${kb>1024?(kb/1024).toFixed(1)+' MB':Math.round(kb)+' KB'}</span><button class="del" title="Remove">✕</button>`;$('#files').appendChild(li);});recalc();toast('Uploaded');}
 drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files)); $('#fileinput').onchange=e=>addFiles(e.target.files);
-$('#cert').addEventListener('change',e=>{$('#classwrap').hidden=e.target.value!=='20x'});
 $('#logoinput').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#logoprev').innerHTML=`<img alt="Uploaded logo" src="${r.result}">`;$('#logoname').textContent=f.name;$('#logosize').textContent=Math.max(1,Math.round(f.size/1024))+' KB · uploaded';toast('Logo uploaded')};r.readAsDataURL(f)};
 recalc();
 </script>
@@ -297,13 +339,24 @@ recalc();
 const TOUR_ID='intake';
 const TOUR=[
  {sel:'.brand',title:'This is what your customer sees',text:'They open it from the link Ignyte sends. No account, no password. Company and service are already filled in from what you entered when creating the customer.'},
- {sel:'.tabs',title:'Three tabs, in the order FedRAMP needs them',text:'Company & service follows the FedRAMP Package Overview schema, plus the 20x class. The customer uploads their logo and Ignyte hosts it. Security indicators covers the 7 Class A KSIs. Documents is for uploads.',before(){go('company')}},
+ {sel:'.tabs',title:'Three tabs, in the order FedRAMP needs them',text:'Company & service follows the FedRAMP Package Overview schema; this first version is Class A only, so there is no class to pick. The customer uploads their logo and Ignyte hosts it. Security indicators covers the 7 Class A KSIs plus vulnerability detection. Documents is for uploads.',before(){go('company')}},
  {sel:'.progress',title:'Progress updates as they type',text:'Required fields, answered KSIs and uploaded files all count. The customer can stop and come back later with the same link.'},
- {sel:'#k0',title:'One block per Key Security Indicator',text:'Each KSI asks one or two plain-language questions from the intake. If the customer gets stuck, they tick "I need help" and your consultant follows up.',before(){go('ksi')},wait:150},
+ {sel:'#k0',title:'One block per Key Security Indicator',text:'Each box shows FedRAMP\'s exact statement with the rules version, then the question in plain language with a "why we ask" line; "How often?" is part of the question where FedRAMP says "persistently reviewed" and a separate optional line on three other boxes. Labels: Answered, Partly answered, Needs help, Not answered. If the customer gets stuck, they tick "I need help" and your consultant follows up.',before(){go('ksi')},wait:150},
  {sel:'#drop',title:'Documents are stored, not processed',text:'Drag and drop PDF, Word or Excel up to 100 MB. Nothing is analyzed in this release; the consultant downloads them from the Ignyte side.',before(){go('docs')},wait:150},
  {sel:'.actions',title:'Save keeps progress, Submit locks it',text:'Submit asks for confirmation, then locks the form and marks the customer as Submitted in your list. You can unlock it from the Ignyte side if something needs to change. Try it now.',before(){go('company')}}
 ];
 const TOUR_END=null;
+// Tour of the changes made after Christina's review of document 05 (Oct 19, 2026) and her answers of Oct 22, 2026.
+const openK=n=>{go('ksi');const d=document.getElementById('k'+n);if(d)d.open=true;};
+const TOUR_22=[
+ {sel:'#pkgid',title:'1. Package ID filled in automatically',text:'When FedRAMP has not assigned an ID, the box shows the provider name and the service acronym ("Example Cloud Co. ERP") with the note "Filled in automatically until FedRAMP assigns your ID". The file is never held as a draft for this.',before(){go('company')},wait:150},
+ {sel:'#k0 .stmt',title:'2. FedRAMP\'s exact statement',text:'Every KSI box opens with FedRAMP\'s statement word for word, stamped with the rules version (2026.10.13.01).',before(){openK(0)},wait:150},
+ {sel:'#a0_0',title:'3. One question per box, in your wording',text:'Training, Account Management and Incident Response keep one question each (your rewording replaced the original). Passwordless Methods keeps two. The grey "why we ask" lines are the ones you sent on Oct 22.',before(){openK(0)},wait:150},
+ {sel:'#o3',title:'4. "How often?"',text:'Required on Reviewing All Training, Restricting Network Traffic and Reviewing Incident Response Procedures, where the statement says "persistently reviewed": there it sits inside the question. Account Management, Passwordless Methods and Securing Information keep a separate line, now marked optional.',before(){openK(3)},wait:150},
+ {sel:'#ksicount',title:'5. Four labels, two counts',text:'Answered, Partly answered (Passwordless Methods: first question answered, second empty), Needs help (Securing Information: answered and ticked, so it counts in both), Not answered. The counter reads "n/7 answered, m need help".',before(){go('ksi')},wait:150},
+ {sel:'#k7',title:'6. Vulnerability detection',text:'The note now reads as you wrote it: FedRAMP requires vulnerability detection at Class A; fixing timeframes are recommended, not required. Question 19 is labelled Recommended and does not count for the label.',before(){openK(7)},wait:150},
+ {sel:'#a1_0',title:'7. Your sample answers',text:'All seven sample answers are the ones you wrote, word for word.',before(){openK(1)},wait:150}
+];
 </script>
 
 <style>
@@ -317,19 +370,23 @@ const TOUR_END=null;
 .tour-tip .skip:hover{color:var(--fg)}
 .tour-tip .arrow{position:absolute;width:12px;height:12px;background:var(--surface);border-left:1px solid var(--line-strong);border-top:1px solid var(--line-strong);transform:rotate(45deg);left:24px;top:-7px}
 .tour-tip.above .arrow{top:auto;bottom:-7px;transform:rotate(225deg)}
+.tour-btns{display:inline-flex;gap:6px;margin-left:8px;flex-wrap:wrap;vertical-align:middle}
+.tour-btn{font:inherit;font-size:12px;font-weight:600;color:var(--warn);background:var(--surface);border:1px solid var(--warn);border-radius:999px;padding:2px 10px;cursor:pointer}
+.tour-btn.new{background:var(--warn);color:var(--surface)}
+.tour-btn:hover{filter:brightness(.95)}
 .tour-replay{font:inherit;font-size:13px;font-weight:600;background:none;border:0;color:inherit;cursor:pointer;text-decoration:underline;padding:0;margin-left:8px}
 @media (prefers-reduced-motion:reduce){.tour-spot{transition:none}}
 </style>
 <script>
 (function(){
-  const KEY='tour-seen-'+TOUR_ID; let i=0, spot, tip;
+  const KEY='tour-seen-'+TOUR_ID; let i=0, spot, tip, T=TOUR;
   const seen=()=>{try{return localStorage.getItem(KEY)==='1'}catch(e){return false}};
   const mark=()=>{try{localStorage.setItem(KEY,'1')}catch(e){}};
-  function place(){const s=TOUR[i]; const el=document.querySelector(s.sel); if(!el){next();return;}
+  function place(){const s=T[i]; const el=document.querySelector(s.sel); if(!el){next();return;}
     el.scrollIntoView({block:'center',behavior:'auto'});
     const r=el.getBoundingClientRect(), sx=window.scrollX, sy=window.scrollY, pad=6;
     spot.style.cssText=`top:${r.top+sy-pad}px;left:${r.left+sx-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px`;
-    tip.innerHTML=`<span class="arrow"></span><div class="step">Step ${i+1} of ${TOUR.length}</div><h3>${s.title}</h3><p>${s.text}</p><div class="row"><button class="skip" id="tskip">Skip tour</button>${i>0?'<button class="btn sm" id="tback">Back</button>':''}<button class="btn sm primary" id="tnext">${i===TOUR.length-1?'Done':'Next'}</button></div>`;
+    tip.innerHTML=`<span class="arrow"></span><div class="step">Step ${i+1} of ${T.length}</div><h3>${s.title}</h3><p>${s.text}</p><div class="row"><button class="skip" id="tskip">Skip tour</button>${i>0?'<button class="btn sm" id="tback">Back</button>':''}<button class="btn sm primary" id="tnext">${i===T.length-1?'Done':'Next'}</button></div>`;
     const below=r.bottom+sy+16, tipH=tip.offsetHeight||160; const fits=r.bottom+tipH+24<window.innerHeight;
     tip.classList.toggle('above',!fits);
     tip.style.top=(fits?below:r.top+sy-tipH-16)+'px';
@@ -337,13 +394,14 @@ const TOUR_END=null;
     document.getElementById('tnext').onclick=next; document.getElementById('tskip').onclick=end; const b=document.getElementById('tback'); if(b)b.onclick=back;
     document.getElementById('tnext').focus({preventScroll:true});
   }
-  function show(){const s=TOUR[i]; const go=()=>{setTimeout(place,s.wait||0)}; if(s.before){s.before();}go();}
-  function next(){if(i>=TOUR.length-1){end();return;}i++;show();}
+  function show(){const s=T[i]; const go=()=>{setTimeout(place,s.wait||0)}; if(s.before){s.before();}go();}
+  function next(){if(i>=T.length-1){end();return;}i++;show();}
   function back(){if(i>0){i--;show();}}
   function end(){mark();if(spot)spot.remove();if(tip)tip.remove();spot=tip=null;window.removeEventListener('resize',place);if(TOUR_END)TOUR_END();}
-  function start(){if(tip)return;i=0;spot=document.createElement('div');spot.className='tour-spot';tip=document.createElement('div');tip.className='tour-tip';document.body.append(spot,tip);window.addEventListener('resize',place);show();}
+  function start(list){if(tip){spot.remove();tip.remove();spot=tip=null;window.removeEventListener('resize',place);}T=Array.isArray(list)?list:TOUR;i=0;spot=document.createElement('div');spot.className='tour-spot';tip=document.createElement('div');tip.className='tour-tip';document.body.append(spot,tip);window.addEventListener('resize',place);show();}
   window.startTour=start;
-  const note=document.querySelector('.note .wrap'); if(note){const b=document.createElement('button');b.className='tour-replay';b.textContent='Replay the guided tour';b.onclick=start;note.appendChild(b);}
+  const note=document.querySelector('.note .wrap'); if(note){const bar=document.createElement('span');bar.className='tour-btns';
+    [['Main tour',()=>start(TOUR)],['What changed after your answers of Oct 22',()=>start(TOUR_22)]].forEach(([l,f],n)=>{const b=document.createElement('button');b.className='tour-btn'+(n?' new':'');b.textContent=l;b.onclick=f;bar.appendChild(b);});note.appendChild(bar);}
   if(!seen())setTimeout(start,600);
 })();
 </script>

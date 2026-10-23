@@ -6,10 +6,12 @@
 export { loadVendoredSchemas, SchemaManifestError, SCHEMAS_DIR, type JsonSchema, type VendoredSchemas } from "./schemas";
 export { createSchemaValidator, type SchemaValidator } from "./validate";
 export { problemsFromSchemaErrors, SchemaNavigator, type FormLabels, type Problem } from "./messages";
-export { buildPackageOverview, type PackageOverviewInputs } from "./mapping/package-overview";
+export { buildPackageOverview, fallbackPackageId, type PackageOverviewInputs } from "./mapping/package-overview";
 export { answerSections, type AnswerLabels, type AnswerRow, type AnswerSection } from "./answer-rows";
 export {
   createPackageOverviewGenerator,
+  ASSESSOR_NOT_CONFIRMED,
+  LOGO_HOST_NOT_CONFIGURED,
   MissingAcronymError,
   packageOverviewFileName,
   todayInNewYork,

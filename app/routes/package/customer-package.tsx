@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { formatDateTime } from "~/lib/dates";
-import { AnswersReadOnly } from "./components/answers-read-only";
+import { AnswersReadOnly, LOGO_PATH } from "./components/answers-read-only";
 import { ProblemList } from "./components/problem-list";
 import { PublishingChecklist } from "./components/publishing-checklist";
 import type { Route } from "./+types/customer-package";
@@ -105,7 +105,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
   const submit = useSubmit();
   const busy = navigation.state !== "idle";
   const generating = busy && navigation.formData?.get("intent") === "generate";
-  const knownPaths = new Set(answers.flatMap((section) => [section.path, ...section.rows.map((row) => row.path)]));
+  const knownPaths = new Set([LOGO_PATH, ...answers.flatMap((section) => [section.path, ...section.rows.map((row) => row.path)])]);
   const downloadHref = `/api/customers/${customer.id}/package-overview/download`;
   const justGenerated = Boolean(actionData?.generated && latest && actionData.generated.fileId === latest.id);
 
@@ -125,7 +125,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <AnswersReadOnly sections={answers} />
+            <AnswersReadOnly sections={answers} logoUrl={screen.logoUrl} logoUploaded={screen.logoUploaded} packageIdFallback={screen.packageIdFallback} />
           </CardContent>
         </Card>
 
@@ -141,13 +141,14 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
               <input type="hidden" name="intent" value="save-inputs" />
               <div className="grid gap-1.5">
                 <Label htmlFor="assessorName">Assessor name</Label>
-                <Input id="assessorName" name="assessorName" defaultValue={inputs.assessorName} maxLength={200} autoComplete="off" />
+                <Input id="assessorName" name="assessorName" className="scroll-mt-24" defaultValue={inputs.assessorName} maxLength={200} autoComplete="off" />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="assessorId">FedRAMP assessor ID</Label>
                 <Input
                   id="assessorId"
                   name="assessorId"
+                  className="scroll-mt-24"
                   defaultValue={inputs.assessorId}
                   inputMode="numeric"
                   maxLength={20}
@@ -156,7 +157,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="advisorName">Advisor</Label>
-                <Input id="advisorName" name="advisorName" defaultValue={inputs.advisorName} maxLength={200} autoComplete="off" />
+                <Input id="advisorName" name="advisorName" className="scroll-mt-24" defaultValue={inputs.advisorName} maxLength={200} autoComplete="off" />
               </div>
               <div className="sm:col-span-3">
                 <Button type="submit" variant="outline" disabled={busy}>
@@ -177,7 +178,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
                   id="assessorConfirmed"
                   name="confirmed"
                   type="checkbox"
-                  className="size-4 accent-primary"
+                  className="size-4 scroll-mt-24 accent-primary"
                   defaultChecked={inputs.assessorConfirmedAt !== null}
                   disabled={busy}
                 />

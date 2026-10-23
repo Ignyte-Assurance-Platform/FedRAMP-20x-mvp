@@ -2,7 +2,7 @@
 
 ### Requirement: Screen D — generate, validate and download the Package Overview JSON
 
-The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-007-package-overview-json]] at brain_commit 0aa1953; scope in proposal.md).
+The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-007-package-overview-json]] at brain_commit 7b3564b; scope in proposal.md).
 
 #### Scenario: the golden answers are present with a fixed logo URL and the default advisor
 - **WHEN** the golden answers are present with a fixed logo URL and the default advisor
@@ -48,6 +48,14 @@ The system SHALL behave as every scenario below states (brain work item [[wi-maa
 - **WHEN** the customer listed advisor "Ignyte" on tab 1 and the Advisor box says "Ignyte"
 - **THEN** `advisors` contains "Ignyte" once; WHEN the box is emptied and the customer listed none THEN the JSON has no `advisors`
 
+#### Scenario: "FedRAMP package ID" is empty and the provider name is "Example Cloud Co." and the acronym "ERP"
+- **WHEN** "FedRAMP package ID" is empty and the provider name is "Example Cloud Co." and the acronym "ERP"
+- **THEN** `fedRampPackageId` is exactly "Example Cloud Co. ERP", no error names the package ID, and the file can still be valid; WHEN the box holds a value THEN it is copied as typed
+
+#### Scenario: "FedRAMP package ID" is empty
+- **WHEN** "FedRAMP package ID" is empty
+- **THEN** Screen D's read-only row for it reads "Not answered · the file uses “Example Cloud Co. ERP” (provider name and service acronym) until FedRAMP assigns one"; WHEN the problem "Assessor Name has not been confirmed on the FedRAMP Marketplace" is clicked THEN focus moves to the "Assessor Confirmed on FedRAMP Marketplace" checkbox
+
 #### Scenario: the same inputs and versions are generated twice
 - **WHEN** the same inputs and versions are generated twice
 - **THEN** the two JSON files are identical byte for byte (stable key order)
@@ -70,7 +78,7 @@ The system SHALL behave as every scenario below states (brain work item [[wi-maa
 
 #### Scenario: the latest file is valid
 - **WHEN** the latest file is valid
-- **THEN** the Publishing checklist with the five FRC-CSO-JSN items is shown next to it; WHEN it is a draft THEN the checklist is not shown
+- **THEN** the Publishing checklist with its five items (CORS and the two headers from FRC-CSO-JSN, the logo item from CDS-CSO-PUB, the validator test from S3-03) is shown next to it; WHEN it is a draft THEN the checklist is not shown
 
 #### Scenario: the file is a draft
 - **WHEN** the file is a draft

@@ -3,7 +3,8 @@ import type { SchemaNavigator } from "../messages";
 /**
  * Answers → Package Overview document (WI-007 §3, port of Christina's converter). Tab 1
  * stores a partial Package Overview object (WI-004 §4), so the mapping adds only what
- * Ignyte owns: the hosted logo URL, the assessor and the advisor entry.
+ * Ignyte owns: the hosted logo URL, the assessor, the advisor entry and the package ID
+ * fallback.
  */
 
 export interface PackageOverviewInputs {
@@ -20,7 +21,19 @@ export interface PackageOverviewInputs {
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const text = (v: string | null | undefined): string => (v ?? "").trim();
+const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+
+/**
+ * WI-007 §3, package ID fallback (playbook S3-03, Christina 2026-10-22): when the customer
+ * has no FedRAMP ID, the schema says to use the CSP's name and acronym. Ignyte's reading is
+ * the provider name, one space, the service acronym ("Example Cloud Co. ERP"). Empty when
+ * either part is missing, so the schema reports the missing part instead.
+ */
+export function fallbackPackageId(providerName: unknown, serviceAcronym: unknown): string {
+  const provider = text(providerName);
+  const acronym = text(serviceAcronym);
+  return provider && acronym ? `${provider} ${acronym}` : "";
+}
 
 /** Drops empty strings, arrays and objects: an unanswered optional field is omitted, never "N/A". */
 function prune(value: unknown): Json | undefined {
@@ -51,6 +64,11 @@ export function buildPackageOverview(inputs: PackageOverviewInputs): Record<stri
 
   const serviceIdentification = isRecord(doc.serviceIdentification) ? doc.serviceIdentification : {};
   if (text(inputs.logoUrl)) serviceIdentification.logo = text(inputs.logoUrl);
+  if (!text(serviceIdentification.fedRampPackageId)) {
+    const fallback = fallbackPackageId(serviceIdentification.providerName, serviceIdentification.serviceAcronym);
+    if (fallback) serviceIdentification.fedRampPackageId = fallback;
+    else delete serviceIdentification.fedRampPackageId;
+  }
   doc.serviceIdentification = serviceIdentification;
 
   const assessorName = text(inputs.assessorName);
