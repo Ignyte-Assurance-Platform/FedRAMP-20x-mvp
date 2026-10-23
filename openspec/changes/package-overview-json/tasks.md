@@ -1,9 +1,9 @@
 # Tasks — Screen D — generate, validate and download the Package Overview JSON
 
-> Brain work item: [[wi-maaz20x-007-package-overview-json]] · brain_commit 0aa195347a95be589ff132ffeb6428df3365c41d · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-007-package-overview-json.md
+> Brain work item: [[wi-maaz20x-007-package-overview-json]] · brain_commit 7b3564b46297fb485fbe79b8c5e83e1b82263acf · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-007-package-overview-json.md
 
 ## 1. Setup
-- [x] 1.1 Read the frozen brain spec at brain_commit 0aa1953; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-007-package-overview-json.md`)
+- [x] 1.1 Read the frozen brain spec at brain_commit 7b3564b; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-007-package-overview-json.md`)
 
 ## 2. Implement
 - [x] 2.1 WHEN the golden answers are present with a fixed logo URL and the default advisor THEN Generate JSON reports 0 errors and the stored JSON deep-equals the golden fixture (key order ignored), and the download is named `ERP-package-overview.json`
@@ -17,14 +17,16 @@
 - [x] 2.9 WHEN the vendored schema version is raised THEN customers whose latest file used the older version show the "Regenerate" flag on Screen D, and the flag clears after regenerating (the flag in the customers list follows when [[wi-maaz20x-003-customers-list-and-create]] ships)
 - [x] 2.10 WHEN answers change after a generation THEN Download still serves the stored file and Screen D shows "Answers changed since this file was generated"
 - [x] 2.11 WHEN the customer listed advisor "Ignyte" on tab 1 and the Advisor box says "Ignyte" THEN `advisors` contains "Ignyte" once; WHEN the box is emptied and the customer listed none THEN the JSON has no `advisors`
-- [x] 2.12 WHEN the same inputs and versions are generated twice THEN the two JSON files are identical byte for byte (stable key order)
-- [x] 2.13 WHEN a customer link token calls any route of this item THEN it is refused
-- [x] 2.14 WHEN an assessor name is entered and "Assessor Confirmed on FedRAMP Marketplace" is not ticked THEN the file is a draft with a problem naming the assessor; WHEN it is ticked THEN Screen D shows who ticked it and the date; WHEN the assessor name or ID changes THEN the tick is cleared
-- [x] 2.15 WHEN the Ignyte-hosted logo URL does not answer with an image THEN the file is a draft with a problem naming the logo
-- [x] 2.16 WHEN a file is shown on Screen D THEN its schema version, rules version and creation date and time are shown next to it
-- [x] 2.17 WHEN the latest file is valid THEN the Publishing checklist with the five FRC-CSO-JSN items is shown next to it; WHEN it is a draft THEN the checklist is not shown
-- [x] 2.18 WHEN the file is a draft THEN the button reads "Download draft" and the file is named `<acronym>-package-overview-DRAFT.json`
+- [x] 2.12 WHEN "FedRAMP package ID" is empty and the provider name is "Example Cloud Co." and the acronym "ERP" THEN `fedRampPackageId` is exactly "Example Cloud Co. ERP", no error names the package ID, and the file can still be valid; WHEN the box holds a value THEN it is copied as typed
+- [x] 2.13 WHEN "FedRAMP package ID" is empty THEN Screen D's read-only row for it reads "Not answered · the file uses “Example Cloud Co. ERP” (provider name and service acronym) until FedRAMP assigns one"; WHEN the problem "Assessor Name has not been confirmed on the FedRAMP Marketplace" is clicked THEN focus moves to the "Assessor Confirmed on FedRAMP Marketplace" checkbox
+- [x] 2.14 WHEN the same inputs and versions are generated twice THEN the two JSON files are identical byte for byte (stable key order)
+- [x] 2.15 WHEN a customer link token calls any route of this item THEN it is refused
+- [x] 2.16 WHEN an assessor name is entered and "Assessor Confirmed on FedRAMP Marketplace" is not ticked THEN the file is a draft with a problem naming the assessor; WHEN it is ticked THEN Screen D shows who ticked it and the date; WHEN the assessor name or ID changes THEN the tick is cleared
+- [x] 2.17 WHEN the Ignyte-hosted logo URL does not answer with an image THEN the file is a draft with a problem naming the logo
+- [x] 2.18 WHEN a file is shown on Screen D THEN its schema version, rules version and creation date and time are shown next to it
+- [x] 2.19 WHEN the latest file is valid THEN the Publishing checklist with its five items (CORS and the two headers from FRC-CSO-JSN, the logo item from CDS-CSO-PUB, the validator test from S3-03) is shown next to it; WHEN it is a draft THEN the checklist is not shown
+- [x] 2.20 WHEN the file is a draft THEN the button reads "Download draft" and the file is named `<acronym>-package-overview-DRAFT.json`
 
 ## 3. Verify
-- [ ] 3.1 Automated review (PB - Review PR) against this spec
+- [x] 3.1 Automated review (PB - Review PR) against this spec
 - [ ] 3.2 Human triage (gate 7) recorded in Linear IGN-8

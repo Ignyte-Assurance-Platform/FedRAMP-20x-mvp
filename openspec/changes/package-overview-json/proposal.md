@@ -1,6 +1,6 @@
 # Screen D — generate, validate and download the Package Overview JSON
 
-> Brain work item: [[wi-maaz20x-007-package-overview-json]] · brain_commit 0aa195347a95be589ff132ffeb6428df3365c41d · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-007-package-overview-json.md
+> Brain work item: [[wi-maaz20x-007-package-overview-json]] · brain_commit 7b3564b46297fb485fbe79b8c5e83e1b82263acf · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-007-package-overview-json.md
 > Compiled by PB - Spec Compile. Do NOT edit intent here; intent changes go back to the brain (Escalation Rule).
 
 ## Why
