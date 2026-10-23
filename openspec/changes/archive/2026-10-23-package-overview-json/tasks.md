@@ -29,4 +29,4 @@
 
 ## 3. Verify
 - [x] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear IGN-8
+- [x] 3.2 Human triage (gate 7) recorded in Linear IGN-8 (comment 4d261a47, 2026-10-23)
