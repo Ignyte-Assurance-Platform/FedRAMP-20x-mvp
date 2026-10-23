@@ -6,6 +6,7 @@ import goldenAnswers from "./testdata/golden-answers.json";
 import { fallbackPackageId } from "./mapping/package-overview";
 import goldenDocument from "./testdata/golden-package-overview.json";
 import {
+  ASSESSOR_NOT_CONFIRMED,
   createPackageOverviewGenerator,
   MissingAcronymError,
   packageOverviewFileName,
@@ -272,5 +273,14 @@ describe("logo host not configured (WI-007 follow-up)", () => {
   it("still says 'Logo is required' when nothing was uploaded", () => {
     const result = generator.generate(golden({ logoUrl: null }));
     expect(result.problems.map((p) => p.message)).toContain("Logo is required");
+  });
+});
+
+describe("assessor not confirmed (Screen D links it to the tick)", () => {
+  it("keeps the raw value Screen D matches on", () => {
+    // Pinned on both sides: app/routes/package/components/problem-list.tsx ASSESSOR_NOT_CONFIRMED_RAW.
+    expect(ASSESSOR_NOT_CONFIRMED).toBe("assessor not confirmed");
+    const result = generator.generate(golden({ assessorConfirmedAt: null }));
+    expect(result.problems.find((p) => p.path === "/assessor/name")?.raw).toBe(ASSESSOR_NOT_CONFIRMED);
   });
 });

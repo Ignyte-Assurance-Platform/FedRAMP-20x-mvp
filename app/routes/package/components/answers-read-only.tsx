@@ -13,6 +13,9 @@ export interface AnswerSectionView {
 /** The path the hosted logo takes in the file; problems about the logo link to this row. */
 export const LOGO_PATH = "/serviceIdentification/logo";
 
+/** The package ID row; when the customer left it empty the file uses the fallback, shown here. */
+export const PACKAGE_ID_PATH = "/serviceIdentification/fedRampPackageId";
+
 /** The DOM id of the row that answers a JSON path; problems link to it so focus can move there. */
 export function answerRowId(path: string): string {
   return `q${path.replace(/[^A-Za-z0-9]+/g, "-")}`;
@@ -30,6 +33,8 @@ export interface AnswersReadOnlyProps {
   logoUrl: string | null;
   /** Whether the customer uploaded a logo at all (it may have no public address yet). */
   logoUploaded: boolean;
+  /** The package ID the file uses when the customer left it empty; null otherwise. */
+  packageIdFallback?: string | null;
 }
 
 function LogoRow({ logoUrl, logoUploaded }: Pick<AnswersReadOnlyProps, "logoUrl" | "logoUploaded">) {
@@ -66,7 +71,7 @@ function LogoRow({ logoUrl, logoUploaded }: Pick<AnswersReadOnlyProps, "logoUrl"
 }
 
 /** Tab 1 answers, read-only (WI-007 §3): staff cannot change them here. */
-export function AnswersReadOnly({ sections, logoUrl, logoUploaded }: AnswersReadOnlyProps) {
+export function AnswersReadOnly({ sections, logoUrl, logoUploaded, packageIdFallback = null }: AnswersReadOnlyProps) {
   return (
     <div className="grid gap-6">
       <LogoRow logoUrl={logoUrl} logoUploaded={logoUploaded} />
@@ -90,7 +95,16 @@ export function AnswersReadOnly({ sections, logoUrl, logoUploaded }: AnswersRead
                   <dt id={answerRowId(row.path)} tabIndex={-1} className={`text-muted-foreground ${focusTargetClass}`}>
                     {row.question}
                   </dt>
-                  <dd className="break-words">{row.value || <span className="italic text-muted-foreground">not answered</span>}</dd>
+                  <dd className="break-words">
+                    {row.value ||
+                      (row.path === PACKAGE_ID_PATH && packageIdFallback ? (
+                        <span className="text-muted-foreground">
+                          Not answered · the file uses “{packageIdFallback}” (provider name and service acronym) until FedRAMP assigns one
+                        </span>
+                      ) : (
+                        <span className="italic text-muted-foreground">not answered</span>
+                      ))}
+                  </dd>
                 </div>
               ))}
             </dl>

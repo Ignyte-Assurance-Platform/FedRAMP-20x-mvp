@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PackageOverviewFileRow } from "~server/repositories";
-import { checkHostedLogo, compareVersions, logoCheckFor, packageOverviewStatus, type FetchLike } from "./package-overview";
+import { checkHostedLogo, compareVersions, logoCheckFor, packageIdForScreen, packageOverviewStatus, type FetchLike } from "./package-overview";
 
 const BASE = "https://storage.googleapis.com/maaz20x-logos/";
 const LOGO = `${BASE}customers/8a3c2f9e-1b2d-4c5e-9f00-112233445566/logo/0f1e2d3c.png`;
@@ -99,5 +99,24 @@ describe("packageOverviewStatus (WI-007 §3)", () => {
     expect(compareVersions("0.10.0", "0.9.1")).toBe(1);
     expect(compareVersions("0.2.0", "0.2.0")).toBe(0);
     expect(compareVersions("0.1.6", "0.2.0")).toBe(-1);
+  });
+});
+
+describe("packageIdForScreen (WI-007 §3 package ID fallback)", () => {
+  const id = { providerName: "Example Cloud Co.", serviceAcronym: "ERP" };
+
+  it("gives the fallback and an empty row when the package ID is missing or blank", () => {
+    for (const answers of [{ serviceIdentification: { ...id } }, { serviceIdentification: { ...id, fedRampPackageId: "  " } }]) {
+      const result = packageIdForScreen(answers);
+      expect(result.fallback).toBe("Example Cloud Co. ERP");
+      expect(result.answers.serviceIdentification).toMatchObject({ fedRampPackageId: "" });
+    }
+  });
+
+  it("gives no fallback for a typed ID or when the provider name or acronym is missing", () => {
+    const typed = { serviceIdentification: { ...id, fedRampPackageId: "FR2401234567" } };
+    expect(packageIdForScreen(typed)).toEqual({ answers: typed, fallback: null });
+    expect(packageIdForScreen({ serviceIdentification: { providerName: "Example Cloud Co." } }).fallback).toBeNull();
+    expect(packageIdForScreen({}).fallback).toBeNull();
   });
 });

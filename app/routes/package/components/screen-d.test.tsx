@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { AnswersReadOnly, answerRowId, LOGO_PATH } from "./answers-read-only";
-import { ProblemList, problemOwner, problemSummary, targetFor } from "./problem-list";
+import { AnswersReadOnly, answerRowId, LOGO_PATH, PACKAGE_ID_PATH } from "./answers-read-only";
+import { ASSESSOR_NOT_CONFIRMED_RAW, ProblemList, problemOwner, problemSummary, targetFor } from "./problem-list";
 
 /**
  * Structural checks on the Screen D components (WI-007 §10). focus() and scrollIntoView()
@@ -96,5 +96,32 @@ describe("ProblemList", () => {
     expect(html).toContain('href="#assessorName"');
     expect(html).toContain("2 problems to fix");
     expect(html).not.toContain('href="#undefined"');
+  });
+});
+
+describe("package ID fallback on Screen D (WI-007 §3)", () => {
+  const withPackageId = (value: string) => [
+    { path: "/serviceIdentification", title: "Service Identification", rows: [{ path: PACKAGE_ID_PATH, question: "FedRAMP ID", value }] },
+  ];
+
+  it("shows the value the file uses when the customer left the package ID empty", () => {
+    const html = renderToStaticMarkup(
+      <AnswersReadOnly sections={withPackageId("")} logoUrl={null} logoUploaded={false} packageIdFallback="Example Cloud Co. ERP" />,
+    );
+    expect(html).toContain("Not answered · the file uses “Example Cloud Co. ERP” (provider name and service acronym) until FedRAMP assigns one");
+  });
+
+  it("shows a typed package ID as typed, and plain 'not answered' without a fallback", () => {
+    expect(renderToStaticMarkup(<AnswersReadOnly sections={withPackageId("FR2401234567")} logoUrl={null} logoUploaded={false} packageIdFallback={null} />)).toContain("FR2401234567");
+    expect(renderToStaticMarkup(<AnswersReadOnly sections={withPackageId("")} logoUrl={null} logoUploaded={false} />)).toContain("not answered");
+  });
+});
+
+describe("assessor not confirmed → the tick", () => {
+  it("links the 'not confirmed' problem to the Assessor Confirmed tick, and a missing name to the name box", () => {
+    // Same literal as the generator's ASSESSOR_NOT_CONFIRMED, pinned in server/fedramp/package-overview.test.ts.
+    expect(ASSESSOR_NOT_CONFIRMED_RAW).toBe("assessor not confirmed");
+    expect(targetFor("/assessor/name", new Set(), ASSESSOR_NOT_CONFIRMED_RAW)).toBe("assessorConfirmed");
+    expect(targetFor("/assessor/name", new Set(), "/assessor/name must have required property")).toBe("assessorName");
   });
 });

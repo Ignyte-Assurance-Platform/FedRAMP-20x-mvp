@@ -4,7 +4,12 @@ export interface ProblemView {
   path: string;
   question: string;
   message: string;
+  /** The generator's raw cause; tells the "not confirmed" assessor problem apart from a missing name. */
+  raw?: string;
 }
+
+/** Same value as the generator's ASSESSOR_NOT_CONFIRMED (browser code cannot import it; both tests pin the literal). */
+export const ASSESSOR_NOT_CONFIRMED_RAW = "assessor not confirmed";
 
 /** Who fixes a problem: the customer in the intake, Ignyte in the boxes on this page, or Ignyte's logo hosting. */
 export type ProblemOwner = "intake" | "screen-d" | "logo";
@@ -26,8 +31,10 @@ export function problemOwner(path: string): ProblemOwner {
   return "intake";
 }
 
-/** The element a problem links to: an Ignyte-only box, else the nearest answer row that exists on the page. */
-export function targetFor(path: string, knownPaths: ReadonlySet<string>): string | undefined {
+/** The element a problem links to: the "Assessor Confirmed" tick, an Ignyte-only box, else the nearest answer row on the page. */
+export function targetFor(path: string, knownPaths: ReadonlySet<string>, raw?: string): string | undefined {
+  // The tick fixes "not confirmed on the FedRAMP Marketplace", not the name box.
+  if (raw === ASSESSOR_NOT_CONFIRMED_RAW) return "assessorConfirmed";
   const box = SCREEN_D_BOXES.find(([prefix]) => underPrefix(path, prefix));
   if (box) return box[1];
   const parts = path.split("/").filter(Boolean);
@@ -69,7 +76,7 @@ export function ProblemList({ problems, knownPaths }: { problems: ProblemView[];
       </p>
       <ul className="mt-2 grid gap-1 text-sm">
         {problems.map((problem) => {
-          const target = targetFor(problem.path, knownPaths);
+          const target = targetFor(problem.path, knownPaths, problem.raw);
           return (
             <li key={`${problem.path}:${problem.message}`}>
               {target ? (

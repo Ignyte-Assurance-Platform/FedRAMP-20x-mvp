@@ -125,7 +125,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <AnswersReadOnly sections={answers} logoUrl={screen.logoUrl} logoUploaded={screen.logoUploaded} />
+            <AnswersReadOnly sections={answers} logoUrl={screen.logoUrl} logoUploaded={screen.logoUploaded} packageIdFallback={screen.packageIdFallback} />
           </CardContent>
         </Card>
 
@@ -178,7 +178,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
                   id="assessorConfirmed"
                   name="confirmed"
                   type="checkbox"
-                  className="size-4 accent-primary"
+                  className="size-4 scroll-mt-24 accent-primary"
                   defaultChecked={inputs.assessorConfirmedAt !== null}
                   disabled={busy}
                 />

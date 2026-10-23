@@ -59,6 +59,9 @@ export function packageOverviewFileName(acronym: string, valid: boolean): string
 
 export const LOGO_PATH = "/serviceIdentification/logo";
 const ASSESSOR_NAME_PATH = "/assessor/name";
+
+/** The `raw` of the "not confirmed on the FedRAMP Marketplace" problem; Screen D links it to the tick, not the name box. */
+export const ASSESSOR_NOT_CONFIRMED = "assessor not confirmed";
 const NEXT_REPORT_PATH = "/serviceProperties/nextOngoingCertificationReportDate";
 
 function businessProblems(nav: SchemaNavigator, doc: Record<string, unknown>, input: GenerateInput): Problem[] {
@@ -80,7 +83,7 @@ function businessProblems(nav: SchemaNavigator, doc: Record<string, unknown>, in
       path: ASSESSOR_NAME_PATH,
       question: name(ASSESSOR_NAME_PATH),
       message: `${name(ASSESSOR_NAME_PATH)} has not been confirmed on the FedRAMP Marketplace`,
-      raw: "assessor not confirmed",
+      raw: ASSESSOR_NOT_CONFIRMED,
     });
   }
 

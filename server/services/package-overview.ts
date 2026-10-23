@@ -4,6 +4,7 @@ import { getDb, type Database } from "~server/db";
 import {
   answerSections,
   createPackageOverviewGenerator,
+  fallbackPackageId,
   LOGO_HOST_NOT_CONFIGURED,
   SchemaNavigator,
   todayInNewYork,
@@ -314,6 +315,8 @@ export interface PackageOverviewScreen {
   };
   /** Tab 1 answers, read-only, in schema order. */
   answers: AnswerSection[];
+  /** The package ID the file uses when the customer left it empty ("<provider name> <acronym>"); null otherwise. */
+  packageIdFallback: string | null;
   logoUrl: string | null;
   logoUploaded: boolean;
   /** The vendored Package Overview version the next generation will use. */
@@ -331,6 +334,22 @@ export interface PackageOverviewScreen {
   } | null;
 }
 
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+/**
+ * WI-007 §3 package ID fallback, for Screen D: the value the file will carry when the customer
+ * left "FedRAMP package ID" empty, and the answers with an empty package ID row so the
+ * read-only list can show it in schema order.
+ */
+export function packageIdForScreen(answers: Record<string, unknown>): { answers: Record<string, unknown>; fallback: string | null } {
+  const identification = isRecord(answers.serviceIdentification) ? answers.serviceIdentification : undefined;
+  const typed = identification?.fedRampPackageId;
+  if (!identification || (typeof typed === "string" && typed.trim())) return { answers, fallback: null };
+  const fallback = fallbackPackageId(identification.providerName, identification.serviceAcronym) || null;
+  if (!fallback) return { answers, fallback: null };
+  return { answers: { ...answers, serviceIdentification: { ...identification, fedRampPackageId: "" } }, fallback };
+}
+
 /** Everything Screen D shows for one customer (WI-007 §3). */
 export async function getPackageOverviewScreen(
   customerId: string,
@@ -342,6 +361,7 @@ export async function getPackageOverviewScreen(
   const confirmedBy = inputs?.assessorConfirmedBy ? await usersRepo.findUser(deps.db, inputs.assessorConfirmedBy) : undefined;
   const tab1 = await loadTab1Answers(customerId, deps);
   const { latest, ...status } = await getPackageOverviewStatus(customerId, tab1.updatedAt, deps);
+  const packageId = packageIdForScreen(tab1.answers);
 
   return {
     customer: { id: customer.id, name: customer.name },
@@ -352,7 +372,8 @@ export async function getPackageOverviewScreen(
       assessorConfirmedAt: inputs?.assessorConfirmedAt ?? null,
       assessorConfirmedBy: confirmedBy?.name ?? (inputs?.assessorConfirmedAt ? "an Ignyte user" : null),
     },
-    answers: answerSections(getSchemaNavigator(), tab1.answers),
+    answers: answerSections(getSchemaNavigator(), packageId.answers),
+    packageIdFallback: packageId.fallback,
     logoUrl: tab1.logoUrl,
     logoUploaded: tab1.logoUploaded,
     schemaVersion: deps.generator.schemaVersion,
