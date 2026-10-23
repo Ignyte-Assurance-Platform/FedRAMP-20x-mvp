@@ -54,4 +54,4 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, build and the 
 
 ## Status
 
-WI-010 (local skeleton) is in progress on `feat/wi-010-local-skeleton`, started at risk before gate 3; open questions are in `docs/at-risk-notes-wi-010.md`. Clickable mockups of screens A–E: `docs/mockups/`.
+WI-010 (local skeleton) is in progress on `feat/wi-010-local-skeleton`, started at risk before gate 3; open questions are in `docs/at-risk-notes-wi-010.md`. Clickable mockups of screens A–E: `docs/mockups/` ([customer intake](https://claude.ai/artifact/WDpuTu3NEkoX474inoT2dG), [Ignyte console](https://claude.ai/artifact/N18wcZ6j6EuuUydAqGVJk5); sources and tours in [`docs/mockups/README.md`](docs/mockups/README.md)).
