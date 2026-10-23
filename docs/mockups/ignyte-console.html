@@ -98,6 +98,13 @@ td a.name:hover{text-decoration:underline}
 .ksirow .ans{color:var(--fg);margin-top:2px}
 .ksirow .ans.help{color:var(--warn)}
 .ksirow .ans.none{color:var(--muted);font-style:italic}
+.ksirow .often{color:var(--muted);font-size:13px;margin-top:2px}
+.ign{margin-top:8px;padding:8px 10px;border:1px dashed var(--line-strong);border-radius:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.ign b{color:var(--muted);font-weight:500}
+.ign select,.ign input,.ign textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px}
+.ign input{flex:1;min-width:160px}
+.ign textarea{width:100%;min-height:56px}
+.fups{font-size:13px;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:8px 10px;margin-bottom:8px}
 .files{list-style:none;padding:0;margin:0}
 .files li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
 .files li:last-child{border-bottom:0}
@@ -113,7 +120,29 @@ td a.name:hover{text-decoration:underline}
 .val ul{margin:0 0 12px;padding-left:18px;font-size:13px;color:var(--err)}
 .val ul code{font:12px var(--mono);background:var(--err-soft);padding:1px 4px;border-radius:3px}
 pre{font:12.5px/1.45 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:12px;overflow-x:auto;margin:0;max-height:360px}
-.demo{font-size:12px;color:var(--muted);margin-top:8px}
+.demo{font-size:12px;color:var(--muted);margin-top:12px}
+.sub{font-size:13px;color:var(--muted);margin:0}
+.stack{display:grid;gap:12px;margin-top:12px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:500;cursor:pointer}
+.chk input{width:auto;margin:0}
+.notice{margin:12px 0 0;font-size:13px;background:var(--warn-soft);color:var(--warn);border-radius:var(--r);padding:8px 10px}
+.okbanner{margin-top:12px;font-size:14px;font-weight:500;background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok);border-radius:var(--r);padding:10px 12px}
+.probs{margin-top:12px;border:1px solid var(--err);background:var(--err-soft);border-radius:var(--r);padding:12px}
+.probs p{margin:0 0 6px;font-size:13px;font-weight:600;color:var(--err)}
+.probs p span{font-weight:400;color:var(--muted)}
+.probs ul{margin:0;padding-left:18px;font-size:13px}
+.probs a{color:var(--err)}
+.filemeta{grid-template-columns:auto 1fr;font-size:13px;margin-top:12px}
+.filemeta dd{font-variant-numeric:tabular-nums}
+.h3{font-size:14px;font-weight:600;margin:14px 0 2px}
+.cl{margin:8px 0 0;padding-left:20px;font-size:13px;display:grid;gap:4px}
+.logorow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.logorow .lp{width:120px;height:44px;display:grid;place-items:center;background:#fff;color:#1b1f26;border:1px solid var(--line);border-radius:4px}
+.logorow a{color:var(--fg);font:12px var(--mono);overflow-wrap:anywhere}
+.kv dt[tabindex]:focus-visible,#assessorName:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.gbtn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--surface);color:var(--fg);border-color:var(--line-strong)}
+.gbtn:hover{border-color:var(--fg)}
+.cols>*{min-width:0}
 .demo button{font:inherit;background:none;border:0;color:var(--accent);cursor:pointer;padding:0}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:var(--r);font-size:14px;opacity:0;pointer-events:none;transition:.25s}
 .toast.show{opacity:1;transform:translateX(-50%)}
@@ -122,7 +151,7 @@ pre{font:12.5px/1.45 var(--mono);background:var(--bg);border:1px solid var(--lin
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
-<div class="note"><div class="wrap">Mockup for approval · Oct 14, 2026 · Not functional. Screens A–D of the Ignyte side. Sign in with any username and password. <a href="https://claude.ai/artifact/WDpuTu3NEkoX474inoT2dG" style="color:inherit;font-weight:600">Open the customer intake (screen E)</a></div></div>
+<div class="note"><div class="wrap">Mockup for approval · Oct 14, 2026, updated Oct 19 after Christina's review and Oct 23 to match the built Screen D (FedRAMP-20x-mvp PR #13) · Not functional. Screens A–D of the Ignyte side. <a href="https://claude.ai/artifact/WDpuTu3NEkoX474inoT2dG" style="color:inherit;font-weight:600">Open the customer intake (screen E)</a></div></div>
 
 <div class="topbar" id="topbar" hidden><div class="wrap">
   <a class="logo" href="#customers" style="color:inherit;text-decoration:none"><i></i>Ignyte <span>FedRAMP 20x</span></a>
@@ -135,13 +164,10 @@ pre{font:12.5px/1.45 var(--mono);background:var(--bg);border:1px solid var(--lin
 <section class="screen" id="s-login">
   <div class="card login">
     <div class="logo" style="margin-bottom:18px"><i></i>Ignyte <span>FedRAMP 20x</span></div>
-    <h1>Sign in</h1><p>Ignyte staff only. One account for the MVP; Google sign-in comes later.</p>
+    <h1>Sign in</h1><p>Ignyte staff only. Use your Ignyte Google account; only people on the approved list get in. Nobody gets a new password.</p>
     <form id="loginform">
-      <label class="f">Username<input id="u" autocomplete="username" value="max"></label>
-      <label class="f">Password<input id="p" type="password" autocomplete="current-password" value="••••••••••"></label>
-      <span class="err" id="loginerr">Enter your username and password.</span>
-      <button class="btn primary" type="submit">Sign in</button>
-      <small style="color:var(--muted)">Sessions expire after 8 hours.</small>
+      <button class="btn primary gbtn" type="submit"><svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M17.6 9.2c0-.6-.1-1.2-.2-1.7H9v3.3h4.8a4.1 4.1 0 0 1-1.8 2.7v2.2h2.9c1.7-1.6 2.7-3.9 2.7-6.5z"/><path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-2.9-2.2c-.8.5-1.8.9-3.1.9-2.4 0-4.4-1.6-5.1-3.8H.9v2.3A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.9 10.7a5.4 5.4 0 0 1 0-3.4V5H.9a9 9 0 0 0 0 8z"/><path fill="#EA4335" d="M9 3.6c1.3 0 2.5.5 3.5 1.4l2.6-2.6A9 9 0 0 0 .9 5l3 2.3C4.6 5.2 6.6 3.6 9 3.6z"/></svg>Sign in with Google</button>
+      <small style="color:var(--muted)">Two-step verification works as it does for your Ignyte account. Sessions expire after 8 hours.</small>
     </form>
   </div>
 </section>
@@ -177,7 +203,7 @@ pre{font:12.5px/1.45 var(--mono);background:var(--bg);border:1px solid var(--lin
 <section class="screen" id="s-customer">
   <div class="crumb"><a href="#customers">Customers</a> / <span id="dcrumb"></span></div>
   <div class="head"><div><h1 id="dname"></h1><p id="dservice"></p></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-copy="dlink">Copy intake link</button><a class="btn" href="https://claude.ai/artifact/WDpuTu3NEkoX474inoT2dG">Preview as customer</a><button class="btn" id="unlock">Unlock form</button><button class="btn primary" id="gen">Generate JSON</button></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-copy="dlink">Copy intake link</button><a class="btn" href="https://claude.ai/artifact/WDpuTu3NEkoX474inoT2dG">Preview as customer</a><button class="btn" id="unlock">Unlock form</button></div></div>
   <div class="cols">
     <div class="card">
       <div class="sect"><h2>Company &amp; service <span class="pill" id="d1pill"></span></h2><dl class="kv" id="kv"></dl></div>
@@ -186,15 +212,31 @@ pre{font:12.5px/1.45 var(--mono);background:var(--bg);border:1px solid var(--lin
     </div>
     <div class="side" style="display:grid;gap:20px">
       <div class="card"><div class="sect"><h2>Status</h2><div class="meta" id="meta"></div><div class="link" style="margin-top:10px"><code id="dlink"></code></div></div></div>
-      <div class="card"><div class="sect"><h2>Package Overview JSON</h2>
-        <p style="font-size:13px;color:var(--muted);margin:0">Built from tab 1 and validated against FedRAMP schema FRC-CSO-PKG v0.2.0 (pinned 2026-10-16).</p>
-        <div class="val" id="val">
-          <div class="st" id="valst"></div>
-          <ul id="valerrs"></ul>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn sm" id="dl">Download JSON</button><button class="btn sm" data-copy="json">Copy</button></div>
-          <pre id="json"></pre>
+      <div class="card" id="igncard"><div class="sect"><h2>Ignyte-only details</h2>
+        <p class="sub">Typed by Ignyte, never shown to the customer. They go into the file as the assessor and the advisors.</p>
+        <div class="stack">
+          <label class="f">Assessor name<input id="assessorName" value="Example Assessor LLC" maxlength="200" autocomplete="off"></label>
+          <label class="f">FedRAMP assessor ID<input id="assessorId" value="000123" inputmode="numeric" maxlength="20" autocomplete="off"></label>
+          <label class="f">Advisor<input id="advisorName" value="Ignyte" maxlength="200" autocomplete="off"></label>
+          <div><button class="btn sm" id="saveinputs" type="button">Save</button> <span class="sub" id="savedmsg" role="status"></span></div>
+          <label class="chk"><input type="checkbox" id="assessorConfirmed"> Assessor Confirmed on FedRAMP Marketplace</label>
+          <p class="sub" id="confirmtxt" style="padding-left:24px"></p>
         </div>
-        <div class="demo">Demo: <button id="showbad">show the failing case</button> · <button id="showgood">show the passing case</button></div>
+      </div></div>
+      <div class="card" id="jsoncard"><div class="sect"><h2>Package Overview JSON</h2>
+        <p class="sub">Builds the file from tab 1 and the details above, then checks it against FedRAMP Package Overview 0.2.0 and Ignyte's own checks.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn primary" id="gen" type="button">Generate JSON</button><button class="btn" id="dl" type="button" hidden>Download</button></div>
+        <p class="notice" id="changed" role="status" hidden>Answers changed since this file was generated. Generate again.</p>
+        <div id="pkgresult"></div>
+        <dl class="kv filemeta" id="filemeta" hidden></dl>
+        <div id="checklist" hidden><h3 class="h3">Publishing checklist</h3><p class="sub">Give this to the customer with the file.</p><ol class="cl">
+          <li>Other websites can read the file: CORS allows web applications on other domains to load it.</li>
+          <li>The file is served with Content-Type: application/json.</li>
+          <li>The file is served with X-Content-Type-Options: nosniff.</li>
+          <li>The logo link opens directly as an image in a browser: no download, sign-in or processing.</li>
+          <li>Final test: load the file's public web address in FedRAMP's JSON Schema Validator and check that it passes.</li></ol></div>
+        <p id="nofile" class="sub" style="margin-top:12px">No file generated yet.</p>
+        <div class="demo">Demo: <button id="showbad" type="button">answers with problems</button> · <button id="showgood" type="button">answers fixed</button> · <button id="showchanged" type="button">customer changes an answer</button></div>
       </div></div>
     </div>
   </div>
@@ -204,12 +246,12 @@ pre{font:12.5px/1.45 var(--mono);background:var(--bg);border:1px solid var(--lin
 <div class="toast" id="toast">Copied</div>
 
 <script>
-const GOLD={"serviceIdentification":{"fedRampPackageId":"EXCSO","providerName":"Example Cloud Co.","serviceName":"Example Records Platform","serviceAcronym":"ERP","serviceDescription":"Records management service for federal agencies.","certificationType":"20x","website":"https://www.example.com","logo":"https://assets.20x.ignyteplatform.com/logos/7f3a9c2e/example-cloud-logo.svg"},"serviceProperties":{"serviceType":["SaaS"],"deploymentModel":"Government Community Cloud","businessCategory":["Data Management","Artificial Intelligence (AI)"],"trustCenter":{"repositoryType":["Trust Center","Assessment Reports"],"url":"https://trust.example.com","repositoryDescription":"Public trust center with package documents.","authenticationRequired":true,"accessRequestInstructions":"Request access through the portal sign-up form."},"secureConfigurationGuidance":{"repositoryType":["Secure Configuration Guidance"],"url":"https://docs.example.com/scg","repositoryDescription":"Recommended secure configuration guide.","authenticationRequired":false},"nextOngoingCertificationReportDate":"2027-01-15"},"contactInformation":[{"contactType":"Security","contactName":"Security Team","contactEmail":"security@example.com","contactPhone":"202-555-0123"},{"contactType":"Sales","contactName":"Federal Sales","contactEmail":"sales@example.com","contactPhone":"202-555-0199"}],"assessor":{"name":"Example Assessor LLC","assessorID":"000123"},"certifiedServices":[{"serviceName":"Records Platform","serviceDescription":"Core records service.","dateAvailable":"2026-08-01"}],"thirdPartyInformationResources":{"nonCertified":[{"name":"Object Storage Service","provider":"Example Storage Inc.","website":"https://storage.example.net","useCase":"Stores encrypted backups."}]}};
-const BAD_ERRS=[["/contactInformation/1/contactPhone","must be a US phone number with area code, got <code>555-0199</code>"],["/serviceProperties/businessCategory/1","<code>AI</code> is not an allowed value; use <code>Artificial Intelligence (AI)</code>"],["/contactInformation/0/contactType","<code>security</code> must be one of Security, Sales, Primary"],["/serviceProperties/trustCenter","accessRequestInstructions is required when authenticationRequired is true"],["/assessor/assessorID","<code>12345</code> does not match the assessor ID format"]];
+const GOLD={"serviceIdentification":{"fedRampPackageId":"Example Cloud Co. ERP","providerName":"Example Cloud Co.","serviceName":"Example Records Platform","serviceAcronym":"ERP","serviceDescription":"Records management service for federal agencies.","certificationType":"20x","website":"https://www.example.com","logo":"https://assets.20x.ignyteplatform.com/logos/7f3a9c2e/example-cloud-logo.svg"},"serviceProperties":{"serviceType":["SaaS"],"deploymentModel":"Government Community Cloud","businessCategory":["Data Management","Artificial Intelligence (AI)"],"trustCenter":{"repositoryType":["Trust Center","Assessment Reports"],"url":"https://trust.example.com","repositoryDescription":"Public trust center with package documents.","authenticationRequired":true,"accessRequestInstructions":"Request access through the portal sign-up form."},"secureConfigurationGuidance":{"repositoryType":["Secure Configuration Guidance"],"url":"https://docs.example.com/scg","repositoryDescription":"Recommended secure configuration guide.","authenticationRequired":false},"nextOngoingCertificationReportDate":"2027-01-15"},"contactInformation":[{"contactType":"Security","contactName":"Security Team","contactEmail":"security@example.com","contactPhone":"202-555-0123"},{"contactType":"Sales","contactName":"Federal Sales","contactEmail":"sales@example.com","contactPhone":"202-555-0199"}],"assessor":{"name":"Example Assessor LLC","assessorID":"000123"},"certifiedServices":[{"serviceName":"Records Platform","serviceDescription":"Core records service.","dateAvailable":"2026-08-01"}],"thirdPartyInformationResources":{"nonCertified":[{"name":"Object Storage Service","provider":"Example Storage Inc.","website":"https://storage.example.net","useCase":"Stores encrypted backups."}]}};
+const BAD_ERRS=[["/contactInformation/1/contactPhone","must match ###-###-#### format, got <code>(202) 555-0199</code>"],["/serviceProperties/businessCategory/1","<code>AI</code> is not an allowed value; use <code>Artificial Intelligence (AI)</code>"],["/contactInformation/0/contactType","<code>security</code> must be one of Security, Sales, Primary"],["/serviceProperties/trustCenter","accessRequestInstructions is required when authenticationRequired is true"],["/assessor/assessorID","<code>12345</code> does not match the assessor ID format"]];
 const BASE='https://20x.ignyteplatform.com/intake/';
 const tok=()=>Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join('');
 let CUST=[
- {id:1,company:"Example Cloud Co.",service:"Example Records Platform",desc:"Records management service for federal agencies.",contact:"Dana Whitfield",email:"dana.whitfield@example.com",status:"sub",token:"7f3a9c2e51b84d06a9e1c47b2d8f0e63",created:"Oct 9, 2026",submitted:"Oct 13, 2026",tab1:14,tab1tot:14,ksi:6,files:3},
+ {id:1,company:"Example Cloud Co.",service:"Example Records Platform",desc:"Records management service for federal agencies.",contact:"Dana Whitfield",email:"dana.whitfield@example.com",status:"sub",token:"7f3a9c2e51b84d06a9e1c47b2d8f0e63",created:"Oct 9, 2026",submitted:"Oct 13, 2026",tab1:14,tab1tot:14,ksi:7,files:3},
  {id:2,company:"Tandem Learning Inc.",service:"Tandem Platform",desc:"Student information platform for K-12 districts.",contact:"Jordan Lee",email:"jordan.lee@tandem.example",status:"ip",token:"c41e0b7d9a2f4e8b86d3f15a0c9e7b24",created:"Oct 12, 2026",submitted:null,tab1:9,tab1tot:14,ksi:2,files:1},
  {id:3,company:"ClassLink",service:"ClassLink LaunchPad",desc:"Single sign-on and rostering for education.",contact:"Priya Natarajan",email:"priya@classlink.example",status:"ns",token:"e9b2d6f04c7a41e3b5d8a0f6c2e19b77",created:"Oct 14, 2026",submitted:null,tab1:0,tab1tot:14,ksi:0,files:0}
 ];
@@ -221,34 +263,65 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-copy]');if
 
 function renderList(){$('#rows').innerHTML=CUST.map(c=>`<tr><td><a class="name" href="#customer-${c.id}">${c.company}</a></td><td>${c.service}</td><td><span class="pill ${ST[c.status][1]}">${ST[c.status][0]}</span></td><td><span class="link"><code>…/intake/${c.token.slice(0,8)}…</code><button class="btn sm" data-copy="lk${c.id}">Copy link</button><span id="lk${c.id}" hidden>${BASE+c.token}</span></span></td><td class="date">${c.created}</td><td><a class="btn sm" href="#customer-${c.id}">Open</a></td></tr>`).join('');$('#count').textContent=CUST.length+' customers';}
 
-let current=null, badMode=false;
+let current=null;
 function renderDetail(id){const c=CUST.find(x=>x.id==id)||CUST[0];current=c;
   $('#dcrumb').textContent=c.company;$('#dname').textContent=c.company;$('#dservice').textContent=c.service+' · '+c.desc;$('#dlink').textContent=BASE+c.token;
   $('#unlock').hidden=c.status!=='sub';
   $('#meta').innerHTML=`<span>Status <b>${ST[c.status][0]}</b></span><span>Created <b>${c.created}</b></span><span>Submitted <b>${c.submitted||'—'}</b></span><span>Primary contact <b>${c.contact}</b> · ${c.email}</span><span>Intake link</span>`;
   const full=c.status==='sub'; $('#d1pill').textContent=`${c.tab1}/${c.tab1tot} fields`;$('#d1pill').className='pill '+(c.tab1===c.tab1tot?'ok':'ns');
-  $('#d2pill').textContent=`${c.ksi}/7 answered`;$('#d2pill').className='pill '+(c.ksi===7?'ok':'ns');$('#d3pill').textContent=`${c.files} files`;$('#d3pill').className='pill ns';
+  $('#d2pill').textContent=`${c.ksi}/7 KSIs answered`;$('#d2pill').className='pill '+(c.ksi===7?'ok':'ns');$('#d3pill').textContent=`${c.files} files`;$('#d3pill').className='pill ns';
   const g=GOLD.serviceIdentification,p=GOLD.serviceProperties; const em='<dd class="empty">Not answered yet</dd>';
-  const rows=full?[["Provider name",c.company],["Service name",c.service],["Acronym",g.serviceAcronym],["Description",g.serviceDescription],["Certification type","20x · Class A"],["Package ID","Not assigned yet · JSON uses EXCSO (name + acronym)"],["Website",g.website],["Logo","example-cloud-logo.svg · hosted by Ignyte"],["Service type",p.serviceType.join(', ')],["Deployment model",p.deploymentModel],["Business categories",p.businessCategory.join(', ')],["Trust center",p.trustCenter.url+' · sign-in required'],["Secure configuration guidance",p.secureConfigurationGuidance.url],["Next report date",p.nextOngoingCertificationReportDate],["Contacts","Security Team · security@example.com · 202-555-0123<br>Federal Sales · sales@example.com · 202-555-0199<br>Dana Whitfield, CISO · dana.whitfield@example.com"],["Certified services","Records Platform (since 2026-08-01)"],["Third parties","Object Storage Service, Example Storage Inc. · not FedRAMP certified · stores encrypted backups"],["Assessor","Ignyte · ID — (filled by Ignyte)"]]
-   :c.status==='ip'?[["Provider name",c.company],["Service name",c.service],["Acronym","TDM"],["Description",c.desc],["Certification type","20x · Class A"],["Package ID","Not assigned yet"],["Website","https://www.tandem.example"],["Logo",null],["Service type","SaaS"],["Deployment model","Government Community Cloud"],["Business categories","Education & Training, Learning Management"],["Trust center",null],["Contacts","Jordan Lee · jordan.lee@tandem.example"],["Assessor","Ignyte · ID — (filled by Ignyte)"]]
+  const rows=full?[["Provider name",c.company],["Service name",c.service],["Acronym",g.serviceAcronym],["Description",g.serviceDescription],["Certification type","20x · Class A"],["Package ID","Not answered · the file uses “Example Cloud Co. ERP” (provider name and service acronym) until FedRAMP assigns one"],["Website",g.website],["Logo",`<span class="logorow"><span class="lp"><svg viewBox="0 0 120 40" width="104" height="35" aria-label="Example Cloud Co. logo"><rect x="2" y="8" width="24" height="24" rx="5" fill="#2563eb"/><path d="M8 20h12M14 14v12" stroke="#fff" stroke-width="3"/><text x="32" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="currentColor">Example</text></svg></span><a href="#" onclick="return false">${g.logo}</a></span>`],["Service type",p.serviceType.join(', ')],["Deployment model",p.deploymentModel],["Business categories",p.businessCategory.join(', ')],["Trust center",p.trustCenter.url+' · sign-in required'],["Secure configuration guidance",p.secureConfigurationGuidance.url],["Next report date",p.nextOngoingCertificationReportDate],["Contacts","Security Team · security@example.com · 202-555-0123<br>Federal Sales · sales@example.com · 202-555-0199<br>Dana Whitfield, CISO · dana.whitfield@example.com"],["Certified services","Records Platform (since 2026-08-01)"],["Third parties","Object Storage Service, Example Storage Inc. · not FedRAMP certified · stores encrypted backups"]]
+   :c.status==='ip'?[["Provider name",c.company],["Service name",c.service],["Acronym","TDM"],["Description",c.desc],["Certification type","20x · Class A"],["Package ID","Not assigned yet"],["Website","https://www.tandem.example"],["Logo",null],["Service type","SaaS"],["Deployment model","Government Community Cloud"],["Business categories","Education & Training, Learning Management"],["Trust center",null],["Contacts","Jordan Lee · jordan.lee@tandem.example"]]
    :[["Provider name",c.company],["Service name",c.service],["Description",c.desc],["Contacts",c.contact+' · '+c.email]];
-  $('#kv').innerHTML=rows.map(([k,v])=>`<dt>${k}</dt>${v?`<dd>${v}</dd>`:em}`).join('');
-  const K=[["KSI-CED-RAT","Reviewing All Training","All staff complete annual security awareness in KnowBe4. Completion is reviewed quarterly by HR and the CISO."],["KSI-CMT-LMC","Logging Changes","All changes go through GitHub pull requests with required review. Deploy log and PR link kept in the change record."],["KSI-CNA-RNT","Restricting Network Traffic","Production runs in private subnets; only the load balancer is public. Security groups deny by default."],["KSI-IAM-AAM","Automating Account Management","Okta is the source of truth, SCIM from HR, same-day removal, quarterly access review."],["KSI-IAM-APM","Adopting Passwordless Methods",{help:true}],["KSI-INR-RIR","Reviewing Incident Response Procedures","IR plan v2.3 (March 2026), tabletop June 2026. Recovery runbooks per service, last restore test August 2026."],["KSI-SVC-SIN","Securing Information","AES-256 at rest (AWS KMS, FIPS 140-3 validated), TLS 1.2+ in transit."]];
-  $('#ksilist').innerHTML=K.map((k,i)=>{const answered=i<c.ksi||(full);const help=k[2].help; return `<div class="ksirow"><span class="code">${k[0]}</span><div><div class="nm">${k[1]}</div><div class="ans ${help?'help':answered?'':'none'}">${help?'Customer asked for help from Ignyte':answered?k[2]:'Not answered yet'}</div></div></div>`}).join('');
+  $('#kv').innerHTML=rows.map(([k,v])=>`<dt id="${rowId(k)}" tabindex="-1">${k}</dt>${v?`<dd>${v}</dd>`:em}`).join('');
+  // Short excerpts of the sample answers in the customer form (wi-maaz20x-005, Christina's review Oct 19, 2026). Third item: "How often?" line, where the box has one.
+  const K=[["KSI-CED-RAT","Reviewing All Training","Yearly awareness training and monthly phishing tests; scored lab for admins; yearly secure delivery training for engineers; quarterly restore drills. CISO reviews all four results quarterly."],["KSI-CMT-LMC","Logging Changes","Reviewed pull requests, deploy only from the pipeline; console and API changes in the cloud audit log. Changes outside the pipeline alert on-call. Security lead reviews weekly; last quarter 412 pipeline and 3 manual changes, all explained."],["KSI-CNA-RNT","Restricting Network Traffic","Only the load balancer is public (443); private subnets, deny by default. Outbound through a proxy with 14 approved destinations. Daily drift check; infrastructure lead reviews quarterly."],["KSI-IAM-AAM","Automating Account Management","HR system creates, changes and disables accounts; leavers lose access within one hour. Access via groups in code; unused accounts disabled after 30 days. Still manual: one legacy billing tool (Q1).","Managers confirm their team’s access quarterly"],["KSI-IAM-APM","Adopting Passwordless Methods","Passkeys or hardware keys through SSO; passwords disabled. Agencies federate (PIV) or use passkeys. Two break-glass accounts use passwords plus hardware keys, alert on use.","Logins and MFA methods reported monthly"],["KSI-INR-RIR","Reviewing Incident Response Procedures","Plan v3.2 (May). Twice-yearly tabletops, review after every incident within 5 business days, quarterly look at detection times. April tabletop added a 30-minute escalation rule."],["KSI-SVC-SIN","Securing Information","TLS 1.2+ everywhere; databases, storage and backups encrypted with cloud KMS keys; write-once backups for 35 days.","Keys rotate yearly"],["VDR-CSO-DET","Vulnerability detection",null]];
+  const fups=full?['Vulnerability detection (needs help)']:[];
+  $('#ksilist').innerHTML=(fups.length?`<div class="fups">Follow-ups: ${fups.join(', ')}</div>`:'')+K.map((k,i)=>{const vdr=k[0]==='VDR-CSO-DET';const answered=!vdr&&(i<c.ksi||full);const help=vdr&&full;
+    const cmvp=k[0]==='KSI-SVC-SIN'&&answered?`<div class="ign"><b>Ignyte only · CMVP validated?</b><select aria-label="CMVP validated"><option>Not checked</option><option>Yes</option><option>No</option></select><input placeholder="Certificate numbers or note"></div>`:'';
+    return `<div class="ksirow"><span class="code">${k[0]}</span><div><div class="nm">${k[1]}</div><div class="ans ${help?'help':answered?'':'none'}">${help?'Customer asked for help from Ignyte':answered?k[2]:'Not answered yet'}</div>${answered&&k[3]?`<div class="often">How often: ${k[3]}</div>`:''}${cmvp}</div></div>`}).join('')
+    +`<div class="ign" style="margin-top:12px"><b>Ignyte only · Log retention and review (optional context, Intake question 17)</b><textarea placeholder="Where logs go, how long they are kept, who reviews them"></textarea></div>`;
   const F=[["PDF","SOC2_TypeII_Report_2026.pdf","4.2 MB"],["PDF","ERP_Authorization_Boundary_Diagram_v3.pdf","812 KB"],["DOCX","Information_Security_Policy_2026.docx","268 KB"]].slice(0,c.files);
   $('#dfiles').innerHTML=F.length?F.map(f=>`<li><span class="ic">${f[0]}</span><span class="nm">${f[1]}</span><span class="date">${f[2]}</span><a href="#customer-${c.id}" onclick="return false">Download</a></li>`).join(''):'<li style="color:var(--muted);font-style:italic">No documents uploaded yet</li>';
-  $('#val').classList.remove('on'); badMode=false; $('#gen').textContent='Generate JSON';
+  resetPackage();
 }
-function showVal(bad){const v=$('#val');v.classList.add('on');$('#gen').textContent='Regenerate JSON';
-  if(bad){$('#valst').innerHTML='<span class="pill bad">✕ 5 schema errors</span><span style="font-size:13px;color:var(--muted)">Fix in the intake, then regenerate. The customer never sees these.</span>';$('#valerrs').innerHTML=BAD_ERRS.map(e=>`<li><code>${e[0]}</code> ${e[1]}</li>`).join('');$('#dl').disabled=true;const j=JSON.parse(JSON.stringify(GOLD));j.contactInformation[1].contactPhone="(202) 555-0199";j.serviceProperties.businessCategory[1]="AI";j.contactInformation[0].contactType="security";delete j.serviceProperties.trustCenter.accessRequestInstructions;j.assessor.assessorID="12345";$('#json').textContent=JSON.stringify(j,null,2);}
-  else{$('#valst').innerHTML='<span class="pill ok">✓ Valid</span><span style="font-size:13px;color:var(--muted)">0 errors against FRC-CSO-PKG v0.2.0 · generated just now</span>';$('#valerrs').innerHTML='';$('#dl').disabled=false;const j=JSON.parse(JSON.stringify(GOLD));if(current){j.serviceIdentification.providerName=current.company;j.serviceIdentification.serviceName=current.service;}$('#json').textContent=JSON.stringify(j,null,2);}
-}
-$('#gen').onclick=()=>{if(current&&current.status!=='sub'){showVal(true);$('#valst').innerHTML='<span class="pill bad">✕ Intake incomplete</span><span style="font-size:13px;color:var(--muted)">Missing required fields: logo, trust center, Security and Sales contacts.</span>';$('#valerrs').innerHTML='';return;}showVal(badMode);};
-$('#showbad').onclick=()=>{badMode=true;showVal(true)};$('#showgood').onclick=()=>{badMode=false;showVal(false)};
+// Screen D as built (FedRAMP-20x-mvp PR #13): read-only answers, Ignyte-only details with the
+// "Assessor Confirmed" tick, Generate JSON → draft with problems as links, or a valid file with
+// its versions and the publishing checklist.
+const rowId=k=>'q-'+k.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+let pkg={bad:true,confirmed:false,confirmedAt:null,file:null,changed:false};
+const nowText=()=>new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+function confirmText(){$('#confirmtxt').textContent=pkg.confirmed?`Confirmed by max@ignyteplatform.com on ${pkg.confirmedAt}.`:"FedRAMP's template only checks that the ID has six digits. Check the Marketplace, then tick the box; until then the file stays a draft while an assessor name is entered.";}
+function resetPackage(){pkg={bad:true,confirmed:false,confirmedAt:null,file:null,changed:false};$('#assessorConfirmed').checked=false;$('#savedmsg').textContent='';confirmText();renderPackage();}
+function problems(){const c=current||CUST[0];const out=[];
+  if(c.status!=='sub')out.push(['/serviceIdentification/logo','Logo','Logo is required','Logo'],['/contactInformation','Contacts','Contacts must include at least one Security and one Sales contact','Contacts'],['/serviceProperties/trustCenter','Trust Center','Trust Center is required','Trust center']);
+  else if(pkg.bad)out.push(['/contactInformation/1/contactPhone','Contact Phone','Contact Phone must be a US phone number with area code, for example 202-555-0123 (got “555-0199”)','Contacts'],['/serviceProperties/businessCategory/1','Business Category','Business Category “AI” is not one of FedRAMP\'s values; use “Artificial Intelligence (AI)”','Business categories'],['/serviceProperties/trustCenter/accessRequestInstructions','Access Request Instructions','Access Request Instructions is required when the trust center needs sign-in','Trust center']);
+  if($('#assessorName').value.trim()&&!pkg.confirmed)out.push(['/assessor/name','Assessor Name','Assessor Name has not been confirmed on the FedRAMP Marketplace','#assessorName']);
+  return out;}
+function summary(list){const intake=list.filter(p=>p[0]!=='/assessor/name'&&!p[0].startsWith('/serviceIdentification/logo')).length, scr=list.filter(p=>p[0]==='/assessor/name').length, logo=list.filter(p=>p[0].startsWith('/serviceIdentification/logo')).length;
+  const places=[intake?`${intake} in the customer's intake (unlock the form if needed)`:'',scr?`${scr} in the Ignyte-only details above`:'',logo?`${logo} with the logo Ignyte hosts`:''].filter(Boolean);
+  const head=list.length===1?'1 problem to fix':`${list.length} problems to fix`;
+  return `${head}: ${places.length===1&&list.length===1?places[0].replace(/^1 /,''):places.join(', ')}. Then generate again.`;}
+function renderPackage(){const f=pkg.file;$('#nofile').hidden=!!f;$('#dl').hidden=!f;$('#gen').textContent=f?'Regenerate JSON':'Generate JSON';$('#changed').hidden=!(f&&pkg.changed);
+  if(!f){$('#pkgresult').innerHTML='';$('#filemeta').hidden=true;$('#checklist').hidden=true;return;}
+  $('#dl').textContent=f.valid?'Download':'Download draft';
+  $('#pkgresult').innerHTML=f.valid?'<div class="okbanner" role="status">✓ Valid against FedRAMP Package Overview 0.2.0</div>':`<div class="probs" role="alert"><p>${summary(f.problems)} <span>The customer never sees this list.</span></p><ul>${f.problems.map(p=>`<li><a href="#" data-target="${p[3].startsWith('#')?p[3].slice(1):rowId(p[3])}">${p[1]}</a> — ${p[2]}</li>`).join('')}</ul></div>`;
+  const acr=(current&&current.status==='ip')?'TDM':'ERP';
+  $('#filemeta').hidden=false;$('#filemeta').innerHTML=`<dt>File just generated</dt><dd style="font-family:var(--mono)">${acr}-package-overview${f.valid?'':'-DRAFT'}.json</dd><dt>FedRAMP format version</dt><dd>Package Overview 0.2.0 <span style="color:var(--muted)">(FedRAMP/schemas 4c1e9d2)</span></dd><dt>FedRAMP rules version</dt><dd style="color:var(--muted)">not recorded yet (the rules are vendored with WI-012)</dd><dt>Created</dt><dd>${f.at}</dd>`;
+  $('#checklist').hidden=!f.valid;}
+function generate(){const list=problems();pkg.file={valid:list.length===0,problems:list,at:nowText()};pkg.changed=false;renderPackage();}
+$('#gen').onclick=generate;
+document.addEventListener('click',e=>{const a=e.target.closest('#pkgresult a[data-target]');if(!a)return;e.preventDefault();const el=document.getElementById(a.dataset.target);if(el){el.scrollIntoView({block:'center'});el.focus({preventScroll:true});}});
+$('#assessorConfirmed').onchange=e=>{pkg.confirmed=e.target.checked;pkg.confirmedAt=pkg.confirmed?nowText():null;confirmText();};
+$('#saveinputs').onclick=()=>{pkg.confirmed=false;pkg.confirmedAt=null;$('#assessorConfirmed').checked=false;confirmText();$('#savedmsg').textContent='Saved. Changing the assessor name or ID clears the confirmation below.';};
+$('#showbad').onclick=()=>{pkg.bad=true;generate();};
+$('#showgood').onclick=()=>{pkg.bad=false;if(!pkg.confirmed){pkg.confirmed=true;pkg.confirmedAt=nowText();$('#assessorConfirmed').checked=true;confirmText();}generate();};
+$('#showchanged').onclick=()=>{if(!pkg.file)generate();pkg.changed=true;renderPackage();};
 $('#dl').onclick=()=>toast('Downloads are disabled in this mockup');
 $('#unlock').onclick=()=>{if(current){current.status='ip';current.submitted=null;renderList();renderDetail(current.id);toast('Form unlocked. The customer can edit again.');}};
 
-$('#loginform').onsubmit=e=>{e.preventDefault();if(!$('#u').value.trim()||!$('#p').value){$('#loginerr').style.display='block';return;}location.hash='customers';};
+$('#loginform').onsubmit=e=>{e.preventDefault();location.hash='customers';};
 $('#newform').onsubmit=e=>{e.preventDefault();const c={id:CUST.length+1,company:$('#ncompany').value||'Tandem Learning Inc.',service:$('#nservice').value||'Tandem Platform',desc:$('#ndesc').value||'Student information platform for K-12 districts, hosted on AWS GovCloud us-gov-west-1.',contact:$('#nname').value||'Jordan Lee',email:$('#nemail').value||'jordan.lee@tandem.example',status:'ns',token:tok(),created:'Oct 14, 2026',submitted:null,tab1:0,tab1tot:14,ksi:0,files:0};CUST.unshift(c);renderList();$('#rcontact').textContent=c.contact+' ('+c.email+')';$('#rlink').textContent=BASE+c.token;$('#ropen').href='#customer-'+c.id;$('#newfields').classList.add('off');$('#result').classList.add('on');};
 
 function route(){let h=(location.hash||'#login').slice(1);let id=null;const m=h.match(/^customer-(\d+)$/);if(m){id=m[1];h='customer';}
@@ -262,15 +335,31 @@ window.addEventListener('hashchange',route);renderList();route();
 <script>
 const TOUR_ID='console';
 const TOUR=[
- {sel:'.login',title:'Sign in as Ignyte staff',text:'One shared account for the MVP, username and password. Google sign-in and roles come after. Any value works in this mockup.',before(){location.hash='login'},wait:100},
+ {sel:'.login',title:'Sign in as Ignyte staff',text:'One button: Sign in with Google, with the Ignyte account. Only people on the approved list get in. Click it to continue (nothing is checked in this mockup).',before(){location.hash='login'},wait:100},
  {sel:'#s-customers .head',title:'Your customers, one row each',text:'Every customer you create gets a unique intake link. The list shows their status: Not started, In progress or Submitted.',before(){location.hash='customers'},wait:100},
  {sel:'#s-customers .head .btn',title:'Create a customer in five fields',text:'Company, service, a plain-words description of the boundary, and the primary contact. On save, the app generates the link.'},
  {sel:'#rows tr:nth-child(2) .link',title:'Copy the link and send it',text:'The customer opens it without logging in and fills the intake. You can copy it again any time from here or from the customer page.'},
  {sel:'#s-customer .head',title:'Everything the customer answered',text:'Read-only view of the three tabs, with a status card and the uploaded documents to download. This one has already submitted.',before(){location.hash='customer-1'},wait:150},
- {sel:'#gen',title:'Generate the FedRAMP JSON',text:'Builds the Package Overview JSON from tab 1 and validates it against the official schema. Green check or a list of errors. Click it after the tour to see both cases.'},
+ {sel:'#jsoncard',title:'Generate the FedRAMP JSON',text:'Builds the Package Overview file from tab 1 and the Ignyte-only details, checks it against FedRAMP Package Overview 0.2.0, and lists any problem as a link to the question. A passing file comes with the publishing checklist for the customer.'},
  {sel:'.note .wrap a',title:'See the customer side',text:'The intake is a separate page, because customers never see this console. Open it to walk through what they fill in.'}
 ];
 const TOUR_END=()=>{};
+// Tour of the changes made after Christina's review of document 05 (Oct 19, 2026).
+// Tour of Screen D as built on Oct 23, 2026 (FedRAMP-20x-mvp PR #13, IGN-8).
+const TOUR_23=[
+ {sel:'#kv',title:'1. Logo and package ID',text:'The logo Ignyte hosts shows with its public address. When the customer has no FedRAMP package ID, the file uses the provider name and the service acronym ("Example Cloud Co. ERP").',before(){location.hash='customer-1'},wait:150},
+ {sel:'#igncard',title:'2. Ignyte-only details',text:'Assessor name, FedRAMP assessor ID and advisor are typed by Ignyte. Tick "Assessor Confirmed on FedRAMP Marketplace" after checking the Marketplace: until then the file stays a draft. Changing the name or ID clears the tick.'},
+ {sel:'#jsoncard',title:'3. Draft with its problems',text:'Generate JSON gives a draft (…-DRAFT.json) while anything is wrong. Each problem is a link that moves to the question; the summary says who fixes it: the customer\'s intake, the Ignyte-only details, or the logo Ignyte hosts.',before(){pkg.bad=true;generate();},wait:100},
+ {sel:'#jsoncard',title:'4. Valid file and checklist',text:'With everything fixed and the assessor confirmed, the file passes: it shows the format and rules versions, when it was created, Download, and the five-item publishing checklist in the order of playbook step S3-03.',before(){$('#showgood').click();},wait:100}
+];
+const TOUR_05=[
+ {sel:'#kv',title:'1. Class A only',text:'Certification type always shows "20x · Class A": the first version is for Class A customers only, so the customer no longer picks a class.',before(){location.hash='customer-1'},wait:150},
+ {sel:'#ksilist .fups',title:'2. Follow-ups at the top',text:'Boxes the customer marked "need help" or left empty are listed here for the consultant.'},
+ {sel:'#ksilist .often',title:'3. "How often?" answers',text:'Where a KSI has a separate "How often?" line, the answer shows under the summary.'},
+ {sel:'#ksilist .ign',title:'4. CMVP check is Ignyte\'s',text:'On Securing Information, the consultant records whether the customer\'s crypto modules are CMVP-validated. The customer never sees this.'},
+ {sel:'#ksilist > .ign:last-child',title:'5. Question 17 stays with Ignyte',text:'Log retention and review is an optional note for the consultant, not a question in the customer form.'},
+ {sel:'.note .wrap a',title:'See the customer side',text:'Open the customer form and click "What changed after review 05" there for the rest: FedRAMP statements, new questions and the vulnerability detection box.'}
+];
 </script>
 
 <style>
@@ -284,19 +373,23 @@ const TOUR_END=()=>{};
 .tour-tip .skip:hover{color:var(--fg)}
 .tour-tip .arrow{position:absolute;width:12px;height:12px;background:var(--surface);border-left:1px solid var(--line-strong);border-top:1px solid var(--line-strong);transform:rotate(45deg);left:24px;top:-7px}
 .tour-tip.above .arrow{top:auto;bottom:-7px;transform:rotate(225deg)}
+.tour-btns{display:inline-flex;gap:6px;margin-left:8px;flex-wrap:wrap;vertical-align:middle}
+.tour-btn{font:inherit;font-size:12px;font-weight:600;color:var(--warn);background:var(--surface);border:1px solid var(--warn);border-radius:999px;padding:2px 10px;cursor:pointer}
+.tour-btn.new{background:var(--warn);color:var(--surface)}
+.tour-btn:hover{filter:brightness(.95)}
 .tour-replay{font:inherit;font-size:13px;font-weight:600;background:none;border:0;color:inherit;cursor:pointer;text-decoration:underline;padding:0;margin-left:8px}
 @media (prefers-reduced-motion:reduce){.tour-spot{transition:none}}
 </style>
 <script>
 (function(){
-  const KEY='tour-seen-'+TOUR_ID; let i=0, spot, tip;
+  const KEY='tour-seen-'+TOUR_ID; let i=0, spot, tip, T=TOUR;
   const seen=()=>{try{return localStorage.getItem(KEY)==='1'}catch(e){return false}};
   const mark=()=>{try{localStorage.setItem(KEY,'1')}catch(e){}};
-  function place(){const s=TOUR[i]; const el=document.querySelector(s.sel); if(!el){next();return;}
+  function place(){const s=T[i]; const el=document.querySelector(s.sel); if(!el){next();return;}
     el.scrollIntoView({block:'center',behavior:'auto'});
     const r=el.getBoundingClientRect(), sx=window.scrollX, sy=window.scrollY, pad=6;
     spot.style.cssText=`top:${r.top+sy-pad}px;left:${r.left+sx-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px`;
-    tip.innerHTML=`<span class="arrow"></span><div class="step">Step ${i+1} of ${TOUR.length}</div><h3>${s.title}</h3><p>${s.text}</p><div class="row"><button class="skip" id="tskip">Skip tour</button>${i>0?'<button class="btn sm" id="tback">Back</button>':''}<button class="btn sm primary" id="tnext">${i===TOUR.length-1?'Done':'Next'}</button></div>`;
+    tip.innerHTML=`<span class="arrow"></span><div class="step">Step ${i+1} of ${T.length}</div><h3>${s.title}</h3><p>${s.text}</p><div class="row"><button class="skip" id="tskip">Skip tour</button>${i>0?'<button class="btn sm" id="tback">Back</button>':''}<button class="btn sm primary" id="tnext">${i===T.length-1?'Done':'Next'}</button></div>`;
     const below=r.bottom+sy+16, tipH=tip.offsetHeight||160; const fits=r.bottom+tipH+24<window.innerHeight;
     tip.classList.toggle('above',!fits);
     tip.style.top=(fits?below:r.top+sy-tipH-16)+'px';
@@ -304,13 +397,14 @@ const TOUR_END=()=>{};
     document.getElementById('tnext').onclick=next; document.getElementById('tskip').onclick=end; const b=document.getElementById('tback'); if(b)b.onclick=back;
     document.getElementById('tnext').focus({preventScroll:true});
   }
-  function show(){const s=TOUR[i]; const go=()=>{setTimeout(place,s.wait||0)}; if(s.before){s.before();}go();}
-  function next(){if(i>=TOUR.length-1){end();return;}i++;show();}
+  function show(){const s=T[i]; const go=()=>{setTimeout(place,s.wait||0)}; if(s.before){s.before();}go();}
+  function next(){if(i>=T.length-1){end();return;}i++;show();}
   function back(){if(i>0){i--;show();}}
   function end(){mark();if(spot)spot.remove();if(tip)tip.remove();spot=tip=null;window.removeEventListener('resize',place);if(TOUR_END)TOUR_END();}
-  function start(){if(tip)return;i=0;spot=document.createElement('div');spot.className='tour-spot';tip=document.createElement('div');tip.className='tour-tip';document.body.append(spot,tip);window.addEventListener('resize',place);show();}
+  function start(list){if(tip){spot.remove();tip.remove();spot=tip=null;window.removeEventListener('resize',place);}T=Array.isArray(list)?list:TOUR;i=0;spot=document.createElement('div');spot.className='tour-spot';tip=document.createElement('div');tip.className='tour-tip';document.body.append(spot,tip);window.addEventListener('resize',place);show();}
   window.startTour=start;
-  const note=document.querySelector('.note .wrap'); if(note){const b=document.createElement('button');b.className='tour-replay';b.textContent='Replay the guided tour';b.onclick=start;note.appendChild(b);}
+  const note=document.querySelector('.note .wrap'); if(note){const bar=document.createElement('span');bar.className='tour-btns';
+    [['Main tour',()=>start(TOUR)],['What changed after review 05',()=>start(TOUR_05)],['Screen D as built (Oct 23)',()=>start(TOUR_23)]].forEach(([l,f],n)=>{const b=document.createElement('button');b.className='tour-btn'+(n?' new':'');b.textContent=l;b.onclick=f;bar.appendChild(b);});note.appendChild(bar);}
   if(!seen())setTimeout(start,600);
 })();
 </script>
