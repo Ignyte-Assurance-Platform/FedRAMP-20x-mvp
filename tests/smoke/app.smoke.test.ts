@@ -251,3 +251,68 @@ describe("Screen D routes (WI-007 §6, §3)", () => {
     expect(body.serviceIdentification.serviceAcronym).toBe("ERP");
   });
 });
+
+describe("Screen A, the staff guard (WI-002)", () => {
+  async function signIn(): Promise<string> {
+    const res = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+    expect(res.status).toBe(303);
+    return res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  }
+
+  async function devUser() {
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    const db = getDb();
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.email, "dev@ignyteplatform.com"));
+    expect(user, "dev user missing: run npm run db:seed:allowlist").toBeDefined();
+    const setActive = (active: boolean) => db.update(schema.users).set({ active }).where(eq(schema.users.id, user!.id));
+    const sessionCount = async () => (await db.select().from(schema.sessions).where(eq(schema.sessions.userId, user!.id))).length;
+    return { setActive, sessionCount };
+  }
+
+  it("2.5 does not send token routes to /login (intake links need no session)", async () => {
+    const upload = await app.request("/api/uploads/not-a-real-token");
+    expect(upload.status).not.toBe(302);
+    expect(upload.headers.get("location")).toBeNull();
+  });
+
+  it("2.7, 2.11 refuses every staff route for a user set inactive, deletes the sessions and says not authorized", async () => {
+    const cookie = await signIn();
+    const { setActive, sessionCount } = await devUser();
+    const { getDb, schema } = await import("~server/db");
+    const [customer] = await getDb().select().from(schema.customers).limit(1);
+    try {
+      await setActive(false);
+      const home = await app.request("/", { headers: { cookie } });
+      expect(home.status).toBe(302);
+      expect(home.headers.get("location")).toBe("/login?error=not_authorized");
+      expect(await sessionCount()).toBe(0);
+
+      const login = await app.request("/login?error=not_authorized");
+      expect(await login.text()).toContain("This account is not authorized for Maaz 20x");
+
+      const page = await app.request(`/customers/${customer!.id}/package`, { headers: { cookie } });
+      expect(page.status).toBe(302);
+      const download = await app.request(`/api/customers/${customer!.id}/package-overview/download`, { headers: { cookie } });
+      expect(download.status).toBe(401);
+
+      // The dev sign-in goes through the same check.
+      const again = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+      expect(again.status).not.toBe(303);
+    } finally {
+      await setActive(true);
+    }
+  });
+
+  it("2.12 logs out: the session row is deleted and /login opens", async () => {
+    const cookie = await signIn();
+    const { sessionCount } = await devUser();
+    const before = await sessionCount();
+    const res = await app.request("http://localhost:3000/logout", { method: "POST", headers: { cookie } });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("/login");
+    expect(await sessionCount()).toBe(before - 1);
+    const home = await app.request("/", { headers: { cookie } });
+    expect(home.headers.get("location")).toBe("/login");
+  });
+});

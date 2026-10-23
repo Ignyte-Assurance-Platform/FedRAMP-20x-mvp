@@ -15,7 +15,7 @@ export function devLoginPlugin(options: { email: string }): BetterAuthPlugin {
         const found = await ctx.context.internalAdapter.findUserByEmail(options.email);
         if (!found) {
           throw new APIError("UNAUTHORIZED", {
-            message: `Dev user ${options.email} is not in the database. Run npm run db:seed.`,
+            message: `Dev user ${options.email} is not in the database. Run npm run db:seed:allowlist.`,
           });
         }
         const session = await ctx.context.internalAdapter.createSession(found.user.id);
