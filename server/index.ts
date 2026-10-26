@@ -20,6 +20,7 @@ import { getPackageOverviewGenerator } from "~server/services";
 
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const NO_STORE = "no-store";
+export const PUBLIC_FILE = "public, max-age=86400";
 
 const root = path.resolve(import.meta.dirname, "..");
 const clientDir = path.join(root, "build", "client");
@@ -49,9 +50,10 @@ export function createApp({ getBuild, mode }: AppOptions): Hono {
         await next();
         if (c.res.status === 200 && !c.res.headers.has("Cache-Control")) c.res.headers.set("Cache-Control", value);
       };
-    // Vite emits content-hashed file names under /assets, so they never change. Un-hashed
-    // public files (favicon) need their own rule when a public/ folder is added.
+    // Vite emits content-hashed file names under /assets, so they never change.
     app.use("/assets/*", cacheFound(IMMUTABLE), serveStatic({ root: staticRoot }));
+    // Self-hosted fonts from public/fonts (WI-015): un-hashed names, so cached for a day only.
+    app.use("/fonts/*", cacheFound(PUBLIC_FILE), serveStatic({ root: staticRoot }));
   }
 
   app.on(["GET", "POST"], "/api/auth/*", (c) => getAuth().handler(c.req.raw));

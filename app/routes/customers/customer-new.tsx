@@ -7,6 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { PRODUCT_NAME } from "~/lib/product";
 import type { Route } from "./+types/customer-new";
 
 /** Screen C (WI-003): create a customer; Save generates the intake link and shows it with Copy. Staff only. */
@@ -48,7 +49,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export function meta() {
-  return [{ title: "Create customer · Maaz 20x" }];
+  return [{ title: `Create customer · ${PRODUCT_NAME}` }];
 }
 
 const LABELS: Record<Field, { label: string; required: boolean; type?: string; hint?: string }> = {

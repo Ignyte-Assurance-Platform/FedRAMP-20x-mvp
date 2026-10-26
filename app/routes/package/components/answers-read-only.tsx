@@ -57,7 +57,7 @@ function LogoRow({ logoUrl, logoUploaded }: Pick<AnswersReadOnlyProps, "logoUrl"
           Company logo (hosted by Ignyte, goes into the file)
         </span>
         {logoUrl ? (
-          <a href={logoUrl} target="_blank" rel="noreferrer" className="break-all underline underline-offset-2">
+          <a href={logoUrl} target="_blank" rel="noreferrer" className="break-all font-mono text-xs underline underline-offset-2">
             {logoUrl}
           </a>
         ) : logoUploaded ? (
@@ -95,7 +95,7 @@ export function AnswersReadOnly({ sections, logoUrl, logoUploaded, packageIdFall
                   <dt id={answerRowId(row.path)} tabIndex={-1} className={`text-muted-foreground ${focusTargetClass}`}>
                     {row.question}
                   </dt>
-                  <dd className="break-words">
+                  <dd className={row.path === PACKAGE_ID_PATH && row.value ? "break-words font-mono" : "break-words"}>
                     {row.value ||
                       (row.path === PACKAGE_ID_PATH && packageIdFallback ? (
                         <span className="text-muted-foreground">
