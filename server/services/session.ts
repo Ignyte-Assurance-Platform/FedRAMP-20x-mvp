@@ -1,13 +1,13 @@
 import { decryptOAuthToken } from "better-auth/oauth2";
 import { getAuth } from "~server/auth";
-import { NOT_AUTHORIZED_CODE } from "~server/auth/auth";
+import { NOT_AUTHORIZED_CODE, NOT_AUTHORIZED_MESSAGE } from "~server/auth/auth";
 import { checkGoogleGrant } from "~server/auth/google-token";
 import { evaluateStaffSession, type StaffSessionDeps } from "~server/auth/staff-session";
 import { getEnv } from "~server/config";
 import { getDb } from "~server/db";
 import { sessionsRepo } from "~server/repositories";
 
-export const NOT_AUTHORIZED_MESSAGE = "This account is not authorized for Maaz 20x";
+export { NOT_AUTHORIZED_MESSAGE };
 export const SIGN_IN_UNFINISHED_MESSAGE = "Sign-in did not finish. Try again.";
 
 /** Codes Better Auth puts on /login?error= when the account itself fails a check (WI-002 error states). */

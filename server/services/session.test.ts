@@ -7,7 +7,7 @@ describe("login messages (WI-002 error states)", () => {
     for (const code of ["not_authorized", "signup_disabled", "signup disabled", "account_not_linked"]) {
       expect(signInErrorMessage(code)).toBe(NOT_AUTHORIZED_MESSAGE);
     }
-    expect(NOT_AUTHORIZED_MESSAGE).toBe("This account is not authorized for Maaz 20x");
+    expect(NOT_AUTHORIZED_MESSAGE).toBe("This account is not authorized for Ignyte FedRAMP 20x");
   });
 
   it("shows 'did not finish' when the Google flow was cancelled or failed", () => {

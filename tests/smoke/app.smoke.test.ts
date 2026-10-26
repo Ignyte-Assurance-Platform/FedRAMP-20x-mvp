@@ -292,7 +292,7 @@ describe("Screen A, the staff guard (WI-002)", () => {
       expect(await sessionCount()).toBe(0);
 
       const login = await app.request("/login?error=not_authorized");
-      expect(await login.text()).toContain("This account is not authorized for Maaz 20x");
+      expect(await login.text()).toContain("This account is not authorized for Ignyte FedRAMP 20x");
 
       const page = await app.request(`/customers/${customer!.id}/package`, { headers: { cookie } });
       expect(page.status).toBe(302);
@@ -304,6 +304,37 @@ describe("Screen A, the staff guard (WI-002)", () => {
       expect(again.status).not.toBe(303);
     } finally {
       await setActive(true);
+    }
+  });
+
+  it("2.15 applyAllowlist: an email taken off the list is set inactive, keeps its row and loses its sessions", async () => {
+    const cookie = await signIn();
+    const { sessionCount } = await devUser();
+    const { getDb, schema } = await import("~server/db");
+    const { usersRepo } = await import("~server/repositories");
+    const { eq } = await import("drizzle-orm");
+    const db = getDb();
+    const dev = "dev@ignyteplatform.com";
+    const newcomer = "allowlist-smoke@ignyteplatform.com";
+    const activeBefore = (await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.active, true))).map((u) => u.email);
+    expect(activeBefore).toContain(dev);
+    try {
+      const result = await usersRepo.applyAllowlist(db, [newcomer]);
+      expect(result).toEqual({ active: [newcomer], deactivated: expect.arrayContaining([dev]) });
+      const devRow = await usersRepo.findUserByEmail(db, dev);
+      expect(devRow?.active).toBe(false);
+      expect(await sessionCount()).toBe(0);
+      expect((await usersRepo.findUserByEmail(db, newcomer))?.active).toBe(true);
+      const home = await app.request("/", { headers: { cookie } });
+      expect(home.status).toBe(302);
+
+      const back = await usersRepo.applyAllowlist(db, activeBefore);
+      expect(back.deactivated).toEqual([newcomer]);
+      expect((await usersRepo.findUserByEmail(db, dev))?.active).toBe(true);
+      expect((await usersRepo.findUserByEmail(db, newcomer))?.active).toBe(false);
+    } finally {
+      await usersRepo.applyAllowlist(db, activeBefore);
+      await db.delete(schema.users).where(eq(schema.users.email, newcomer));
     }
   });
 
