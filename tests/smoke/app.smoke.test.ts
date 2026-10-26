@@ -289,7 +289,7 @@ describe("Screen A, the staff guard (WI-002)", () => {
       expect(await sessionCount()).toBe(0);
 
       const login = await app.request("/login?error=not_authorized");
-      expect(await login.text()).toContain("This account is not authorized for Maaz 20x");
+      expect(await login.text()).toContain("This account is not authorized for Ignyte FedRAMP 20x");
 
       const page = await app.request(`/customers/${customer!.id}/package`, { headers: { cookie } });
       expect(page.status).toBe(302);

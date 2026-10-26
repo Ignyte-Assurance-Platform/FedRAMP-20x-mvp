@@ -1,13 +1,14 @@
 import type * as React from "react";
 import { Form } from "react-router";
 import { Button } from "~/components/ui/button";
+import { PRODUCT_NAME } from "~/lib/product";
 
 export function AppShell({ user, children }: { user: { name: string; email: string }; children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <header className="border-b">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-          <span className="font-semibold">Maaz 20x</span>
+          <span className="font-semibold">{PRODUCT_NAME}</span>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-muted-foreground">{user.email}</span>
             <Form method="post" action="/logout">

@@ -2,6 +2,7 @@ import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
+import { PRODUCT_NAME } from "~/lib/product";
 import type { Env } from "~server/config";
 import { schema, type Database } from "~server/db";
 import { devLoginPlugin } from "./dev-login-plugin";
@@ -9,9 +10,11 @@ import { devLoginPlugin } from "./dev-login-plugin";
 const EIGHT_HOURS = 8 * 60 * 60;
 /** Error code on /login?error= for every account that fails a sign-in check (WI-002: one message, no detail). */
 export const NOT_AUTHORIZED_CODE = "not_authorized";
+/** The one message for every refused account (WI-002 §5 error states). */
+export const NOT_AUTHORIZED_MESSAGE = `This account is not authorized for ${PRODUCT_NAME}`;
 
 function notAuthorized(): APIError {
-  return new APIError("FORBIDDEN", { message: "This account is not authorized for Maaz 20x", code: NOT_AUTHORIZED_CODE });
+  return new APIError("FORBIDDEN", { message: NOT_AUTHORIZED_MESSAGE, code: NOT_AUTHORIZED_CODE });
 }
 
 /** A Google sign-in that ends without a refresh token cannot be re-checked, so it is refused (WI-002 E3). */
@@ -45,7 +48,7 @@ interface GoogleProfile {
  */
 export function createAuth(env: Env, db: Database) {
   const options = {
-    appName: "Maaz 20x",
+    appName: PRODUCT_NAME,
     baseURL: env.APP_URL,
     secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, {
