@@ -5,6 +5,7 @@ const base = {
   DATABASE_URL: "postgres://maaz:maaz@localhost:5432/maaz20x",
   BETTER_AUTH_SECRET: "x".repeat(32),
 };
+const KEY = Buffer.alloc(32, 7).toString("base64");
 
 describe("parseEnv", () => {
   it("applies defaults for local development", () => {
@@ -29,12 +30,12 @@ describe("parseEnv", () => {
   });
 
   it("accepts production without DEV_LOGIN, on Cloud Storage", () => {
-    const env = parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/" });
+    const env = parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/", INTAKE_LINK_KEY: KEY });
     expect(env.devLoginEnabled).toBe(false);
   });
 
   it.each([undefined, ""])("refuses production with LOGO_PUBLIC_BASE_URL=%j (WI-007: no file can carry a logo address)", (value) => {
-    expect(() => parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: value })).toThrowError(
+    expect(() => parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: value, INTAKE_LINK_KEY: KEY })).toThrowError(
       /Refusing to start: LOGO_PUBLIC_BASE_URL must be set in production/,
     );
   });
@@ -76,7 +77,20 @@ describe("parseEnv", () => {
 
   it("treats an empty logo base URL as not set and rejects one that is not a URL", () => {
     expect(parseEnv({ ...base, LOGO_PUBLIC_BASE_URL: "" }).LOGO_PUBLIC_BASE_URL).toBeUndefined();
-    expect(parseEnv({ ...base, LOGO_PUBLIC_BASE_URL: "https://logos.example.com/" }).LOGO_PUBLIC_BASE_URL).toBe("https://logos.example.com/");
+    expect(parseEnv({ ...base, LOGO_PUBLIC_BASE_URL: "https://logos.example.com/", INTAKE_LINK_KEY: KEY }).LOGO_PUBLIC_BASE_URL).toBe("https://logos.example.com/");
     expect(() => parseEnv({ ...base, LOGO_PUBLIC_BASE_URL: "not a url" })).toThrow(ConfigError);
+  });
+});
+
+describe("INTAKE_LINK_KEY (WI-003)", () => {
+  const prod = { ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/" };
+  it("refuses production without it and rejects a key that is not 32 bytes", () => {
+    expect(() => parseEnv(prod)).toThrowError(/INTAKE_LINK_KEY must be set in production/);
+    expect(() => parseEnv({ ...prod, INTAKE_LINK_KEY: "c2hvcnQ=" })).toThrowError(/32 bytes/);
+    expect(parseEnv({ ...prod, INTAKE_LINK_KEY: KEY }).intakeLinkKey).toEqual(Buffer.alloc(32, 7));
+  });
+
+  it("derives a local key from BETTER_AUTH_SECRET outside production", () => {
+    expect(parseEnv(base).intakeLinkKey).toHaveLength(32);
   });
 });
