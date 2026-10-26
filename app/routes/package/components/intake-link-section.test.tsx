@@ -2,8 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
 import { CopyLink } from "~/components/copy-link";
+import CustomerPackage from "../customer-package";
 import { IntakeLinkSection, type IntakeLinkSectionProps } from "./intake-link-section";
-import { ProblemList } from "./problem-list";
 
 /** Markup checks for WI-003 on Screen D; clipboard and confirm() need a browser and are not run here. */
 
@@ -20,6 +20,46 @@ const base: IntakeLinkSectionProps = {
   expiresAt: new Date("2026-11-22T12:00:00Z"),
   busy: false,
 };
+
+type ScreenDProps = React.ComponentProps<typeof CustomerPackage>;
+
+/** Screen D as the loader returns it: one invalid file, so the result block renders the problem list. */
+const loaderData: ScreenDProps["loaderData"] = {
+  user: { id: "u1", name: "Dev", email: "dev@ignyteplatform.com" },
+  screen: {
+    customer: { id: "8a3c2f9e-1b2d-4c5e-9f00-112233445566", name: "Example Cloud Co." },
+    inputs: { assessorName: "", assessorId: "", advisorName: "", assessorConfirmedAt: null, assessorConfirmedBy: null },
+    answers: [],
+    packageIdFallback: null,
+    logoUrl: null,
+    logoUploaded: false,
+    schemaVersion: "1.0.0",
+    status: { regenerate: undefined, answersChanged: false, downloadLabel: "Download draft" },
+    latest: {
+      id: "f1",
+      fileName: "ERP-package-overview-DRAFT.json",
+      valid: false,
+      generatedAt: new Date("2026-10-26T12:00:00Z"),
+      schemaVersion: "1.0.0",
+      schemaCommit: "abc1234",
+      rulesVersion: null,
+      problems: [{ path: "/serviceIdentification/website", question: "Website", message: "Website is required", raw: "must have required property" }],
+    },
+  },
+  intakeLink: { status: "submitted", statusLabel: "Submitted", link: { url: base.url, expired: false, issuedAt: new Date("2026-10-23T12:00:00Z"), expiresAt: new Date("2026-11-22T12:00:00Z"), issuedBy: "Dev" }, unlockedAt: null, unlockedBy: null },
+};
+
+function renderScreenD(actionData?: ScreenDProps["actionData"]): string {
+  return render(<CustomerPackage {...({ loaderData, actionData } as ScreenDProps)} />);
+}
+
+/** The markup of one card, found by its title. */
+function card(html: string, title: string): string {
+  const start = html.indexOf(`>${title}<`);
+  expect(start).toBeGreaterThan(-1);
+  const end = html.indexOf("<div data-slot=\"card\"", start);
+  return html.slice(start, end === -1 ? undefined : end);
+}
 
 describe("Intake link section (WI-003)", () => {
   it("shows the link with Copy, its expiry and Issue new link; no Unlock unless Submitted", () => {
@@ -48,13 +88,30 @@ describe("Intake link section (WI-003)", () => {
 });
 
 describe("one live region on Screen D (IGN-8 pr-9 nit 8)", () => {
-  it("2.16 the problem list has no role=alert of its own, so none is nested in the result's status region", () => {
-    const html = renderToStaticMarkup(
-      <div role="status" aria-live="polite">
-        <ProblemList problems={[{ path: "/serviceIdentification/website", question: "Website", message: "Website is required" }]} knownPaths={new Set()} />
-      </div>,
-    );
-    expect(html).not.toContain('role="alert"');
-    expect(html.match(/role="status"/g)).toHaveLength(1);
+  it("2.16 the result block is one status region and the problem list nests no role=alert in it", () => {
+    const result = card(renderScreenD(), "Package Overview JSON");
+    expect(result).toContain("1 problem to fix");
+    expect(result).not.toContain('role="alert"');
+    expect(result.match(/role="status"/g)).toHaveLength(1);
+    expect(result.match(/aria-live=/g)).toHaveLength(1);
+  });
+});
+
+describe("issue-link and unlock errors on Screen D (pr-19 finding 2)", () => {
+  it("shows the error in the Intake link section that triggered it, not in the Package Overview JSON card", () => {
+    const html = renderScreenD({ error: null, linkError: "Only a submitted intake can be unlocked.", generated: null });
+    expect(card(html, "Intake link")).toMatch(/<p role="alert"[^>]*>Only a submitted intake can be unlocked\.<\/p>/);
+    expect(card(html, "Package Overview JSON")).not.toContain("Only a submitted intake can be unlocked.");
+  });
+
+  it("shows the outcome of Issue new link and Unlock in the same place", () => {
+    const html = renderScreenD({ error: null, linkMessage: "Unlocked. The customer can edit the intake again.", generated: null });
+    expect(card(html, "Intake link")).toMatch(/<p role="status"[^>]*>Unlocked\./);
+  });
+
+  it("keeps Generate JSON errors in the Package Overview JSON card", () => {
+    const html = renderScreenD({ error: "Could not generate the file. Nothing was saved.", generated: null });
+    expect(card(html, "Package Overview JSON")).toContain("Could not generate the file.");
+    expect(card(html, "Intake link")).not.toContain("Could not generate the file.");
   });
 });

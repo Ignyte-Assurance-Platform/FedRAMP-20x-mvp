@@ -48,9 +48,12 @@ const ActionInput = v.variant("intent", [
 ]);
 
 interface ActionResult {
+  /** Shown in the "Package Overview JSON" card (save-inputs, confirm-assessor, generate). */
   error: string | null;
   saved?: boolean;
+  /** Outcome of issue-link and unlock, shown in the "Intake link" section that triggered them. */
   linkMessage?: string;
+  linkError?: string;
   generated: { fileId: string; valid: boolean; problemCount: number } | null;
 }
 
@@ -100,13 +103,16 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     }
   } catch (error) {
-    if (error instanceof MissingAcronymError) return data<ActionResult>({ error: error.message, generated: null }, { status: 400 });
-    if (error instanceof PackageOverviewError || error instanceof CustomerError) {
-      return data<ActionResult>({ error: error.message, generated: null }, { status: error.status });
-    }
-    if (error instanceof v.ValiError) return data<ActionResult>({ error: error.message, generated: null }, { status: 400 });
+    const { intent } = input.output;
+    const failed = (message: string, status: number) =>
+      intent === "issue-link" || intent === "unlock"
+        ? data<ActionResult>({ error: null, linkError: message, generated: null }, { status })
+        : data<ActionResult>({ error: message, generated: null }, { status });
+    if (error instanceof MissingAcronymError) return failed(error.message, 400);
+    if (error instanceof PackageOverviewError || error instanceof CustomerError) return failed(error.message, error.status);
+    if (error instanceof v.ValiError) return failed(error.message, 400);
     console.error(error);
-    return data<ActionResult>({ error: "Could not generate the file. Nothing was saved.", generated: null }, { status: 500 });
+    return failed("Could not generate the file. Nothing was saved.", 500);
   }
 }
 
@@ -148,11 +154,15 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
               expiresAt={intakeLink.link.expiresAt}
               busy={busy}
             />
-            {actionData?.linkMessage && (
+            {actionData?.linkError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {actionData.linkError}
+              </p>
+            ) : actionData?.linkMessage ? (
               <p role="status" className="text-sm text-muted-foreground">
                 {actionData.linkMessage}
               </p>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 
