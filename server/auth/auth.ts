@@ -1,6 +1,7 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
+import type { GoogleOptions } from "better-auth/social-providers";
 import { eq } from "drizzle-orm";
 import { PRODUCT_NAME } from "~/lib/product";
 import type { Env } from "~server/config";
@@ -12,9 +13,19 @@ const EIGHT_HOURS = 8 * 60 * 60;
 export const NOT_AUTHORIZED_CODE = "not_authorized";
 /** The one message for every refused account (WI-002 §5 error states). */
 export const NOT_AUTHORIZED_MESSAGE = `This account is not authorized for ${PRODUCT_NAME}`;
+const NOT_AUTHORIZED_URL = `/login?error=${NOT_AUTHORIZED_CODE}`;
 
+/** Thrown from database hooks: the OAuth callback maps the code to /login?error=not_authorized. */
 function notAuthorized(): APIError {
   return new APIError("FORBIDDEN", { message: NOT_AUTHORIZED_MESSAGE, code: NOT_AUTHORIZED_CODE });
+}
+
+/**
+ * Thrown from the provider's getUserInfo, which runs outside that mapping (an APIError there
+ * would answer the browser with a JSON 403), so the refusal is the redirect itself.
+ */
+function notAuthorizedRedirect(): APIError {
+  return new APIError("FOUND", undefined, { location: NOT_AUTHORIZED_URL });
 }
 
 /** A Google sign-in that ends without a refresh token cannot be re-checked, so it is refused (WI-002 E3). */
@@ -24,20 +35,40 @@ export function assertGoogleRefreshToken(account: { providerId?: string; refresh
 
 /** Google's ID token must carry the Ignyte hosted domain and a verified email; the hd login hint alone is never trusted. */
 export function assertIgnyteProfile(profile: GoogleProfile, domain: string): void {
-  if (profile.hd !== domain || profile.email_verified !== true) throw notAuthorized();
+  if (profile.hd !== domain || profile.email_verified !== true) throw notAuthorizedRedirect();
 }
 
-interface GoogleProfile {
-  email?: string;
-  email_verified?: boolean;
-  hd?: string;
+/**
+ * The provider's user-info step (WI-002 §5). Better Auth's own getUserInfo checks the `hd`
+ * option before mapProfileToUser and answers a mismatch with ?error=unable_to_get_user_info
+ * ("Sign-in did not finish"), while the spec wants "not authorized" for every failed account
+ * check; so the profile is read and checked here. Like the library, the claims are taken from
+ * the ID token that Google's token endpoint returned over TLS.
+ */
+export async function googleUserInfo(tokens: { idToken?: string }, domain: string): Promise<GoogleUserInfo | null> {
+  if (!tokens.idToken) return null;
+  const profile = decodeJwtPayload(tokens.idToken);
+  assertIgnyteProfile(profile, domain);
+  return {
+    user: { name: profile.name, email: profile.email, image: profile.picture, emailVerified: profile.email_verified === true },
+    data: profile,
+  };
 }
+
+function decodeJwtPayload(token: string): GoogleProfile {
+  const [, payload = ""] = token.split(".");
+  return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as GoogleProfile;
+}
+
+export type GoogleProfile = Parameters<NonNullable<GoogleOptions["mapProfileToUser"]>>[0];
+type GoogleUserInfo = NonNullable<Awaited<ReturnType<NonNullable<GoogleOptions["getUserInfo"]>>>>;
 
 /**
  * Better Auth for Ignyte staff (ADR-0004, WI-002).
  * - Google is configured here but stays inactive until GOOGLE_CLIENT_ID/SECRET exist
- *   (the OAuth client needs the GCP project). The domain check uses the ID token's hd
- *   claim, not the login hint, and only allowlisted, active users can sign in.
+ *   (the OAuth client needs the GCP project). The domain check reads the ID token's hd
+ *   claim in our own getUserInfo (the library's would answer "did not finish"), not the
+ *   login hint, and only allowlisted, active users can sign in.
  * - Offline access with consent, so every sign-in stores a refresh token (encrypted) for the
  *   15-minute re-check in the staff guard; a sign-in without one is refused.
  * - No email + password: there is no password flow at all.
@@ -72,10 +103,7 @@ export function createAuth(env: Env, db: Database) {
             accessType: "offline",
             disableSignUp: true,
             // Verified before production, once the OAuth client exists (WI-002 [pre-prod]).
-            mapProfileToUser: (profile: GoogleProfile) => {
-              assertIgnyteProfile(profile, env.GOOGLE_ALLOWED_DOMAIN);
-              return {};
-            },
+            getUserInfo: (tokens) => googleUserInfo(tokens, env.GOOGLE_ALLOWED_DOMAIN),
           },
         }
       : {},
