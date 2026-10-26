@@ -1,11 +1,12 @@
 # Design — Screen A — Ignyte login (Sign in with Google, Ignyte Workspace accounts)
 
-> Brain work item: [[wi-maaz20x-002-ignyte-login]] · brain_commit 537ea5b73a3b21864c7e8405999642a11046b09f · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-002-ignyte-login.md
+> Brain work item: [[wi-maaz20x-002-ignyte-login]] · brain_commit 554fc7c8b8e40651417f6c5fe2ee2efb36858cce · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-002-ignyte-login.md
 
 ## Behavior
 
+- **Product name** (clarification 2026-10-23, branding decision of Max and Christina, [[maaz20x-chat-2026-10-23-tab1-why-lines-and-branding]]): every visible text of this item (page title, "Sign in to …", the refusal message, the Better Auth `appName`) uses the product name **Ignyte FedRAMP 20x** from one constant in the app; no logo. Internal names (`maaz20x` ids, GCP project) are not visible and stay.
 - `/login` shows one button, "Sign in with Google". It starts the OpenID Connect flow with the `hd=ignyteplatform.com` hint.
-- On callback the server verifies the ID token, then requires `hd == ignyteplatform.com`, `email_verified == true` and the email present in `users`. If all pass → session and redirect to `/customers` (Screen B). Otherwise → `/login` with "This account is not authorized for Maaz 20x" (no detail on which check failed).
+- On callback the server verifies the ID token, then requires `hd == ignyteplatform.com`, `email_verified == true` and the email present in `users`. If all pass → session and redirect to `/customers` (Screen B). Otherwise → `/login` with "This account is not authorized for Ignyte FedRAMP 20x" (no detail on which check failed).
 - Session cookie, 8-hour lifetime, **fixed: never extended by activity** (E2: Better Auth `session.disableSessionRefresh: true`; with the default `updateAge` an active session would never end). `/logout` deletes the session and returns to `/login`.
 - **One staff guard** (E1, closes pr-9 finding 7 of IGN-8): every Ignyte loader and action (home, Screen B, C, D, the JSON download, every later staff route) calls the same `requireStaffUser`. It reads the session from the database, never from the cookie cache (E2; [[adr-0005-maaz20x-caching-strategy]] to be amended: one indexed read per staff request), joins `users`, and refuses unless the user is `active`. The dev-only `DEV_LOGIN` path goes through the same check and refuses inactive users. Today's guard accepts any session; the code changes with this item.
 - Every Ignyte route requires a session; unauthenticated requests redirect to `/login`. Intake links (`/intake/<token>`) never require a session.
@@ -27,7 +28,7 @@
 - `hd` and `email_verified` checked server-side; the `hd` login hint is never trusted on its own.
 - Emails in `ADMIN_EMAILS` must end in `@ignyteplatform.com`; the seed fails otherwise.
 
-**Error states.** Every sign-in failure returns to `/login` with the one message "This account is not authorized for Maaz 20x" when the account fails a check (`hd`, `email_verified`, allowlist, inactive, no refresh token). Cancelled at Google, an OAuth error, or Google unreachable at sign-in show "Sign-in did not finish. Try again." and create no session. The code's two current messages (not an Ignyte account / not on the staff list) collapse into the first one.
+**Error states.** Every sign-in failure returns to `/login` with the one message "This account is not authorized for Ignyte FedRAMP 20x" when the account fails a check (`hd`, `email_verified`, allowlist, inactive, no refresh token). Cancelled at Google, an OAuth error, or Google unreachable at sign-in show "Sign-in did not finish. Try again." and create no session. The code's two current messages (not an Ignyte account / not on the staff list) collapse into the first one.
 
 ## Permissions
 

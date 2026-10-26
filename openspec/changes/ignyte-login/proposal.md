@@ -1,6 +1,6 @@
 # Screen A — Ignyte login (Sign in with Google, Ignyte Workspace accounts)
 
-> Brain work item: [[wi-maaz20x-002-ignyte-login]] · brain_commit 537ea5b73a3b21864c7e8405999642a11046b09f · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-002-ignyte-login.md
+> Brain work item: [[wi-maaz20x-002-ignyte-login]] · brain_commit 554fc7c8b8e40651417f6c5fe2ee2efb36858cce · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-002-ignyte-login.md
 > Compiled by PB - Spec Compile. Do NOT edit intent here; intent changes go back to the brain (Escalation Rule).
 
 ## Why

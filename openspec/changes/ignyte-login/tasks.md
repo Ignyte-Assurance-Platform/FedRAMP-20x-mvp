@@ -1,9 +1,9 @@
 # Tasks — Screen A — Ignyte login (Sign in with Google, Ignyte Workspace accounts)
 
-> Brain work item: [[wi-maaz20x-002-ignyte-login]] · brain_commit 537ea5b73a3b21864c7e8405999642a11046b09f · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-002-ignyte-login.md
+> Brain work item: [[wi-maaz20x-002-ignyte-login]] · brain_commit 554fc7c8b8e40651417f6c5fe2ee2efb36858cce · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-002-ignyte-login.md
 
 ## 1. Setup
-- [x] 1.1 Read the frozen brain spec at brain_commit 537ea5b; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-002-ignyte-login.md`)
+- [x] 1.1 Read the frozen brain spec at brain_commit 554fc7c; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-002-ignyte-login.md`)
 
 ## 2. Implement
 - [ ] 2.1 WHEN an allowlisted Ignyte account signs in with Google THEN a session of 8 hours is created and Screen B opens [pre-prod]
@@ -24,4 +24,4 @@
 
 ## 3. Verify
 - [ ] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear 
+- [ ] 3.2 Human triage (gate 7) recorded in Linear IGN-14
