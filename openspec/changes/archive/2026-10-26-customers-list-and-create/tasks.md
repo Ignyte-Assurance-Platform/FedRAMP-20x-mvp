@@ -27,5 +27,5 @@
 - [x] 2.19 WHEN the app is built THEN the README "Screens and routes" section lists `/customers` (B), `/customers/new` (C), `/customers/:customerId/package` (D) and `/intake/:token` (E), and a smoke test opens the list and reaches Screen D from a row (pr-9 nit 10 of IGN-8)
 
 ## 3. Verify
-- [ ] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear 
+- [x] 3.1 Automated review (PB - Review PR) against this spec (`.pb-cache/reviews/pr-19-2026-10-26.md`)
+- [x] 3.2 Human triage (gate 7) recorded in Linear IGN-15 (comment 29f4b4ce, 2026-10-26)

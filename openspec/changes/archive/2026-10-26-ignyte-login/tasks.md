@@ -23,5 +23,5 @@
 - [x] 2.15 WHEN the seed runs with ADMIN_EMAILS THEN exactly those users are `active` (removed emails are set inactive, rows kept), and an email outside ignyteplatform.com, or an empty ADMIN_EMAILS in production, makes the seed fail [unit]
 
 ## 3. Verify
-- [ ] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear IGN-14
+- [x] 3.1 Automated review (PB - Review PR) against this spec (`.pb-cache/reviews/pr-18-2026-10-26.md`)
+- [x] 3.2 Human triage (gate 7) recorded in Linear IGN-14 (comment b1cd2800, 2026-10-26)
