@@ -1,23 +1,16 @@
 <title>Customer Intake</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: one column, sticky header with progress; three tabs; form generated from the FedRAMP Package Overview schema. */
 :root{
-  --bg:#f6f5f2; --surface:#ffffff; --fg:#1b1f26; --muted:#5d6672; --line:#dcd9d2; --line-strong:#b9b4aa;
-  --accent:#c2410c; --accent-fg:#ffffff; --accent-soft:#fbe9df;
+  color-scheme:light;
+  --bg:#ffffff; --surface:#ffffff; --fg:#1f2328; --muted:#626a73; --line:#e4e6e9; --line-strong:#c4c9cf;
+  --accent:#c2410c; --accent-fg:#ffffff; --accent-soft:#fdf1e8; --accent-deco:#d9661f; --heading:#c2410c;
   --ok:#1f7a4d; --ok-soft:#e2f3ea; --warn:#8a5a00; --warn-soft:#fff3d6; --err:#b42318; --err-soft:#fde8e6;
-  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:"Work Sans","Helvetica Neue",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   --r:6px;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#15171b; --surface:#1e2127; --fg:#e8e6e1; --muted:#9aa2ad; --line:#2f333b; --line-strong:#4a5059;
-  --accent:#f0813f; --accent-fg:#1b1f26; --accent-soft:#3a2416;
-  --ok:#5fcf8e; --ok-soft:#163626; --warn:#f2c35b; --warn-soft:#3a2f12; --err:#f27d73; --err-soft:#3b1b19; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#15171b; --surface:#1e2127; --fg:#e8e6e1; --muted:#9aa2ad; --line:#2f333b; --line-strong:#4a5059;
-  --accent:#f0813f; --accent-fg:#1b1f26; --accent-soft:#3a2416;
-  --ok:#5fcf8e; --ok-soft:#163626; --warn:#f2c35b; --warn-soft:#3a2f12; --err:#f27d73; --err-soft:#3b1b19; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--sans);margin:0}
 .wrap{max-width:900px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
@@ -125,9 +118,12 @@ details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
 .confirm p{margin:0 0 12px}
 .confirm .actions{justify-content:flex-end}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* Ignyte theme (2026-10-23, Max and Christina): white ground, orange accents, Ignyte name, no logos. #d9661f only for bars and borders (3.6:1); text and buttons use --accent #c2410c (5.2:1); headings --heading #c2410c (5.2:1) */
+header.top,.topbar{border-top:4px solid var(--accent-deco)}
+h1,h2{color:var(--heading)}
 </style>
 
-<div class="note"><div class="wrap">Mockup for approval · Oct 14, 2026, updated Oct 22, 2026 after Christina's review and her answers of Oct 22 · Not functional. Field list and dropdown values come from the FedRAMP Package Overview schema v0.2.0. Example data is fictional. This is what the customer sees from the link, with no login. <a href="https://claude.ai/artifact/N18wcZ6j6EuuUydAqGVJk5" style="color:inherit;font-weight:600">Open the Ignyte side (screens A–D)</a></div></div>
+<div class="note"><div class="wrap">Mockup for approval · Oct 14, 2026, updated Oct 22, 2026 after Christina's review and her answers of Oct 22, and Oct 23 to use Ignyte colors (white, orange accents; no logos) · Not functional. Field list and dropdown values come from the FedRAMP Package Overview schema v0.2.0. Example data is fictional. This is what the customer sees from the link, with no login. <a href="https://claude.ai/artifact/N18wcZ6j6EuuUydAqGVJk5" style="color:inherit;font-weight:600">Open the Ignyte side (screens A–D)</a></div></div>
 
 <header class="top"><div class="wrap">
   <div class="brand">
@@ -165,9 +161,9 @@ details.ksi .body{padding:0 14px 14px;border-top:1px solid var(--line)}
       <label class="f full">Service description <span class="req">*</span><small>What the service does, for an agency reader. Markdown allowed.</small><textarea id="desc" data-req>Records management service for federal agencies.</textarea></label>
       <label class="f">Certification type <span class="req">*</span><select id="cert" data-req><option>20x</option><option>Rev5</option></select></label>      <label class="f">FedRAMP package ID <small>Only if FedRAMP already assigned you one. Filled in automatically until FedRAMP assigns your ID.</small><input id="pkgid" value="Example Cloud Co. ERP" placeholder="e.g. FR2401234567"></label>
       <label class="f">Website <span class="req">*</span><input id="website" type="url" value="https://www.example.com" data-req></label>
-      <div class="f full logo-f"><span>Company logo <span class="req">*</span></span><small>Upload your logo and Ignyte hosts it for your FedRAMP listing. PNG, SVG or WebP, at least 256 px wide, transparent or white background, up to 2 MB.</small>
+      <div class="f full logo-f"><span>Company logo <span class="req">*</span></span><small>Upload your logo and Ignyte hosts it for your FedRAMP listing. PNG or JPEG, at least 256 px wide, transparent or white background, up to 2 MB.</small>
         <div class="logo-up"><div class="logo-prev" id="logoprev"><svg viewBox="0 0 120 40" width="120" height="40" aria-label="Example Cloud Co. logo"><rect x="2" y="8" width="24" height="24" rx="5" fill="#2563eb"/><path d="M8 20h12M14 14v12" stroke="#fff" stroke-width="3"/><text x="32" y="26" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="currentColor">Example</text></svg></div>
-        <div class="logo-meta"><b id="logoname">example-cloud-logo.svg</b><span id="logosize">14 KB · uploaded</span><label class="btn sm" for="logoinput" style="width:max-content">Replace logo</label><input type="file" id="logoinput" accept=".png,.svg,.webp,image/png,image/svg+xml,image/webp" hidden></div></div></div>
+        <div class="logo-meta"><b id="logoname">example-cloud-logo.png</b><span id="logosize">14 KB · uploaded</span><label class="btn sm" for="logoinput" style="width:max-content">Replace logo</label><input type="file" id="logoinput" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden></div></div></div>
     </div></fieldset>
 
     <fieldset><legend>Service properties</legend><p class="hint">Technical and operational properties, as FedRAMP lists them on the Marketplace.</p>
