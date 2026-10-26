@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { formatDateTime } from "~/lib/dates";
+import { PRODUCT_NAME } from "~/lib/product";
 import { AnswersReadOnly, LOGO_PATH } from "./components/answers-read-only";
 import { ProblemList } from "./components/problem-list";
 import { PublishingChecklist } from "./components/publishing-checklist";
@@ -93,7 +94,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: loaderData ? `${loaderData.screen.customer.name} · Package Overview JSON · Maaz 20x` : "Maaz 20x" }];
+  return [{ title: loaderData ? `${loaderData.screen.customer.name} · Package Overview JSON · ${PRODUCT_NAME}` : PRODUCT_NAME }];
 }
 
 const noticeClass = "rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm";

@@ -1,4 +1,5 @@
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+import { PRODUCT_NAME } from "~/lib/product";
 import type { Route } from "./+types/root";
 import "./styles/app.css";
 
@@ -21,7 +22,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const meta: Route.MetaFunction = () => [{ title: "Maaz 20x" }];
+export const meta: Route.MetaFunction = () => [{ title: PRODUCT_NAME }];
 
 export default function App() {
   return <Outlet />;

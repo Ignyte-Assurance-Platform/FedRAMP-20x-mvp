@@ -1,11 +1,12 @@
 import { data, Form, redirect } from "react-router";
-import { getSessionUser, getSignInOptions, signInErrorMessage, startGoogleSignIn } from "~server/services";
+import { getSignInOptions, resolveStaffUser, signInErrorMessage, startGoogleSignIn } from "~server/services";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { PRODUCT_NAME } from "~/lib/product";
 import type { Route } from "./+types/login";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  if (await getSessionUser(request)) throw redirect("/");
+  if ("user" in (await resolveStaffUser(request))) throw redirect("/");
   const error = signInErrorMessage(new URL(request.url).searchParams.get("error"));
   return { ...getSignInOptions(), error };
 }
@@ -22,7 +23,7 @@ export default function Login({ loaderData, actionData }: Route.ComponentProps) 
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign in to Maaz 20x</CardTitle>
+          <CardTitle>Sign in to {PRODUCT_NAME}</CardTitle>
           <CardDescription>Ignyte staff sign in with their Google Workspace account.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
