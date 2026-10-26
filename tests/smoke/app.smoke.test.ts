@@ -215,11 +215,13 @@ describe("Screen D routes (WI-007 §6, §3)", () => {
     const { TAB1_SECTION, savePackageOverviewInputs, setAssessorConfirmed } = await import("~server/services");
     const goldenAnswers = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
 
-    await intakeAnswersRepo.upsertIntakeSection(getDb(), {
+    const current = await intakeAnswersRepo.findIntakeSection(getDb(), customerId, TAB1_SECTION);
+    await intakeAnswersRepo.saveIntakeSection(getDb(), {
       customerId,
       section: TAB1_SECTION,
       formDefinitionVersion: "test",
       answers: goldenAnswers,
+      expectedVersion: current?.version ?? 0,
     });
     // An assessor typed but not confirmed, and no hosted logo: both make the file a draft.
     await savePackageOverviewInputs({ customerId, assessorName: "Example Assessor LLC", assessorId: "000123", advisorName: "Ignyte" });
@@ -465,7 +467,7 @@ describe("Screens B and C, the intake link (WI-003)", () => {
     const services = await import("~server/services");
     const { getDb } = await import("~server/db");
     const { intakeAnswersRepo } = await import("~server/repositories");
-    await intakeAnswersRepo.upsertIntakeSection(getDb(), { customerId: id, section: "company", formDefinitionVersion: "test", answers: { a: 1 } });
+    await intakeAnswersRepo.saveIntakeSection(getDb(), { customerId: id, section: "company", formDefinitionVersion: "test", answers: { a: 1 }, expectedVersion: 0 });
     await services.submitIntake(id);
 
     const res = await app.request(`http://localhost:3000/customers/${id}/package`, {
@@ -515,5 +517,201 @@ describe("Screens B and C, the intake link (WI-003)", () => {
     const html = await (await app.request("/customers", { headers: { cookie } })).text();
     const rowHtml = html.slice(html.indexOf(name), html.indexOf(name) + 400);
     expect(rowHtml).toContain("Regenerate");
+  });
+});
+
+describe("Screen E tab 1, the customer's intake (WI-004)", () => {
+  const PNG_300 = (() => {
+    // A real 300×1 PNG header is enough for the signature check; the width is checked in the browser.
+    const bytes = Buffer.alloc(64);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(bytes);
+    return bytes;
+  })();
+
+  async function newCustomer(name = `Intake Co ${Date.now()}`) {
+    const services = await import("~server/services");
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    const [user] = await getDb().select().from(schema.users).where(eq(schema.users.email, "dev@ignyteplatform.com"));
+    const { customer, link } = await services.createCustomer(
+      { name, serviceName: "Example Records Platform", serviceDescription: "Records management.", contactName: "Pat", contactEmail: "pat@example.com" },
+      user!.id,
+    );
+    const token = link.split("/intake/")[1]!;
+    return { id: customer.id, token, userId: user!.id };
+  }
+
+  const api = (token: string, body: Record<string, unknown>) =>
+    app.request(`http://localhost:3000/api/intake/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+  async function customerRow(id: string) {
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    const [row] = await getDb().select().from(schema.customers).where(eq(schema.customers.id, id));
+    return row!;
+  }
+
+  async function uploadLogo(token: string, bytes: Buffer, contentType = "image/png") {
+    const start = await api(token, { intent: "logo-start", filename: "logo.png", contentType, size: bytes.length, width: 300 });
+    expect(start.status).toBe(200);
+    const { logoId, upload } = (await start.json()) as { logoId: string; upload: { url: string; method: string; headers: Record<string, string> } };
+    const put = await app.request(upload.url, { method: upload.method, headers: upload.headers, body: new Uint8Array(bytes) });
+    expect(put.status).toBe(200);
+    return api(token, { intent: "logo-finish", logoId, filename: "logo.png", contentType });
+  }
+
+  it("2.1, 2.27 opens without a session, header and prefill from Screen C, no-store and no-referrer", async () => {
+    const { token } = await newCustomer("Prefill Co");
+    const page = await app.request(`/intake/${token}`);
+    expect(page.status).toBe(200);
+    expect(page.headers.get("cache-control")).toBe("no-store");
+    expect(page.headers.get("referrer-policy")).toBe("no-referrer");
+    const html = await page.text();
+    expect(html).toContain("Prefill Co</h1>");
+    expect(html).toContain('value="Prefill Co"');
+    expect(html).toContain('value="Example Records Platform"');
+    expect(html).toContain("Records management.");
+  });
+
+  it("2.24 a staff session grants nothing on an unknown token: only the expired message", async () => {
+    const signIn = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+    const cookie = signIn.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    const page = await app.request(`/intake/${"x".repeat(32)}`, { headers: { cookie } });
+    expect(page.status).toBe(410);
+    const html = await page.text();
+    expect(html).toContain("This link has expired. Ask your Ignyte consultant for a new one.");
+    expect(html).not.toContain("Provider Name");
+  });
+
+  it("2.5, 2.6, 2.14, 2.22 Save stores the object with its form definition version and a bumped version, sets In progress and Class A, drops Ignyte-owned fields", async () => {
+    const { id, token } = await newCustomer();
+    const { getCompanyFormDefinition } = await import("~server/fedramp");
+    const answers = {
+      serviceIdentification: { providerName: "Saved Co.", serviceAcronym: "SVC", certificationType: "20x", logo: "https://evil.example/x.png" },
+      assessor: { name: "Not me", assessorID: "000001" },
+    };
+    const first = await api(token, { intent: "save", answers, version: 0 });
+    expect(first.status).toBe(200);
+    expect(await first.json()).toMatchObject({ kind: "saved", version: 1 });
+    const second = await api(token, { intent: "save", answers, version: 1 });
+    expect(await second.json()).toMatchObject({ kind: "saved", version: 2 });
+
+    const { getDb } = await import("~server/db");
+    const { intakeAnswersRepo } = await import("~server/repositories");
+    const row = await intakeAnswersRepo.findIntakeSection(getDb(), id, "company");
+    expect(row?.formDefinitionVersion).toBe(getCompanyFormDefinition().version);
+    expect(row?.answers).toEqual({ serviceIdentification: { providerName: "Saved Co.", serviceAcronym: "SVC", certificationType: "20x" } });
+    const customer = await customerRow(id);
+    expect(customer.status).toBe("in_progress");
+    expect(customer.fedrampClass).toBe("A");
+
+    const reopened = await (await app.request(`/intake/${token}`)).text();
+    expect(reopened).toContain('value="Saved Co."');
+    expect(reopened).toContain('value="SVC"');
+  });
+
+  it("2.20 a save with an older version gets a conflict with the stored answers, and stores nothing", async () => {
+    const { id, token } = await newCustomer();
+    await api(token, { intent: "save", answers: { serviceIdentification: { providerName: "Window A" } }, version: 0 });
+    const stale = await api(token, { intent: "save", answers: { serviceIdentification: { providerName: "Window B" } }, version: 0 });
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toMatchObject({ kind: "conflict", version: 1, answers: { serviceIdentification: { providerName: "Window A" } } });
+    const { getDb } = await import("~server/db");
+    const { intakeAnswersRepo } = await import("~server/repositories");
+    expect((await intakeAnswersRepo.findIntakeSection(getDb(), id, "company"))?.answers).toEqual({ serviceIdentification: { providerName: "Window A" } });
+    // Keep mine: save again on top of the stored version.
+    const keep = await api(token, { intent: "save", answers: { serviceIdentification: { providerName: "Window B" } }, version: 1 });
+    expect(await keep.json()).toMatchObject({ kind: "saved", version: 2 });
+  });
+
+  it("2.10, 2.12 stores a PNG logo on Ignyte's side and the file uses the hosted URL; a fake PNG is deleted and not recorded", async () => {
+    const { id, token } = await newCustomer();
+    const stored = await uploadLogo(token, PNG_300);
+    expect(stored.status).toBe(200);
+    const body = (await stored.json()) as { logo: { documentId: string; previewUrl: string } };
+    expect(body.logo.previewUrl).toBeTruthy();
+
+    const services = await import("~server/services");
+    const { getDb } = await import("~server/db");
+    const tab1 = await services.loadTab1Answers(id, { db: getDb(), logoBaseUrl: "https://logos.example.test/" });
+    expect(tab1.logoUrl).toBe(`https://logos.example.test/customers/${id}/logo/${body.logo.documentId}.png`);
+
+    const fake = await uploadLogo(token, Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'></svg>"));
+    expect(fake.status).toBe(400);
+    expect(((await fake.json()) as { message: string }).message).toContain("not a PNG or JPEG");
+    const { documentsRepo } = await import("~server/repositories");
+    const latest = await documentsRepo.findLatestDocumentUnder(getDb(), id, `customers/${id}/logo/`);
+    expect(latest?.id).toBe(body.logo.documentId);
+  });
+
+  it("2.11 refuses a 3 MB logo, an SVG and a WebP before any upload URL is issued", async () => {
+    const { token } = await newCustomer();
+    for (const [contentType, size] of [["image/png", 3 * 1024 * 1024], ["image/svg+xml", 1000], ["image/webp", 1000]] as const) {
+      const res = await api(token, { intent: "logo-start", filename: "logo", contentType, size, width: 300 });
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { message: string }).message).toContain("Upload a PNG or JPEG logo");
+    }
+  });
+
+  it("2.9, 2.13, 2.7, 2.8, 2.23 Submit: blocked without a logo, then the golden answers submit, the tab locks, Unlock reopens it", async () => {
+    const { id, token, userId } = await newCustomer();
+    const golden = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
+
+    const noLogo = await api(token, { intent: "submit", answers: golden, version: 0 });
+    expect(noLogo.status).toBe(422);
+    const blocked = (await noLogo.json()) as { problems: Array<{ path: string; message: string }>; version: number };
+    expect(blocked.problems).toEqual([expect.objectContaining({ path: "/serviceIdentification/logo" })]);
+    expect((await customerRow(id)).status).toBe("in_progress");
+
+    expect((await uploadLogo(token, PNG_300)).status).toBe(200);
+    const submitted = await api(token, { intent: "submit", answers: golden, version: blocked.version });
+    expect(submitted.status).toBe(200);
+    expect((await customerRow(id)).status).toBe("submitted");
+
+    const locked = await api(token, { intent: "save", answers: golden, version: blocked.version + 1 });
+    expect(locked.status).toBe(423);
+    const lockedLogo = await api(token, { intent: "logo-start", filename: "logo.png", contentType: "image/png", size: 100, width: 300 });
+    expect(lockedLogo.status).toBe(423);
+    expect(await (await app.request(`/intake/${token}`)).text()).toContain("Tabs 1 and 2 are now read-only");
+
+    const services = await import("~server/services");
+    await services.unlockIntake(id, userId);
+    expect((await customerRow(id)).status).toBe("in_progress");
+    const again = await api(token, { intent: "save", answers: golden, version: blocked.version + 1 });
+    expect(again.status).toBe(200);
+  });
+
+  it("2.23 an expired or replaced link stores nothing and answers expired", async () => {
+    const { id, token, userId } = await newCustomer();
+    const services = await import("~server/services");
+    await services.issueNewIntakeLink(id, userId);
+    const replaced = await api(token, { intent: "save", answers: { serviceIdentification: { providerName: "Late" } }, version: 0 });
+    expect(replaced.status).toBe(410);
+    expect(await replaced.json()).toEqual({ kind: "expired", message: "This link has expired. Ask your Ignyte consultant for a new one." });
+
+    const fresh = (await services.getIntakeLinkSection(id)).link.url!.split("/intake/")[1]!;
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    await getDb().update(schema.customers).set({ intakeTokenExpiresAt: new Date(Date.now() - 1000) }).where(eq(schema.customers.id, id));
+    expect((await api(fresh, { intent: "save", answers: {}, version: 0 })).status).toBe(410);
+    expect((await api(fresh, { intent: "logo-start", filename: "l.png", contentType: "image/png", size: 10 })).status).toBe(410);
+    expect((await app.request(`/intake/${fresh}`)).status).toBe(410);
+    const { intakeAnswersRepo } = await import("~server/repositories");
+    expect(await intakeAnswersRepo.findIntakeSection(getDb(), id, "company")).toBeUndefined();
+  });
+
+  it("2.14, 2.28 Screen D shows Class A next to the certification type and names problems with the tab 1 labels", async () => {
+    const { id, token, userId } = await newCustomer();
+    await api(token, { intent: "save", answers: { serviceIdentification: { providerName: "Class Co.", serviceAcronym: "CC", certificationType: "20x" } }, version: 0 });
+    const signIn = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+    const cookie = signIn.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    const page = await (await app.request(`/customers/${id}/package`, { headers: { cookie } })).text();
+    expect(page).toContain("20x · Class A");
+
+    const services = await import("~server/services");
+    const { getCompanyFormDefinition } = await import("~server/fedramp");
+    const outcome = await services.generatePackageOverviewForCustomer(id, userId);
+    const website = outcome.problems.find((p) => p.path === "/serviceIdentification/website");
+    expect(website?.question).toBe(getCompanyFormDefinition().labels["/serviceIdentification/website"]);
   });
 });
