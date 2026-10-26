@@ -1,0 +1,1 @@
+ALTER TABLE "customers" ADD COLUMN "fedramp_class" text;
