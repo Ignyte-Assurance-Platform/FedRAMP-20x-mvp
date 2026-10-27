@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { checkAnswers, type FormDefinition, type FormField } from "~/lib/form-definition";
 import { fieldDomId, Fields, type Answers } from "./form-fields";
 import { IntakeExpired } from "./intake-expired";
+import { createIntakeSaver, type Conflict, type SaveState } from "./intake-saver";
 
 /**
  * Screen E tab 1 (WI-004): the generated form with Save, autosave 2 s after typing stops,
@@ -25,11 +26,6 @@ export const AUTOSAVE_MS = 2000;
 export const NOT_SAVED_YET = "Not saved yet. We will try again.";
 export const CONFLICT_MESSAGE = "This form was changed in another window.";
 
-type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: Date } | { kind: "failed" };
-interface Conflict {
-  answers: Answers;
-  version: number;
-}
 interface Problem {
   path: string;
   question?: string;
@@ -81,11 +77,6 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
   const [logoMessage, setLogoMessage] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
 
-  const version = useRef(view.version);
-  const dirty = useRef(false);
-  const inFlight = useRef(false);
-  // What the next save sends; kept in step with the state by change() and Take theirs.
-  const latest = useRef(answers);
 
   const post = useCallback(
     async (body: Record<string, unknown>): Promise<{ status: number; data: Record<string, unknown> } | null> => {
@@ -105,43 +96,22 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
     [endpoint],
   );
 
-  const save = useCallback(
-    async (overrideVersion?: number) => {
-      if (inFlight.current || locked) return;
-      inFlight.current = true;
-      dirty.current = false;
-      setSaveState({ kind: "saving" });
-      const result = await post({ intent: "save", answers: latest.current, version: overrideVersion ?? version.current });
-      inFlight.current = false;
-      if (!result || result.status >= 500 || result.status === 400) {
-        dirty.current = true;
-        setSaveState({ kind: "failed" });
-        return;
-      }
-      if (result.status === 409) {
-        setConflict({ answers: result.data.answers as Answers, version: Number(result.data.version) });
-        setSaveState({ kind: "idle" });
-        return;
-      }
-      if (result.status === 200) {
-        version.current = Number(result.data.version);
-        setSaveState({ kind: "saved", at: new Date(String(result.data.savedAt)) });
-      }
-    },
-    [locked, post],
+  // Save, autosave 2 s after the last change, and Submit, one request at a time (E2).
+  const [saver] = useState(() =>
+    createIntakeSaver({
+      post,
+      answers: view.answers,
+      version: view.version,
+      delayMs: AUTOSAVE_MS,
+      onState: setSaveState,
+      onConflict: setConflict,
+    }),
   );
-
-  // Autosave: 2 s after the last change, unless a conflict waits for the customer's choice.
-  useEffect(() => {
-    if (!dirty.current || conflict || locked) return;
-    const timer = setTimeout(() => void save(), AUTOSAVE_MS);
-    return () => clearTimeout(timer);
-  }, [answers, conflict, locked, save]);
+  useEffect(() => saver.pause(locked), [locked, saver]);
 
   function change(next: Answers) {
-    dirty.current = true;
-    latest.current = next;
     setAnswers(next);
+    saver.changed(next);
   }
 
   async function submit() {
@@ -152,9 +122,9 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
       return;
     }
     setSubmitting(true);
-    const result = await post({ intent: "submit", answers: latest.current, version: version.current });
+    const result = await saver.submit();
     setSubmitting(false);
-    if (!result) {
+    if (!result || result.status >= 500) {
       setSaveState({ kind: "failed" });
       return;
     }
@@ -163,7 +133,6 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
       return;
     }
     if (result.status === 422) {
-      version.current = Number(result.data.version);
       setSaveState({ kind: "saved", at: new Date(String(result.data.savedAt)) });
       const found = result.data.problems as Problem[];
       setProblems(found);
@@ -171,10 +140,13 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
       return;
     }
     if (result.status === 200) {
-      dirty.current = false;
       setProblems([]);
       setLocked(true);
       setSubmitted(true);
+      return;
+    }
+    if (result.status !== 410 && result.status !== 423) {
+      setSaveState({ kind: "failed", message: typeof result.data.message === "string" ? result.data.message : undefined });
     }
   }
 
@@ -225,7 +197,7 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
       : saveState.kind === "saved"
         ? `Saved ${timeFormat.format(saveState.at)}`
         : saveState.kind === "failed"
-          ? NOT_SAVED_YET
+          ? (saveState.message ?? NOT_SAVED_YET)
           : "";
 
   const renderLogo = (field: FormField, describedBy: string | undefined) => (
@@ -299,7 +271,7 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
                 onClick={() => {
                   const theirs = conflict.version;
                   setConflict(null);
-                  void save(theirs);
+                  void saver.save(theirs);
                 }}
               >
                 Keep mine
@@ -308,9 +280,7 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  version.current = conflict.version;
-                  dirty.current = false;
-                  latest.current = conflict.answers;
+                  saver.takeTheirs(conflict);
                   setAnswers(conflict.answers);
                   setConflict(null);
                   setSaveState({ kind: "idle" });
@@ -349,10 +319,10 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
 
           {!locked && (
             <div className="sticky bottom-0 flex flex-wrap items-center gap-3 border-t bg-background py-3">
-              <Button type="button" variant="outline" onClick={() => void save()} disabled={saveState.kind === "saving" || Boolean(conflict)}>
+              <Button type="button" variant="outline" onClick={() => void saver.save()} disabled={saveState.kind === "saving" || submitting || Boolean(conflict)}>
                 Save
               </Button>
-              <Button type="submit" disabled={submitting || Boolean(conflict)}>
+              <Button type="submit" disabled={submitting || saveState.kind === "saving" || Boolean(conflict)}>
                 {submitting ? "Submitting…" : "Submit"}
               </Button>
               <span role="status" aria-live="polite" className="text-sm text-muted-foreground">
