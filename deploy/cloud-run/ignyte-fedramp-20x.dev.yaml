@@ -1,5 +1,7 @@
 # Cloud Run service for dev (WI-017). The deploy workflow (.github/workflows/deploy-dev.yml)
-# replaces IMAGE_PLACEHOLDER and COMMIT_PLACEHOLDER, then runs `gcloud run services replace`.
+# replaces IMAGE_PLACEHOLDER, COMMIT_PLACEHOLDER and RUN_PLACEHOLDER (the run id, so every run makes
+# a new revision), adds the traffic block that keeps the serving revision at 100 %, then runs
+# `gcloud run services replace`.
 # Secrets are Secret Manager references only; values never live in this file.
 # The app reaches the shared Postgres in ignyte-data-dev through the cloud-sql-proxy sidecar,
 # logged in as the web-app service account (IAM database auth, no password).
@@ -16,6 +18,7 @@ spec:
     metadata:
       labels:
         commit: COMMIT_PLACEHOLDER
+        run: RUN_PLACEHOLDER
       annotations:
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "2"

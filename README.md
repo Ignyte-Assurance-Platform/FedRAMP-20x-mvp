@@ -70,10 +70,11 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, build and the 
 
 Dev runs on Cloud Run: https://ignyte-fedramp-20x-631427647079.us-central1.run.app (project `ignyte-maaz20x-dev`, Postgres on the shared instance in `ignyte-data-dev`). Console links and the inventory of every resource are in the brain runbook `maaz20x-runbook-gcp-dev-console`.
 
-- **How `main` reaches dev.** When CI passes on a push to `main`, `.github/workflows/deploy-dev.yml` builds the `Dockerfile` for that exact commit, pushes `web:<short sha>` to Artifact Registry, applies `deploy/cloud-run/ignyte-fedramp-20x.dev.yaml` and fails unless `/api/health` answers 200. It signs in to Google Cloud through Workload Identity Federation as `github-deployer`; the repo holds no Google key.
-- **Deploy by hand.** Actions → "Deploy dev" → Run workflow on `main`.
+- **How `main` reaches dev.** When CI passes on a push to `main`, `.github/workflows/deploy-dev.yml` builds the `Dockerfile` for that exact commit, pushes `web:<short sha>` to Artifact Registry, applies `deploy/cloud-run/ignyte-fedramp-20x.dev.yaml` as a new revision **with no traffic** (tag `candidate`), checks that revision's own `/api/health` and only then sends it 100 % of the traffic. If the check fails the job fails and users stay on the previous revision. It signs in to Google Cloud through Workload Identity Federation as `github-deployer`; the repo holds no Google key. PRs also build the image (CI job "production image builds"), without pushing it.
+- **Deploy by hand.** Actions → "Deploy dev" → Run workflow on `main`. It deploys the tip of `main` and always makes a new revision. Use it after rotating a secret (Cloud Run reads `latest` only when a revision starts), after fixing something on the Google Cloud side that made a deploy fail, or to return to `main` after a rollback.
 - **What runs at start-up.** The container migrates the database, applies the staff allowlist (`ADMIN_EMAILS`), then starts the app. Settings and secret references live in the service file; secret values live only in Secret Manager.
-- **Roll back.** Cloud Run console → service `ignyte-fedramp-20x` → Revisions → send 100 % of traffic to the previous revision. Or run the workflow by hand after reverting the commit on `main`.
+- **Migrations must work with the previous release.** They run when the new revision starts, while the previous one still serves, and a rollback does not undo them. Add first (columns, tables), remove only in a later release once no running code uses the old shape.
+- **Roll back.** Cloud Run console → service `ignyte-fedramp-20x` → Revisions → send 100 % of traffic to the previous revision, then revert the commit on `main`: the next deploy moves the traffic to the newest revision again.
 
 ## Status
 
