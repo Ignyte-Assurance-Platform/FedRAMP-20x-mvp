@@ -69,3 +69,14 @@ jobs:
         env:
           NODE_ENV: development
       - run: npm run test:smoke
+
+  image:
+    # The deploy builds this Dockerfile only after the merge; build it on every PR so a broken
+    # image fails here instead of in the deploy. Not pushed anywhere.
+    name: production image builds
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t fedramp-20x-mvp:ci .
