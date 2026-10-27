@@ -4,7 +4,7 @@
  * `npm run test:smoke`. CI does the same with a Postgres service container.
  */
 import { createHash } from "node:crypto";
-import { readdir, readFile, rm } from "node:fs/promises";
+import { access, readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Hono } from "hono";
@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const storageDir = path.join(root, ".data", "smoke-storage");
+const logoDir = path.join(root, ".data", "smoke-logos");
 
 Object.assign(process.env, {
   NODE_ENV: "development",
@@ -23,6 +24,7 @@ Object.assign(process.env, {
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? "smoke-test-secret-0123456789abcdef0123",
   STORAGE_DRIVER: "local",
   LOCAL_STORAGE_DIR: storageDir,
+  LOCAL_LOGO_DIR: logoDir,
 });
 
 let app: Hono;
@@ -31,6 +33,7 @@ let closeDb: () => Promise<void>;
 
 beforeAll(async () => {
   await rm(storageDir, { recursive: true, force: true });
+  await rm(logoDir, { recursive: true, force: true });
   const server = await import("~server/index");
   build = (await import(pathToFileURL(path.join(root, "build/server/index.js")).href)) as ServerBuild;
   app = server.createApp({ mode: "production", getBuild: async () => build });
@@ -687,6 +690,8 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     const { getDb } = await import("~server/db");
     const tab1 = await services.loadTab1Answers(id, { db: getDb(), logoBaseUrl: "https://logos.example.test/" });
     expect(tab1.logoUrl).toBe(`https://logos.example.test/customers/${id}/logo/${body.logo.documentId}.png`);
+    // WI-018: the checked logo is copied to the logos bucket (locally LOCAL_LOGO_DIR), same path.
+    await expect(access(path.join(logoDir, `customers/${id}/logo/${body.logo.documentId}.png`))).resolves.toBeUndefined();
 
     const fake = await uploadLogo(token, Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'></svg>"));
     expect(fake.status).toBe(400);
@@ -694,6 +699,57 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     const { documentsRepo } = await import("~server/repositories");
     const latest = await documentsRepo.findLatestDocumentUnder(getDb(), id, `customers/${id}/logo/`);
     expect(latest?.id).toBe(body.logo.documentId);
+    // The fake never reached the logos bucket: only its one checked logo is there.
+    expect(await readdir(path.join(logoDir, `customers/${id}/logo`))).toEqual([`${body.logo.documentId}.png`]);
+  });
+
+  it("WI-018: when the copy to the logos bucket fails, nothing is recorded and the private upload is deleted", async () => {
+    const { id, token } = await newCustomer();
+    const start = await api(token, { intent: "logo-start", filename: "logo.png", contentType: "image/png", size: PNG_300.length, width: 300 });
+    const { logoId, upload } = (await start.json()) as { logoId: string; upload: { url: string; method: string; headers: Record<string, string> } };
+    await app.request(upload.url, { method: upload.method, headers: upload.headers, body: new Uint8Array(PNG_300) });
+
+    const services = await import("~server/services");
+    const { getDb } = await import("~server/db");
+    const { getDocumentStore } = await import("~server/storage");
+    const fedramp = await import("~server/fedramp");
+    const store = getDocumentStore();
+    const failing = { publish: () => Promise.reject(new Error("logos bucket unreachable")), isPublished: async () => false };
+    const outcome = await services.finishLogoUpload(
+      token,
+      { logoId, filename: "logo.png", contentType: "image/png" },
+      { db: getDb(), store, logos: failing, logoBaseUrl: undefined, now: () => new Date(), definition: fedramp.getCompanyFormDefinition(), checker: fedramp.createTab1Checker() },
+    );
+    expect(outcome).toMatchObject({ kind: "refused" });
+    expect((outcome as { message: string }).message).toContain("did not arrive");
+    const { documentsRepo } = await import("~server/repositories");
+    expect(await documentsRepo.findDocument(getDb(), logoId)).toBeUndefined();
+    expect(await store.stat(`customers/${id}/logo/${logoId}.png`)).toBeNull();
+  });
+
+  it("WI-018: with a logo host configured, Screen E previews the logo at its public address", async () => {
+    const { id, token } = await newCustomer();
+    const start = await api(token, { intent: "logo-start", filename: "logo.png", contentType: "image/png", size: PNG_300.length, width: 300 });
+    const { logoId, upload } = (await start.json()) as { logoId: string; upload: { url: string; method: string; headers: Record<string, string> } };
+    await app.request(upload.url, { method: upload.method, headers: upload.headers, body: new Uint8Array(PNG_300) });
+
+    const services = await import("~server/services");
+    const { getDb } = await import("~server/db");
+    const { getDocumentStore, getLogoPublisher } = await import("~server/storage");
+    const fedramp = await import("~server/fedramp");
+    const deps = {
+      db: getDb(),
+      store: getDocumentStore(),
+      logos: getLogoPublisher(),
+      logoBaseUrl: "https://logos.example.test/",
+      now: () => new Date(),
+      definition: fedramp.getCompanyFormDefinition(),
+      checker: fedramp.createTab1Checker(),
+    };
+    const publicUrl = `https://logos.example.test/customers/${id}/logo/${logoId}.png`;
+    const outcome = await services.finishLogoUpload(token, { logoId, filename: "logo.png", contentType: "image/png" }, deps);
+    expect(outcome).toMatchObject({ kind: "stored", logo: { previewUrl: publicUrl } });
+    expect(await services.openIntake(token, deps)).toMatchObject({ kind: "open", logo: { previewUrl: publicUrl } });
   });
 
   it("2.11 refuses a 3 MB logo, an SVG and a WebP before any upload URL is issued", async () => {

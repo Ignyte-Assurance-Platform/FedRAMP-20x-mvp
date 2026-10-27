@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import * as v from "valibot";
 import type { FormDefinition } from "~/lib/form-definition";
-import { getDb, type Database } from "~server/db";
 import { createTab1Checker, getCompanyFormDefinition, type Problem, type Tab1Checker } from "~server/fedramp";
 import { customersRepo, documentsRepo, intakeAnswersRepo, type CustomerRow } from "~server/repositories";
-import { getDocumentStore, logoObjectPath, logoObjectPrefix, type DocumentStore } from "~server/storage";
+import { getEnv } from "~server/config";
+import { getDb, type Database } from "~server/db";
+import { getDocumentStore, getLogoPublisher, logoObjectPath, logoObjectPrefix, publicObjectUrl, type DocumentStore, type LogoPublisher } from "~server/storage";
 import { CustomerError, markIntakeStarted, resolveIntakeToken, submitIntake } from "./customers";
 import { INTAKE_LINK_EXPIRED_MESSAGE } from "./intake-link";
 import { TAB1_SECTION } from "./package-overview";
@@ -18,6 +19,10 @@ import { TAB1_SECTION } from "./package-overview";
 export interface IntakeDeps {
   db: Database;
   store: DocumentStore;
+  /** Copies a checked logo to the public logos bucket (WI-018). */
+  logos: LogoPublisher;
+  /** LOGO_PUBLIC_BASE_URL; when set, previews use the public address instead of a signed URL. */
+  logoBaseUrl: string | undefined;
   now: () => Date;
   definition: FormDefinition;
   checker: Tab1Checker;
@@ -27,6 +32,8 @@ let checker: Tab1Checker | undefined;
 const defaultDeps = (): IntakeDeps => ({
   db: getDb(),
   store: getDocumentStore(),
+  logos: getLogoPublisher(),
+  logoBaseUrl: getEnv().LOGO_PUBLIC_BASE_URL,
   now: () => new Date(),
   definition: getCompanyFormDefinition(),
   checker: (checker ??= createTab1Checker()),
@@ -68,7 +75,7 @@ export type IntakeRefusal = { kind: "expired"; message: string } | { kind: "lock
 export interface IntakeLogo {
   documentId: string;
   fileName: string;
-  /** Short-lived address for the preview. */
+  /** The public logo address, or a short-lived signed one when no logo host is configured (local). */
   previewUrl: string;
 }
 
@@ -84,11 +91,16 @@ export interface IntakeView {
   logo: IntakeLogo | null;
 }
 
-async function currentLogo(customerId: string, deps: Pick<IntakeDeps, "db" | "store">): Promise<IntakeLogo | null> {
+async function logoView(row: { id: string; originalFilename: string; objectPath: string }, deps: Pick<IntakeDeps, "store" | "logoBaseUrl">): Promise<IntakeLogo> {
+  const previewUrl = deps.logoBaseUrl
+    ? publicObjectUrl(deps.logoBaseUrl, row.objectPath)
+    : (await deps.store.createDownloadUrl(row.objectPath, { expiresInSeconds: 60 * 60 })).url;
+  return { documentId: row.id, fileName: row.originalFilename, previewUrl };
+}
+
+async function currentLogo(customerId: string, deps: Pick<IntakeDeps, "db" | "store" | "logoBaseUrl">): Promise<IntakeLogo | null> {
   const row = await documentsRepo.findLatestDocumentUnder(deps.db, customerId, logoObjectPrefix(customerId));
-  if (!row) return null;
-  const preview = await deps.store.createDownloadUrl(row.objectPath, { expiresInSeconds: 60 * 60 });
-  return { documentId: row.id, fileName: row.originalFilename, previewUrl: preview.url };
+  return row ? logoView(row, deps) : null;
 }
 
 export async function openIntake(token: string, deps: IntakeDeps = defaultDeps()): Promise<IntakeView | IntakeRefusal> {
@@ -236,7 +248,8 @@ export type LogoFinishOutcome = IntakeRefusal | { kind: "refused"; message: stri
 
 /**
  * Finish check (2.12): the object must exist, be at most 2 MB, carry a PNG or JPEG content type
- * and start with that type's signature; otherwise it is deleted and nothing is recorded. Replace
+ * and start with that type's signature; otherwise it is deleted and nothing is recorded. A logo
+ * that passes is copied to the public logos bucket before its row is written (WI-018). Replace
  * adds a row; the newest row is the current logo. A repeated finish (double click, network retry)
  * answers the logo already recorded instead of inserting it twice.
  */
@@ -252,8 +265,7 @@ export async function finishLogoUpload(token: string, input: v.InferInput<typeof
     if (recorded.customerId !== access.customer.id || recorded.objectPath !== objectPath) {
       return { kind: "refused", message: `This upload was already used. ${LOGO_INSTRUCTIONS}` };
     }
-    const preview = await deps.store.createDownloadUrl(recorded.objectPath, { expiresInSeconds: 60 * 60 });
-    return { kind: "stored", logo: { documentId: recorded.id, fileName: recorded.originalFilename, previewUrl: preview.url } };
+    return { kind: "stored", logo: await logoView(recorded, deps) };
   }
   const stat = await deps.store.stat(objectPath);
   if (!stat) return { kind: "refused", message: `The upload did not arrive. ${LOGO_INSTRUCTIONS}` };
@@ -264,6 +276,15 @@ export async function finishLogoUpload(token: string, input: v.InferInput<typeof
   if (!bytes || bytes.length > LOGO_MAX_BYTES || !(stat.contentType in LOGO_TYPES) || sniffed === null || sniffed !== stat.contentType) {
     await deps.store.delete(objectPath);
     return { kind: "refused", message: `This file is not a PNG or JPEG image. ${LOGO_INSTRUCTIONS}` };
+  }
+  // Only a checked logo becomes public (WI-018). If the copy fails nothing is recorded and the
+  // customer uploads again, so no row ever points at a logo the logos bucket does not hold.
+  try {
+    await deps.logos.publish(objectPath, stat.contentType);
+  } catch (error) {
+    console.error(`logo publish failed for ${objectPath}:`, error);
+    await deps.store.delete(objectPath);
+    return { kind: "refused", message: `The upload did not arrive. ${LOGO_INSTRUCTIONS}` };
   }
   const row = await documentsRepo.insertDocument(deps.db, {
     id: parsed.logoId,
@@ -276,8 +297,7 @@ export async function finishLogoUpload(token: string, input: v.InferInput<typeof
     uploadedBy: `link:${access.customer.intakeTokenHash?.slice(0, 16) ?? "unknown"}`,
   });
   await markIntakeStarted(access.customer.id, deps);
-  const preview = await deps.store.createDownloadUrl(row.objectPath, { expiresInSeconds: 60 * 60 });
-  return { kind: "stored", logo: { documentId: row.id, fileName: row.originalFilename, previewUrl: preview.url } };
+  return { kind: "stored", logo: await logoView(row, deps) };
 }
 
 export { INTAKE_LINK_EXPIRED_MESSAGE };
