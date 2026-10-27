@@ -25,3 +25,12 @@ updates:
     schedule:
       interval: weekly
       day: monday
+  # Base image of the Dockerfile (node:24-slim); majors follow the Node we run, by hand.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
