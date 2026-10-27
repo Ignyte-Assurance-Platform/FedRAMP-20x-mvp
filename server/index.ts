@@ -16,6 +16,7 @@ import { createRequestHandler, type ServerBuild } from "react-router";
 import { getAuth } from "~server/auth";
 import { getEnv } from "~server/config";
 import { closeDb } from "~server/db";
+import { withPublicOrigin } from "~server/http/public-origin";
 import { getPackageOverviewGenerator } from "~server/services";
 
 export const IMMUTABLE = "public, max-age=31536000, immutable";
@@ -29,9 +30,14 @@ export interface AppOptions {
   /** Loads the React Router server build (production build, or Vite's virtual module in dev). */
   getBuild: () => Promise<ServerBuild>;
   mode: "development" | "production";
+  /**
+   * Public origin of the app (APP_URL). In production React Router gets each request on this
+   * origin, because behind Cloud Run the container sees http while the browser uses https (WI-016).
+   */
+  publicOrigin?: string;
 }
 
-export function createApp({ getBuild, mode }: AppOptions): Hono {
+export function createApp({ getBuild, mode, publicOrigin }: AppOptions): Hono {
   const app = new Hono();
 
   // Default every response to no-store; static assets override below. Customer data must
@@ -59,7 +65,8 @@ export function createApp({ getBuild, mode }: AppOptions): Hono {
   app.on(["GET", "POST"], "/api/auth/*", (c) => getAuth().handler(c.req.raw));
 
   const handleRequest = createRequestHandler(getBuild, mode);
-  app.all("*", (c) => handleRequest(c.req.raw));
+  const toPublic = mode === "production" && publicOrigin ? (r: Request) => withPublicOrigin(r, publicOrigin) : (r: Request) => r;
+  app.all("*", (c) => handleRequest(toPublic(c.req.raw)));
 
   return app;
 }
@@ -82,7 +89,7 @@ export async function startServer(): Promise<Server> {
   } else {
     const buildFile = pathToFileURL(path.join(root, "build", "server", "index.js")).href;
     const build = (await import(buildFile)) as ServerBuild;
-    const app = createApp({ mode, getBuild: async () => build });
+    const app = createApp({ mode, getBuild: async () => build, publicOrigin: env.APP_URL });
     server = createServer(getRequestListener(app.fetch));
   }
 
