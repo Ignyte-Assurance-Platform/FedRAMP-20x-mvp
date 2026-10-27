@@ -26,12 +26,13 @@ Object.assign(process.env, {
 });
 
 let app: Hono;
+let build: ServerBuild;
 let closeDb: () => Promise<void>;
 
 beforeAll(async () => {
   await rm(storageDir, { recursive: true, force: true });
   const server = await import("~server/index");
-  const build = (await import(pathToFileURL(path.join(root, "build/server/index.js")).href)) as ServerBuild;
+  build = (await import(pathToFileURL(path.join(root, "build/server/index.js")).href)) as ServerBuild;
   app = server.createApp({ mode: "production", getBuild: async () => build });
   closeDb = (await import("~server/db")).closeDb;
 });
@@ -66,6 +67,25 @@ describe("app against the local database", () => {
     expect(login.status).toBe(200);
     expect(login.headers.get("cache-control")).toBe("no-store");
     expect(await login.text()).toContain("Dev sign-in (local only)");
+  });
+
+  it("WI-016 2.1, 2.2 behind a TLS-ending proxy, a same-origin action runs and a foreign one is still refused", async () => {
+    const server = await import("~server/index");
+    const behindProxy = server.createApp({ mode: "production", getBuild: async () => build, publicOrigin: "https://app.example.test" });
+    // What Cloud Run's container sees: http on the public host, while the browser sends an https Origin.
+    const post = (origin: string) =>
+      behindProxy.request("http://app.example.test/login", {
+        method: "POST",
+        headers: { origin, "content-type": "application/x-www-form-urlencoded" },
+        body: "",
+      });
+
+    const same = await post("https://app.example.test");
+    expect(await same.text()).toContain("Google sign-in is not configured yet."); // the action ran
+
+    const foreign = await post("https://evil.example");
+    expect(foreign.status).toBe(400);
+    expect(await foreign.text()).toBe("Bad Request"); // React Router's CSRF refusal
   });
 
   it("signs in without Google and shows a no-store page with the user's data", async () => {
