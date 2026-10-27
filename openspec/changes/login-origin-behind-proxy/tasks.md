@@ -14,4 +14,4 @@
 
 ## 3. Verify
 - [x] 3.1 Automated review (PB - Review PR) against this spec · `.pb-cache/reviews/pr-27-2026-10-27.md`: 5/5 criteria, 0 blockers, 0 major, 1 minor, 2 nits
-- [ ] 3.2 Human triage (gate 7) recorded in Linear 
+- [x] 3.2 Human triage (gate 7) recorded in Linear  · IGN-18 comment 2118cf62 (findings 1–2 fixed in 68e053b, 3 accepted)
