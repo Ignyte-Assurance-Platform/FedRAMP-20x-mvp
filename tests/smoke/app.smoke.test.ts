@@ -644,6 +644,38 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     expect(await keep.json()).toMatchObject({ kind: "saved", version: 2 });
   });
 
+  it("a save with a version the section never had is refused with reload, not a 500", async () => {
+    const { token } = await newCustomer();
+    const res = await api(token, { intent: "save", answers: { serviceIdentification: { providerName: "Crafted" } }, version: 5 });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ kind: "refused", message: "This page is out of date. Reload it and try again." });
+  });
+
+  it("refuses a request body over 256 KB with 413 and stores nothing", async () => {
+    const { id, token } = await newCustomer();
+    const res = await api(token, { intent: "save", answers: { serviceIdentification: { providerName: "x".repeat(300 * 1024) } }, version: 0 });
+    expect(res.status).toBe(413);
+    const { getDb } = await import("~server/db");
+    const { intakeAnswersRepo } = await import("~server/repositories");
+    expect(await intakeAnswersRepo.findIntakeSection(getDb(), id, "company")).toBeUndefined();
+  });
+
+  it("a repeated logo-finish (double click, retry) answers the logo already recorded and adds no row", async () => {
+    const { id, token } = await newCustomer();
+    const start = await api(token, { intent: "logo-start", filename: "logo.png", contentType: "image/png", size: PNG_300.length, width: 300 });
+    const { logoId, upload } = (await start.json()) as { logoId: string; upload: { url: string; method: string; headers: Record<string, string> } };
+    await app.request(upload.url, { method: upload.method, headers: upload.headers, body: new Uint8Array(PNG_300) });
+    const finish = () => api(token, { intent: "logo-finish", logoId, filename: "logo.png", contentType: "image/png" });
+    const first = await finish();
+    const again = await finish();
+    expect(first.status).toBe(200);
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as { logo: { documentId: string } }).logo.documentId).toBe(logoId);
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    expect(await getDb().select().from(schema.documents).where(eq(schema.documents.customerId, id))).toHaveLength(1);
+  });
+
   it("2.10, 2.12 stores a PNG logo on Ignyte's side and the file uses the hosted URL; a fake PNG is deleted and not recorded", async () => {
     const { id, token } = await newCustomer();
     const stored = await uploadLogo(token, PNG_300);

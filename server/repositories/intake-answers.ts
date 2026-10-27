@@ -19,7 +19,7 @@ export interface IntakeSectionInput {
   expectedVersion: number;
 }
 
-export type IntakeSaveResult = { saved: IntakeAnswersRow } | { conflict: IntakeAnswersRow };
+export type IntakeSaveResult = { saved: IntakeAnswersRow } | { conflict: IntakeAnswersRow } | { stale: true };
 
 /**
  * Versioned section save (WI-004 E2, ADR-0003): writes only if `expectedVersion` is still the
@@ -45,6 +45,7 @@ export async function saveIntakeSection(db: Database, input: IntakeSectionInput)
           .returning();
   if (row) return { saved: row };
   const current = await findIntakeSection(db, input.customerId, input.section);
-  if (!current) throw new Error(`intake section ${input.section} vanished during a save`);
+  // A version the section never had (no row yet, or a crafted request): nothing to conflict with.
+  if (!current) return { stale: true };
   return { conflict: current };
 }

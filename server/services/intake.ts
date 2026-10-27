@@ -5,7 +5,7 @@ import { getDb, type Database } from "~server/db";
 import { createTab1Checker, getCompanyFormDefinition, type Problem, type Tab1Checker } from "~server/fedramp";
 import { customersRepo, documentsRepo, intakeAnswersRepo, type CustomerRow } from "~server/repositories";
 import { getDocumentStore, logoObjectPath, logoObjectPrefix, type DocumentStore } from "~server/storage";
-import { markIntakeStarted, resolveIntakeToken, submitIntake } from "./customers";
+import { CustomerError, markIntakeStarted, resolveIntakeToken, submitIntake } from "./customers";
 import { INTAKE_LINK_EXPIRED_MESSAGE } from "./intake-link";
 import { TAB1_SECTION } from "./package-overview";
 
@@ -115,8 +115,11 @@ const SaveInput = v.object({
 });
 export type SaveIntakeInput = v.InferInput<typeof SaveInput>;
 
+export const INTAKE_STALE_MESSAGE = "This page is out of date. Reload it and try again.";
+
 export type SaveOutcome =
   | IntakeRefusal
+  | { kind: "refused"; message: string }
   | { kind: "saved"; version: number; savedAt: Date }
   | { kind: "conflict"; answers: Record<string, unknown>; version: number; savedAt: Date };
 
@@ -140,6 +143,7 @@ export async function saveIntake(token: string, input: SaveIntakeInput, deps: In
     answers: clean,
     expectedVersion: version,
   });
+  if ("stale" in result) return { kind: "refused", message: INTAKE_STALE_MESSAGE };
   if ("conflict" in result) {
     return { kind: "conflict", answers: result.conflict.answers, version: result.conflict.version, savedAt: result.conflict.updatedAt };
   }
@@ -164,7 +168,13 @@ export async function submitTab1(token: string, input: SaveIntakeInput, deps: In
   const logo = await documentsRepo.findLatestDocumentUnder(deps.db, access.customer.id, logoObjectPrefix(access.customer.id));
   const problems = deps.checker.check(section?.answers ?? {}, { hasLogo: Boolean(logo), labels: deps.definition.labels });
   if (problems.length) return { kind: "problems", problems, version: saved.version, savedAt: saved.savedAt };
-  await submitIntake(access.customer.id, deps);
+  try {
+    await submitIntake(access.customer.id, deps);
+  } catch (error) {
+    // Another window submitted between the save and here: the intake is locked either way.
+    if (error instanceof CustomerError && error.status === 409) return { kind: "locked", message: INTAKE_LOCKED_MESSAGE };
+    throw error;
+  }
   return { kind: "submitted" };
 }
 
@@ -227,7 +237,8 @@ export type LogoFinishOutcome = IntakeRefusal | { kind: "refused"; message: stri
 /**
  * Finish check (2.12): the object must exist, be at most 2 MB, carry a PNG or JPEG content type
  * and start with that type's signature; otherwise it is deleted and nothing is recorded. Replace
- * adds a row; the newest row is the current logo.
+ * adds a row; the newest row is the current logo. A repeated finish (double click, network retry)
+ * answers the logo already recorded instead of inserting it twice.
  */
 export async function finishLogoUpload(token: string, input: v.InferInput<typeof FinishLogoInput>, deps: IntakeDeps = defaultDeps()): Promise<LogoFinishOutcome> {
   const parsed = v.parse(FinishLogoInput, input);
@@ -236,6 +247,14 @@ export async function finishLogoUpload(token: string, input: v.InferInput<typeof
   const extension = LOGO_TYPES[parsed.contentType as keyof typeof LOGO_TYPES];
   if (!extension) return { kind: "refused", message: `This file type is not accepted. ${LOGO_INSTRUCTIONS}` };
   const objectPath = logoObjectPath(access.customer.id, parsed.logoId, extension);
+  const recorded = await documentsRepo.findDocument(deps.db, parsed.logoId);
+  if (recorded) {
+    if (recorded.customerId !== access.customer.id || recorded.objectPath !== objectPath) {
+      return { kind: "refused", message: `This upload was already used. ${LOGO_INSTRUCTIONS}` };
+    }
+    const preview = await deps.store.createDownloadUrl(recorded.objectPath, { expiresInSeconds: 60 * 60 });
+    return { kind: "stored", logo: { documentId: recorded.id, fileName: recorded.originalFilename, previewUrl: preview.url } };
+  }
   const stat = await deps.store.stat(objectPath);
   if (!stat) return { kind: "refused", message: `The upload did not arrive. ${LOGO_INSTRUCTIONS}` };
   // A logo is at most 2 MB, so the whole object is read once: its signature and its SHA-256
