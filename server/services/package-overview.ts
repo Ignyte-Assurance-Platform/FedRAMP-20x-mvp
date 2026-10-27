@@ -3,6 +3,7 @@ import { getEnv } from "~server/config";
 import { getDb, type Database } from "~server/db";
 import {
   answerSections,
+  getCompanyFormDefinition,
   createPackageOverviewGenerator,
   fallbackPackageId,
   LOGO_HOST_NOT_CONFIGURED,
@@ -298,7 +299,16 @@ export async function generatePackageOverviewForCustomer(
 ): Promise<GenerateOutcome> {
   const tab1 = await loadTab1Answers(customerId, deps);
   return generatePackageOverview(
-    { customerId, userId, answers: tab1.answers, answersUpdatedAt: tab1.updatedAt, logoUrl: tab1.logoUrl, logoUploaded: tab1.logoUploaded },
+    {
+      customerId,
+      userId,
+      answers: tab1.answers,
+      answersUpdatedAt: tab1.updatedAt,
+      logoUrl: tab1.logoUrl,
+      logoUploaded: tab1.logoUploaded,
+      // Problems name each question with the label the customer sees on tab 1 (WI-004, WI-007 E2).
+      labels: getCompanyFormDefinition().labels,
+    },
     deps,
   );
 }
@@ -350,6 +360,17 @@ export function packageIdForScreen(answers: Record<string, unknown>): { answers:
   return { answers: { ...answers, serviceIdentification: { ...identification, fedRampPackageId: "" } }, fallback };
 }
 
+const CERTIFICATION_TYPE_PATH = "/serviceIdentification/certificationType";
+
+/** WI-004: the class is read-only text next to the certification type ("20x · Class A"); the customer never picks it. */
+export function withFedrampClass(sections: AnswerSection[], fedrampClass: string | null): AnswerSection[] {
+  if (!fedrampClass) return sections;
+  return sections.map((section) => ({
+    ...section,
+    rows: section.rows.map((row) => (row.path === CERTIFICATION_TYPE_PATH && row.value ? { ...row, value: `${row.value} · Class ${fedrampClass}` } : row)),
+  }));
+}
+
 /** Everything Screen D shows for one customer (WI-007 §3). */
 export async function getPackageOverviewScreen(
   customerId: string,
@@ -372,7 +393,7 @@ export async function getPackageOverviewScreen(
       assessorConfirmedAt: inputs?.assessorConfirmedAt ?? null,
       assessorConfirmedBy: confirmedBy?.name ?? (inputs?.assessorConfirmedAt ? "an Ignyte user" : null),
     },
-    answers: answerSections(getSchemaNavigator(), packageId.answers),
+    answers: withFedrampClass(answerSections(getSchemaNavigator(), packageId.answers, getCompanyFormDefinition().labels), customer.fedrampClass),
     packageIdFallback: packageId.fallback,
     logoUrl: tab1.logoUrl,
     logoUploaded: tab1.logoUploaded,

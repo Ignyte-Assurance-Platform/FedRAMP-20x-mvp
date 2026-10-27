@@ -55,6 +55,12 @@ export function logoObjectPrefix(customerId: string): string {
   return `customers/${customerId}/logo/`;
 }
 
+/** customers/<customer-id>/logo/<logo-id>.<ext> (contract §1): the newest row under the prefix is the current logo. */
+export function logoObjectPath(customerId: string, logoId: string, extension: "png" | "jpg"): string {
+  if (!UUID.test(logoId)) throw new Error(`invalid logo id: ${logoId}`);
+  return `${logoObjectPrefix(customerId)}${logoId}.${extension}`;
+}
+
 /** The public address of a hosted object: the configured base URL followed by its object path. */
 export function publicObjectUrl(baseUrl: string, objectPath: string): string {
   assertObjectPath(objectPath);

@@ -27,6 +27,8 @@ export const customers = pgTable("customers", {
   intakeTokenIssuedBy: text("intake_token_issued_by").references(() => users.id, { onDelete: "set null" }),
   unlockedAt: timestamp("unlocked_at", { withTimezone: true }),
   unlockedBy: text("unlocked_by").references(() => users.id, { onDelete: "set null" }),
+  /** FedRAMP 20x class (WI-004): "A" when tab 1 says 20x; the MVP onboards Class A only, B to D come later without a migration. */
+  fedrampClass: text("fedramp_class"),
   createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
   // WI-007 §4: Ignyte-only inputs of the Package Overview, never shown to the customer.
   assessorName: text("assessor_name"),
