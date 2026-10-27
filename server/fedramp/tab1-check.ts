@@ -8,12 +8,15 @@ import { createSchemaValidator, type SchemaValidator } from "./validate";
  * Generate JSON would (fallback package ID, no assessor, no advisor added) and validated against
  * the vendored schema, so required fields, enums, formats, the repository if/then rule and the
  * Security + Sales contacts rule all come from the schema itself, named with tab 1's labels.
- * Ignyte-owned parts are not the customer's to fix and are left out.
+ * Ignyte-owned parts are not the customer's to fix and are left out: the assessor, and the
+ * advisor entry Ignyte adds (the check adds none, so the customer's own advisors are checked).
+ * Phone numbers are accepted as typed (§5); their schema pattern is reported on Screen D only.
  */
 
 /** Stands in for the hosted logo address during the check; the real one is set at generation. */
 const LOGO_STAND_IN = "https://logo.check.invalid/logo.png";
-const NOT_THE_CUSTOMERS = ["/assessor", "/advisors"];
+const NOT_THE_CUSTOMERS = ["/assessor"];
+const PHONE = /^\/contactInformation\/\d+\/contactPhone$/;
 /** Filled in automatically from provider name + acronym; their own problems say what is missing (2.15). */
 const PACKAGE_ID = "/serviceIdentification/fedRampPackageId";
 
@@ -27,7 +30,8 @@ export function createTab1Checker(schemas: VendoredSchemas = loadVendoredSchemas
   return {
     check(answers, { hasLogo, labels }) {
       const document = buildPackageOverview({ answers, logoUrl: hasLogo ? LOGO_STAND_IN : null, advisorName: "" });
-      return problemsFromSchemaErrors(nav, validator.validate(document), labels).filter(
+      const errors = validator.validate(document).filter((e) => !(e.keyword === "pattern" && PHONE.test(e.instancePath)));
+      return problemsFromSchemaErrors(nav, errors, labels).filter(
         (p) => p.path !== PACKAGE_ID && !NOT_THE_CUSTOMERS.some((prefix) => p.path === prefix || p.path.startsWith(`${prefix}/`)),
       );
     },

@@ -5,7 +5,9 @@ import type { FormField } from "~/lib/form-definition";
 import goldenAnswers from "./testdata/golden-answers.json";
 import { buildFormDefinition, loadFormOverlay } from "./form-definition";
 import { loadVendoredSchemas, SCHEMAS_DIR } from "./schemas";
+import { buildPackageOverview } from "./mapping/package-overview";
 import { createTab1Checker } from "./tab1-check";
+import { createSchemaValidator } from "./validate";
 
 const schemas = loadVendoredSchemas();
 const definition = buildFormDefinition(schemas);
@@ -102,6 +104,20 @@ describe("Submit check of tab 1 (WI-004 §5)", () => {
     delete trustCenter.accessRequestInstructions;
     const problems = check({ ...golden, serviceProperties: { ...sp, trustCenter } });
     expect(problems.map((p) => p.path)).toContain("/serviceProperties/trustCenter/accessRequestInstructions");
+  });
+
+  it("§5 a free-format phone does not block Submit; Screen D's full validation still reports it", () => {
+    const contacts = (golden.contactInformation as Record<string, unknown>[]).map((c, i) => (i === 0 ? { ...c, contactPhone: "+44 20 7946 0958" } : c));
+    const answers = { ...golden, contactInformation: contacts };
+    expect(check(answers)).toEqual([]);
+    const full = createSchemaValidator(schemas).validate(buildPackageOverview({ answers, logoUrl: "https://logo.example/l.png" }));
+    expect(full.map((e) => `${e.keyword} ${e.instancePath}`)).toContain("pattern /contactInformation/0/contactPhone");
+  });
+
+  it("checks advisor entries the customer adds; only the assessor is left out", () => {
+    const problems = check({ ...golden, advisors: [{ name: 42 }], assessor: { name: 42 } });
+    expect(problems.map((p) => p.path)).toEqual(["/advisors/0/name"]);
+    expect(check({ ...golden, advisors: [{ name: "Example Advisory LLC" }] })).toEqual([]);
   });
 
   it("2.16 blocks Submit without a Sales contact, on the Contacts section, from the schema rule and the tab 1 label", () => {
