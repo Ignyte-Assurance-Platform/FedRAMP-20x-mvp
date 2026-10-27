@@ -11,5 +11,6 @@ export function withPublicOrigin(request: Request, publicOrigin: string): Reques
   if (url.origin === target) return request;
   // Built from the origin, not by setting url.host: that setter keeps the old port when the
   // public host has none (http://host:8080 would become https://host:8080).
+  // Passing the request as init forwards a streamed body because a Request carries duplex: "half".
   return new Request(new URL(url.pathname + url.search, target), request);
 }
