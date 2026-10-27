@@ -3,6 +3,8 @@
  * schema plus the overlay in form-definitions/, sent to the page as data. This file holds the
  * shape and the browser-side checks; it is pure so the server can import its types.
  */
+import { fullFormats } from "ajv-formats/dist/formats";
+import * as v from "valibot";
 
 export type FieldKind =
   | "text"
@@ -78,54 +80,89 @@ export function packageIdFallback(answers: Record<string, unknown>): string {
   return provider && acronym ? `${provider} ${acronym}` : "";
 }
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const required = (field: FormField) => v.custom<never>(() => false, `${field.label} is required`);
 
-function isUri(value: string): boolean {
-  try {
-    return Boolean(new URL(value).protocol);
-  } catch {
-    return false;
+type FormatCheck = RegExp | ((s: string) => boolean) | { validate: RegExp | ((s: string) => boolean) };
+const test = (check: FormatCheck, s: string): boolean => {
+  const rule = typeof check === "object" && "validate" in check ? check.validate : check;
+  return rule instanceof RegExp ? rule.test(s) : rule(s);
+};
+/** The very checks the server's ajv runs for these formats (ajv-formats "full" mode), so the two cannot disagree. */
+const formatIs = (format: "email" | "uri" | "date") => (s: string) => test(fullFormats[format] as FormatCheck, s);
+
+/** The rules a filled-in value must meet: type, string format (uri, email, date), enum membership. */
+function filledSchema(field: FormField, hasLogo: boolean): v.GenericSchema {
+  switch (field.kind) {
+    case "group":
+      return objectSchema(field.fields ?? [], hasLogo);
+    case "list": {
+      const item = objectSchema(field.fields ?? [], hasLogo);
+      // Blank rows the customer added and left empty are not checked (the generator drops them).
+      return v.array(v.lazy((value) => (isEmpty(value) ? v.unknown() : item)));
+    }
+    case "boolean":
+      return v.boolean(`${field.label} is required`);
+    case "select":
+      return v.picklist(field.options ?? [], `${field.label} must be one of the listed options`);
+    case "multiSelect":
+      return v.array(v.picklist(field.options ?? [], `${field.label} must be one of the listed options`));
+    case "stringList":
+      return v.array(v.string());
+    default:
+      if (field.format === "email") return v.pipe(v.string(), v.check(formatIs("email"), `${field.label} must be an email address`));
+      if (field.format === "uri") return v.pipe(v.string(), v.check(formatIs("uri"), `${field.label} must be a full web address (https://…)`));
+      if (field.format === "date") return v.pipe(v.string(), v.check(formatIs("date"), `${field.label} must be a date`));
+      return v.string();
   }
 }
 
+function fieldSchema(field: FormField, hasLogo: boolean): v.GenericSchema {
+  if (field.kind === "logo") return field.required && !hasLogo ? required(field) : v.unknown();
+  const filled = filledSchema(field, hasLogo);
+  // Empty answers (blank text, unticked groups) count as missing, as in the generated file.
+  return v.lazy((value) => (isEmpty(value) ? (field.required ? required(field) : v.unknown()) : filled));
+}
+
+function objectSchema(fields: FormField[], hasLogo: boolean): v.GenericSchema {
+  const conditional = fields.filter((f) => f.requiredWhen && !f.required);
+  const absent = Object.fromEntries(fields.map((f) => [f.key, undefined]));
+  return v.pipe(
+    v.custom<Record<string, unknown>>(isRecord, "Expected a group of answers"),
+    // An unanswered question has no key at all; give it one so its own rule (required or not) runs.
+    v.transform((input: Record<string, unknown>) => ({ ...absent, ...input })),
+    v.looseObject(Object.fromEntries(fields.map((f) => [f.key, fieldSchema(f, hasLogo)]))),
+    // The schema's if/then: required once a sibling has the given value.
+    // partialCheck still runs when another question of the group has a problem; its typing cannot
+    // follow keys only known at run time, hence the cast.
+    ...conditional.map(
+      (f) =>
+        v.forward(
+          v.partialCheck(
+            [[f.requiredWhen!.key], [f.key]],
+            (input: Record<string, unknown>) => input[f.requiredWhen!.key] !== f.requiredWhen!.equals || !isEmpty(input[f.key]),
+            `${f.label} is required`,
+          ),
+          [f.key],
+        ) as unknown as v.PipeItem<Record<string, unknown>, Record<string, unknown>, v.BaseIssue<unknown>>,
+    ),
+  );
+}
+
+/** Valibot rules for tab 1, generated from the definition the server built from the vendored schema. */
+export function answersSchema(fields: FormField[], hasLogo = true): v.GenericSchema {
+  return objectSchema(fields, hasLogo);
+}
+
 /**
- * Browser-side check before Submit (required, formats, enum membership), from the definition.
- * The server checks again against the schema itself; this one only spares a round trip.
+ * Browser-side check before Submit (§5: Valibot, generated from the schema): required, string
+ * formats, enum membership. The server checks again against the schema itself; this one only
+ * spares a round trip.
  */
 export function checkAnswers(fields: FormField[], value: Record<string, unknown>, base = "", hasLogo = true): FieldProblem[] {
-  const problems: FieldProblem[] = [];
-  for (const field of fields) {
-    const path = `${base}/${field.key}`;
-    const current = value[field.key];
-    if (field.kind === "logo") {
-      if (field.required && !hasLogo) problems.push({ path, message: `${field.label} is required` });
-      continue;
-    }
-    const required = field.required || (field.requiredWhen !== undefined && value[field.requiredWhen.key] === field.requiredWhen.equals);
-    if (isEmpty(current) && field.kind !== "boolean") {
-      if (required) problems.push({ path, message: `${field.label} is required` });
-      continue;
-    }
-    if (field.kind === "boolean" && required && typeof current !== "boolean") {
-      problems.push({ path, message: `${field.label} is required` });
-      continue;
-    }
-    if (field.kind === "group" && isRecord(current) && field.fields) problems.push(...checkAnswers(field.fields, current, path, hasLogo));
-    if (field.kind === "list" && Array.isArray(current) && field.fields) {
-      current.forEach((item, i) => {
-        if (isRecord(item) && !isEmpty(item)) problems.push(...checkAnswers(field.fields!, item, `${path}/${i}`, hasLogo));
-      });
-    }
-    if (typeof current === "string" && current.trim()) {
-      const text = current.trim();
-      if (field.format === "email" && !EMAIL.test(text)) problems.push({ path, message: `${field.label} must be an email address` });
-      if (field.format === "uri" && !isUri(text)) problems.push({ path, message: `${field.label} must be a full web address (https://…)` });
-      if (field.format === "date" && !DATE.test(text)) problems.push({ path, message: `${field.label} must be a date` });
-      if (field.options && field.kind === "select" && !field.options.includes(text)) {
-        problems.push({ path, message: `${field.label} must be one of the listed options` });
-      }
-    }
-  }
-  return problems;
+  const result = v.safeParse(answersSchema(fields, hasLogo), value);
+  if (result.success) return [];
+  return result.issues.map((issue) => ({
+    path: `${base}/${(issue.path ?? []).map((p) => String(p.key)).join("/")}`,
+    message: issue.message,
+  }));
 }
