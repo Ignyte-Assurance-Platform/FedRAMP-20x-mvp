@@ -12,7 +12,7 @@
 - [x] 2.4 WHEN Trust Center has authenticationRequired true and no accessRequestInstructions THEN Submit shows an error on that group
 - [x] 2.5 WHEN Save is clicked THEN the partial object is stored with its `form_definition_version` and a bumped `version`, the form definition's schema version and commit equal those read from the vendored manifest (no literals), and the customer status becomes In progress
 - [x] 2.6 WHEN the link is reopened after Save THEN every saved answer is shown
-- [x] 2.7 WHEN Submit succeeds THEN tabs 1 and 2 are read-only, tab 3 still accepts files, and the customer status is Submitted
+- [ ] 2.7 WHEN Submit succeeds THEN tabs 1 and 2 are read-only, tab 3 still accepts files, and the customer status is Submitted (tabs 1 and 2 read-only and Submitted are done and smoke-tested; "tab 3 still accepts files" lands with wi-006, tab 3 is "coming soon" here)
 - [x] 2.8 WHEN Ignyte unlocks the customer THEN the link is editable again and status returns to In progress
 - [x] 2.9 WHEN the golden example values (`server/fedramp/testdata/golden-answers.json`) are entered THEN tab 1 submits with zero validation errors
 - [x] 2.10 WHEN a PNG logo of 300 px width and 500 KB is uploaded THEN a preview is shown, the file is stored on Ignyte's side and the generated JSON uses the Ignyte-hosted URL as `serviceIdentification.logo`
@@ -25,7 +25,7 @@
 - [ ] 2.17 WHEN the customer stops typing for 2 seconds THEN the draft is saved without pressing Save and the status becomes In progress on the first autosave; the Save button still works
 - [x] 2.18 WHEN the UEI box is filled THEN the stored object and the generated file contain `serviceIdentification.ueiNumber`; WHEN it is empty THEN the key is absent
 - [x] 2.19 WHEN tab 1 is rendered THEN the third-party section is labelled "Third-party information resources within the Minimum Assessment Scope"
-- [x] 2.20 WHEN two windows edit tab 1 and the second saves with an older version THEN it gets a conflict, the stored answers are unchanged, and the customer chooses Keep mine or Take theirs
+- [x] 2.20 WHEN two windows edit tab 1 and the second saves with an older version THEN it gets a conflict, the stored answers are unchanged, and the customer chooses Keep mine or Take theirs (server conflict and Keep mine smoke-tested; the page's save ordering unit-tested in intake-saver.test.ts; the Keep mine / Take theirs buttons are not tested in a browser)
 - [x] 2.21 WHEN the code is built THEN no write to `intake_answers` happens without a version check (`upsertIntakeSection` removed)
 - [x] 2.22 WHEN the browser posts `serviceIdentification.logo` or `assessor` THEN neither is stored
 - [x] 2.23 WHEN Save, autosave, Submit or a logo upload uses an expired or replaced token THEN nothing is stored and the expired page is shown; WHEN tabs 1 and 2 are Submitted THEN autosave and Save are refused

@@ -46,7 +46,7 @@ Open http://localhost:3000 and choose **Dev sign-in (local only)**. That button 
 | B, customers list | `/customers` (`/` redirects here) | Ignyte staff |
 | C, create customer | `/customers/new` | Ignyte staff |
 | D, customer page (intake link, Package Overview JSON) | `/customers/:customerId/package` | Ignyte staff |
-| E, customer intake | `/intake/:token` (arrives with WI-004) | The customer, with the link; no sign-in. The link expires 30 days after it is issued |
+| E, customer intake | `/intake/:token` (page), `/api/intake/:token` (save, Submit, logo; JSON, body capped at 256 KB) | The customer, with the link; no sign-in. The link expires 30 days after it is issued |
 
 Every staff route goes through one guard (`requireStaffUser`); a customer link token is never accepted there.
 
