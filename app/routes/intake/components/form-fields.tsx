@@ -12,6 +12,8 @@ import { isEmpty, packageIdFallback, type FormField } from "~/lib/form-definitio
 
 export type Answers = Record<string, unknown>;
 const isRecord = (v: unknown): v is Answers => typeof v === "object" && v !== null && !Array.isArray(v);
+/** Controls that are a group of inputs: a <label for> cannot name them, aria-labelledby does. */
+const GROUPED = new Set<FormField["kind"]>(["multiSelect", "boolean", "stringList"]);
 
 export const PACKAGE_ID_PATH = "/serviceIdentification/fedRampPackageId";
 export const PACKAGE_ID_NOTE = "Filled in automatically until FedRAMP assigns your ID";
@@ -178,7 +180,7 @@ function FieldView({
     case "multiSelect": {
       const chosen = Array.isArray(value) ? value.filter((x): x is string => typeof x === "string") : [];
       control = (
-        <div id={id} tabIndex={-1} role="group" aria-describedby={common["aria-describedby"]} className="grid gap-1 sm:grid-cols-2">
+        <div id={id} tabIndex={-1} role="group" aria-labelledby={`${id}-label`} aria-describedby={common["aria-describedby"]} className="grid gap-1 sm:grid-cols-2">
           {field.options?.map((option) => (
             <label key={option} className="flex items-center gap-2 text-sm">
               <input
@@ -203,7 +205,7 @@ function FieldView({
       break;
     case "boolean":
       control = (
-        <div id={id} tabIndex={-1} role="radiogroup" aria-describedby={common["aria-describedby"]} className="flex gap-4 text-sm">
+        <div id={id} tabIndex={-1} role="radiogroup" aria-labelledby={`${id}-label`} aria-describedby={common["aria-describedby"]} className="flex gap-4 text-sm">
           {[true, false].map((option) => (
             <label key={String(option)} className="flex items-center gap-2">
               <input type="radio" name={id} className="size-4 accent-primary" disabled={ctx.disabled} checked={value === option} onChange={() => onChange(option)} />
@@ -233,7 +235,7 @@ function FieldView({
 
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id}>
+      <Label id={`${id}-label`} htmlFor={GROUPED.has(field.kind) ? undefined : id}>
         {field.label}
         <RequiredMark required={required} />
       </Label>
@@ -258,7 +260,7 @@ function StringList({ id, field, value, onChange, disabled, describedBy }: { id:
     onChange(kept.length ? next : undefined);
   };
   return (
-    <div id={id} tabIndex={-1} role="group" aria-describedby={describedBy} className="grid gap-2">
+    <div id={id} tabIndex={-1} role="group" aria-labelledby={`${id}-label`} aria-describedby={describedBy} className="grid gap-2">
       {shown.map((item, i) => (
         <div key={i} className="flex gap-2">
           <Input

@@ -75,6 +75,17 @@ describe("Screen E tab 1 (WI-004)", () => {
     const html = renderToStaticMarkup(<IntakeExpired message="This link has expired. Ask your Ignyte consultant for a new one." />);
     expect(html).toBe('<main class="flex min-h-screen items-center justify-center p-6"><p role="alert" class="max-w-md text-center text-lg">This link has expired. Ask your Ignyte consultant for a new one.</p></main>');
   });
+
+  it("names checkbox and radio groups with aria-labelledby, never with a label pointing at the group", () => {
+    const html = render(view());
+    const groups = [...html.matchAll(/<div id="([^"]+)" tabindex="-1" role="(?:group|radiogroup)"([^>]*)>/g)];
+    expect(groups.length).toBeGreaterThan(0);
+    for (const [, id, attrs] of groups) {
+      expect(attrs, id).toContain(`aria-labelledby="${id}-label"`);
+      expect(html).toContain(`id="${id}-label"`);
+      expect(html).not.toContain(`for="${id}"`);
+    }
+  });
 });
 
 describe("browser-side checks (WI-004 §5)", () => {
