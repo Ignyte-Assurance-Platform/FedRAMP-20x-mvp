@@ -542,7 +542,7 @@ describe("Ignyte theme (WI-015 §5)", () => {
 
   it("serves the self-hosted fonts from the app's origin and never asks Google Fonts", async () => {
     const css = await builtCss();
-    expect(css).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
+    for (const host of ["fonts.googleapis.com", "fonts.gstatic.com"]) expect(css).not.toContain(host);
     expect(css).not.toContain("prefers-color-scheme");
     const urls = [...css.matchAll(/url\("?(\/fonts\/[^")]+\.woff2)"?\)/g)].map((m) => m[1]!);
     expect(new Set(urls).size).toBe(3);
@@ -553,7 +553,7 @@ describe("Ignyte theme (WI-015 §5)", () => {
       expect(res.headers.get("cache-control")).toBe("public, max-age=86400");
     }
     const login = await (await app.request("/login")).text();
-    expect(login).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
+    for (const host of ["fonts.googleapis.com", "fonts.gstatic.com"]) expect(login).not.toContain(host);
   });
 
   it("keeps button, link and body text at 4.5:1 or more (WCAG AA)", async () => {

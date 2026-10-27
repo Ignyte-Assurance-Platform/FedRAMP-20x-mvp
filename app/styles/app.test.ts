@@ -22,7 +22,7 @@ describe("Ignyte theme (app/styles/app.css)", () => {
   });
 
   it("loads Work Sans and IBM Plex Mono from the app's own /fonts, with font-display: swap", () => {
-    expect(css).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
+    for (const host of ["fonts.googleapis.com", "fonts.gstatic.com"]) expect(css).not.toContain(host);
     const faces = css.match(/@font-face\s*{[^}]*}/g) ?? [];
     expect(faces.map((f) => /font-family:\s*"([^"]+)"/.exec(f)?.[1])).toEqual(["Work Sans", "IBM Plex Mono", "IBM Plex Mono"]);
     for (const face of faces) {
