@@ -76,9 +76,12 @@ describe("app against the local database", () => {
 
     const cookie = cookies.map((c) => c.split(";")[0]).join("; ");
     const home = await app.request("/", { headers: { cookie } });
-    expect(home.status).toBe(200);
-    expect(home.headers.get("cache-control")).toBe("no-store");
-    expect(await home.text()).toContain("dev@ignyteplatform.com");
+    expect(home.status).toBe(302);
+    expect(home.headers.get("location")).toBe("/customers");
+    const list = await app.request("/customers", { headers: { cookie } });
+    expect(list.status).toBe(200);
+    expect(list.headers.get("cache-control")).toBe("no-store");
+    expect(await list.text()).toContain("dev@ignyteplatform.com");
 
     const data = await app.request("/_root.data", { headers: { cookie } });
     expect(data.headers.get("cache-control")).toBe("no-store");
@@ -249,5 +252,268 @@ describe("Screen D routes (WI-007 §6, §3)", () => {
     expect(download.headers.get("x-content-type-options")).toBe("nosniff");
     const body = (await download.json()) as { serviceIdentification: { serviceAcronym: string } };
     expect(body.serviceIdentification.serviceAcronym).toBe("ERP");
+  });
+});
+
+describe("Screen A, the staff guard (WI-002)", () => {
+  async function signIn(): Promise<string> {
+    const res = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+    expect(res.status).toBe(303);
+    return res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  }
+
+  async function devUser() {
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    const db = getDb();
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.email, "dev@ignyteplatform.com"));
+    expect(user, "dev user missing: run npm run db:seed:allowlist").toBeDefined();
+    const setActive = (active: boolean) => db.update(schema.users).set({ active }).where(eq(schema.users.id, user!.id));
+    const sessionCount = async () => (await db.select().from(schema.sessions).where(eq(schema.sessions.userId, user!.id))).length;
+    return { setActive, sessionCount };
+  }
+
+  it("2.5 does not send token routes to /login (intake links need no session)", async () => {
+    const upload = await app.request("/api/uploads/not-a-real-token");
+    expect(upload.status).not.toBe(302);
+    expect(upload.headers.get("location")).toBeNull();
+  });
+
+  it("2.7, 2.11 refuses every staff route for a user set inactive, deletes the sessions and says not authorized", async () => {
+    const cookie = await signIn();
+    const { setActive, sessionCount } = await devUser();
+    const { getDb, schema } = await import("~server/db");
+    const [customer] = await getDb().select().from(schema.customers).limit(1);
+    try {
+      await setActive(false);
+      const home = await app.request("/", { headers: { cookie } });
+      expect(home.status).toBe(302);
+      expect(home.headers.get("location")).toBe("/login?error=not_authorized");
+      expect(await sessionCount()).toBe(0);
+
+      const login = await app.request("/login?error=not_authorized");
+      expect(await login.text()).toContain("This account is not authorized for Ignyte FedRAMP 20x");
+
+      const page = await app.request(`/customers/${customer!.id}/package`, { headers: { cookie } });
+      expect(page.status).toBe(302);
+      const download = await app.request(`/api/customers/${customer!.id}/package-overview/download`, { headers: { cookie } });
+      expect(download.status).toBe(401);
+
+      // The dev sign-in goes through the same check.
+      const again = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+      expect(again.status).not.toBe(303);
+    } finally {
+      await setActive(true);
+    }
+  });
+
+  it("2.15 applyAllowlist: an email taken off the list is set inactive, keeps its row and loses its sessions", async () => {
+    const cookie = await signIn();
+    const { sessionCount } = await devUser();
+    const { getDb, schema } = await import("~server/db");
+    const { usersRepo } = await import("~server/repositories");
+    const { eq } = await import("drizzle-orm");
+    const db = getDb();
+    const dev = "dev@ignyteplatform.com";
+    const newcomer = "allowlist-smoke@ignyteplatform.com";
+    const activeBefore = (await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.active, true))).map((u) => u.email);
+    expect(activeBefore).toContain(dev);
+    try {
+      const result = await usersRepo.applyAllowlist(db, [newcomer]);
+      expect(result).toEqual({ active: [newcomer], deactivated: expect.arrayContaining([dev]) });
+      const devRow = await usersRepo.findUserByEmail(db, dev);
+      expect(devRow?.active).toBe(false);
+      expect(await sessionCount()).toBe(0);
+      expect((await usersRepo.findUserByEmail(db, newcomer))?.active).toBe(true);
+      const home = await app.request("/", { headers: { cookie } });
+      expect(home.status).toBe(302);
+
+      const back = await usersRepo.applyAllowlist(db, activeBefore);
+      expect(back.deactivated).toEqual([newcomer]);
+      expect((await usersRepo.findUserByEmail(db, dev))?.active).toBe(true);
+      expect((await usersRepo.findUserByEmail(db, newcomer))?.active).toBe(false);
+    } finally {
+      await usersRepo.applyAllowlist(db, activeBefore);
+      await db.delete(schema.users).where(eq(schema.users.email, newcomer));
+    }
+  });
+
+  it("2.12 logs out: the session row is deleted and /login opens", async () => {
+    const cookie = await signIn();
+    const { sessionCount } = await devUser();
+    const before = await sessionCount();
+    const res = await app.request("http://localhost:3000/logout", { method: "POST", headers: { cookie } });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("/login");
+    expect(await sessionCount()).toBe(before - 1);
+    const home = await app.request("/", { headers: { cookie } });
+    expect(home.headers.get("location")).toBe("/login");
+  });
+});
+
+describe("Screens B and C, the intake link (WI-003)", () => {
+  async function staff(): Promise<{ cookie: string; userId: string }> {
+    const res = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+    const cookie = res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    const [user] = await getDb().select().from(schema.users).where(eq(schema.users.email, "dev@ignyteplatform.com"));
+    return { cookie, userId: user!.id };
+  }
+
+  async function row(id: string) {
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    const [customer] = await getDb().select().from(schema.customers).where(eq(schema.customers.id, id));
+    return customer!;
+  }
+
+  const form = (fields: Record<string, string>) => ({
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(fields).toString(),
+  });
+
+  async function create(cookie: string, name: string): Promise<{ id: string; token: string }> {
+    const res = await app.request("http://localhost:3000/customers/new", {
+      ...form({ name, serviceName: "Smoke Service", contactName: "Pat Smoke", contactEmail: "pat@smoke.example" }),
+      headers: { cookie, "content-type": "application/x-www-form-urlencoded" },
+    });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    const token = /\/intake\/([A-Za-z0-9_-]{32})/.exec(html)?.[1];
+    const id = /\/customers\/([0-9a-f-]{36})\/package/.exec(html)?.[1];
+    expect(token && id, "the created page shows the link and the customer page").toBeTruthy();
+    return { id: id!, token: token! };
+  }
+
+  it("2.1, 2.17 Save creates a Not started customer with a 32-character link; the database holds only its hash and encrypted copy", async () => {
+    const { cookie, userId } = await staff();
+    const { id, token } = await create(cookie, `Smoke Co ${Date.now()}`);
+    const saved = await row(id);
+    expect(saved.status).toBe("not_started");
+    expect(Object.values(saved)).not.toContain(token);
+    const { hashIntakeToken } = await import("~server/services");
+    expect(saved.intakeTokenHash).toBe(hashIntakeToken(token));
+    expect(saved.intakeTokenEncrypted).toBeTruthy();
+    expect(saved.intakeTokenIssuedBy).toBe(userId);
+    expect(saved.intakeTokenExpiresAt!.getTime() - saved.intakeTokenIssuedAt!.getTime()).toBe(30 * 24 * 60 * 60 * 1000);
+  });
+
+  it("2.3 blocks Save with an empty required field and marks it, keeping what was typed", async () => {
+    const { cookie } = await staff();
+    const res = await app.request("http://localhost:3000/customers/new", {
+      ...form({ name: "Typed Co", serviceName: "", contactName: "Pat", contactEmail: "pat@smoke.example" }),
+      headers: { cookie, "content-type": "application/x-www-form-urlencoded" },
+    });
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("Service name is required.");
+    expect(html).toMatch(/id="serviceName"[^>]*aria-invalid="true"|aria-invalid="true"[^>]*id="serviceName"/);
+    expect(html).toContain('value="Typed Co"');
+  });
+
+  it("2.2, 2.19 the list shows every customer with status and link, and a row reaches Screen D", async () => {
+    const { cookie } = await staff();
+    const name = `Listed Co ${Date.now()}`;
+    const { id, token } = await create(cookie, name);
+    const list = await app.request("/customers", { headers: { cookie } });
+    expect(list.status).toBe(200);
+    const html = await list.text();
+    expect(html).toContain(name);
+    expect(html).toContain("Not started");
+    expect(html).toContain(`/intake/${token}`);
+    const href = `/customers/${id}/package`;
+    expect(html).toContain(`href="${href}"`);
+    const screenD = await app.request(href, { headers: { cookie } });
+    expect(screenD.status).toBe(200);
+    expect(await screenD.text()).toContain("Intake link");
+  });
+
+  it("2.14 answers 404 for an unknown customer id", async () => {
+    const { cookie } = await staff();
+    const res = await app.request("/customers/00000000-0000-4000-8000-000000000000/package", { headers: { cookie } });
+    expect(res.status).toBe(404);
+  });
+
+  it("2.4, 2.5, 2.6 first save → In progress, Submit → Submitted and read-only, Unlock → In progress with who and when", async () => {
+    const { cookie, userId } = await staff();
+    const { id, token } = await create(cookie, `Status Co ${Date.now()}`);
+    const services = await import("~server/services");
+    await services.markIntakeStarted(id);
+    expect((await row(id)).status).toBe("in_progress");
+    await services.submitIntake(id);
+    expect((await row(id)).status).toBe("submitted");
+    const access = await services.resolveIntakeToken(token);
+    expect(access).toMatchObject({ ok: true, locked: true });
+
+    const unlock = await app.request(`http://localhost:3000/customers/${id}/package`, {
+      ...form({ intent: "unlock" }),
+      headers: { cookie, "content-type": "application/x-www-form-urlencoded" },
+    });
+    expect(unlock.status).toBe(200);
+    const after = await row(id);
+    expect(after.status).toBe("in_progress");
+    expect(after.unlockedBy).toBe(userId);
+    expect(after.unlockedAt).toBeInstanceOf(Date);
+    expect(await services.resolveIntakeToken(token)).toMatchObject({ ok: true, locked: false });
+  });
+
+  it("2.9, 2.10, 2.12 Issue new link: old link refused at once, new one works, status, lock and answers untouched", async () => {
+    const { cookie } = await staff();
+    const { id, token } = await create(cookie, `Reissue Co ${Date.now()}`);
+    const services = await import("~server/services");
+    const { getDb } = await import("~server/db");
+    const { intakeAnswersRepo } = await import("~server/repositories");
+    await intakeAnswersRepo.upsertIntakeSection(getDb(), { customerId: id, section: "company", formDefinitionVersion: "test", answers: { a: 1 } });
+    await services.submitIntake(id);
+
+    const res = await app.request(`http://localhost:3000/customers/${id}/package`, {
+      ...form({ intent: "issue-link" }),
+      headers: { cookie, "content-type": "application/x-www-form-urlencoded" },
+    });
+    expect(res.status).toBe(200);
+    expect(await services.resolveIntakeToken(token)).toEqual({ ok: false, message: services.INTAKE_LINK_EXPIRED_MESSAGE });
+
+    const after = await row(id);
+    expect(after.status).toBe("submitted");
+    const section = await services.getIntakeLinkSection(id);
+    const fresh = /\/intake\/([A-Za-z0-9_-]{32})$/.exec(section.link.url!)?.[1];
+    expect(fresh).not.toBe(token);
+    expect(await services.resolveIntakeToken(fresh!)).toMatchObject({ ok: true, locked: true });
+    const answers = await intakeAnswersRepo.findIntakeSection(getDb(), id, "company");
+    expect(answers?.answers).toEqual({ a: 1 });
+  });
+
+  it("2.8, 2.13 an expired link is refused with the expired message and shows Expired in the list and on Screen D", async () => {
+    const { cookie } = await staff();
+    const name = `Expired Co ${Date.now()}`;
+    const { id, token } = await create(cookie, name);
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    await getDb().update(schema.customers).set({ intakeTokenExpiresAt: new Date(Date.now() - 1000) }).where(eq(schema.customers.id, id));
+    const services = await import("~server/services");
+    expect(await services.resolveIntakeToken(token)).toEqual({ ok: false, message: "This link has expired. Ask your Ignyte consultant for a new one." });
+    const screenD = await (await app.request(`/customers/${id}/package`, { headers: { cookie } })).text();
+    expect(screenD).toContain("Link expired — issue a new link");
+    expect(screenD).not.toContain(`/intake/${token}`);
+  });
+
+  it("2.15 shows Regenerate when the latest Package Overview file used an older schema version", async () => {
+    const { cookie } = await staff();
+    const name = `Old Schema Co ${Date.now()}`;
+    const { id } = await create(cookie, name);
+    const { getDb, schema } = await import("~server/db");
+    await getDb().insert(schema.packageOverviewFiles).values({
+      customerId: id,
+      schemaVersion: "0.0.1",
+      schemaCommit: "old",
+      valid: true,
+      fileName: "OLD-package-overview.json",
+      json: "{}",
+    });
+    const html = await (await app.request("/customers", { headers: { cookie } })).text();
+    const rowHtml = html.slice(html.indexOf(name), html.indexOf(name) + 400);
+    expect(rowHtml).toContain("Regenerate");
   });
 });

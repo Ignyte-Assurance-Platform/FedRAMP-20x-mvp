@@ -15,11 +15,12 @@
     "test:smoke": "vitest run --project smoke",
     "test:coverage": "vitest run --project unit --coverage",
     "audit:deps": "npm audit --audit-level=high",
-    "db:up": "node scripts/compose.mjs up -d --wait && npm run db:migrate && npm run db:seed",
+    "db:up": "node scripts/compose.mjs up -d --wait && npm run db:migrate && npm run db:seed:allowlist && npm run db:seed",
     "db:down": "node scripts/compose.mjs down",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/db/migrate.ts",
-    "db:seed": "tsx server/db/seed.ts"
+    "db:seed": "tsx server/db/seed.ts",
+    "db:seed:allowlist": "tsx server/db/seed-allowlist.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "8.4.0",

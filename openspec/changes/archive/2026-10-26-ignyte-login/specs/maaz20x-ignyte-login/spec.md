@@ -2,7 +2,7 @@
 
 ### Requirement: Screen A — Ignyte login (Sign in with Google, Ignyte Workspace accounts)
 
-The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-002-ignyte-login]] at brain_commit 537ea5b; scope in proposal.md).
+The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-002-ignyte-login]] at brain_commit 554fc7c; scope in proposal.md).
 
 #### Scenario: an allowlisted Ignyte account signs in with Google
 - **WHEN** an allowlisted Ignyte account signs in with Google

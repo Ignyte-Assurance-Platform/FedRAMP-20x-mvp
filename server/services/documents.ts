@@ -102,7 +102,7 @@ export async function completeIntakeUpload(
   if (!stat) throw new DocumentError("no uploaded file at the expected path", 404);
   if (!stat.sha256) throw new DocumentError("the store did not report a SHA-256 for the file", 400);
 
-  return documentsRepo.insertDocument(deps.db, {
+  const row = await documentsRepo.insertDocument(deps.db, {
     id: parsed.documentId,
     customerId: parsed.customerId,
     objectPath,
@@ -112,4 +112,7 @@ export async function completeIntakeUpload(
     sha256: stat.sha256,
     uploadedBy: parsed.uploadedBy,
   });
+  // WI-003: the first upload counts as the customer's first answer (Not started → In progress).
+  await customersRepo.moveStatus(deps.db, parsed.customerId, ["not_started"], { status: "in_progress" });
+  return row;
 }

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import path from "node:path";
 import * as v from "valibot";
 
@@ -28,6 +29,15 @@ const EnvSchema = v.object({
   LOCAL_STORAGE_DIR: v.optional(v.string(), ".data/storage"),
   GCS_BUCKET: optionalText,
   /** Public base URL of the logos Ignyte hosts (WI-007): the only host Generate JSON requests. */
+  /** AES-256-GCM key for the stored copy of intake link tokens (WI-003), 32 bytes in base64; from Secret Manager in production. */
+  INTAKE_LINK_KEY: v.optional(
+    v.pipe(
+      v.string(),
+      v.trim(),
+      v.transform((s) => (s === "" ? undefined : s)),
+      v.optional(v.pipe(v.string(), v.check((s) => Buffer.from(s, "base64").length === 32, "INTAKE_LINK_KEY must be 32 bytes in base64"))),
+    ),
+  ),
   LOGO_PUBLIC_BASE_URL: v.optional(v.pipe(v.string(), v.trim(), v.transform((s) => (s === "" ? undefined : s)), v.optional(v.pipe(v.string(), v.url())))),
 });
 
@@ -39,6 +49,8 @@ export type Env = RawEnv & {
   /** Google sign-in is configured but inactive until the OAuth client exists (ADR-0004). */
   googleEnabled: boolean;
   adminEmails: string[];
+  /** INTAKE_LINK_KEY decoded; outside production derived from BETTER_AUTH_SECRET when unset. */
+  intakeLinkKey: Buffer;
 };
 
 export class ConfigError extends Error {
@@ -81,6 +93,11 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
       "Refusing to start: LOGO_PUBLIC_BASE_URL must be set in production (Generate JSON publishes the hosted logo address).",
     );
   }
+  if (env.NODE_ENV === "production" && !env.INTAKE_LINK_KEY) {
+    throw new ConfigError(
+      "Refusing to start: INTAKE_LINK_KEY must be set in production (it encrypts the stored intake links).",
+    );
+  }
   if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
     throw new ConfigError("Invalid environment:\n  - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together");
   }
@@ -90,6 +107,9 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
     devLoginEnabled: env.NODE_ENV === "development" && env.DEV_LOGIN === "1",
     googleEnabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
     adminEmails: env.ADMIN_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean),
+    intakeLinkKey: env.INTAKE_LINK_KEY
+      ? Buffer.from(env.INTAKE_LINK_KEY, "base64")
+      : createHash("sha256").update(`maaz-intake-link:${env.BETTER_AUTH_SECRET}`).digest(),
   };
 }
 

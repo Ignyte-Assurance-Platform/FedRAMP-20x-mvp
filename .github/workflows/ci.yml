@@ -65,7 +65,7 @@ jobs:
           retention-days: 14
       - run: npm run build
       - name: Migrate and seed the database
-        run: npm run db:migrate && npm run db:seed
+        run: npm run db:migrate && npm run db:seed:allowlist && npm run db:seed
         env:
           NODE_ENV: development
       - run: npm run test:smoke
