@@ -1,0 +1,73 @@
+name: Deploy dev
+
+# WI-017: every push to main that passes CI is deployed to Cloud Run dev. The job deploys the
+# exact commit CI tested, authenticates through Workload Identity Federation (no keys in
+# GitHub) and fails unless /api/health answers 200; the previous revision keeps serving.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: ignyte-maaz20x-dev
+  REGION: us-central1
+  SERVICE: ignyte-fedramp-20x
+  REGISTRY: us-central1-docker.pkg.dev
+  IMAGE_REPO: us-central1-docker.pkg.dev/ignyte-maaz20x-dev/maaz20x/web
+  WIF_PROVIDER: projects/631427647079/locations/global/workloadIdentityPools/github/providers/fedramp-20x-mvp
+  DEPLOYER: github-deployer@ignyte-maaz20x-dev.iam.gserviceaccount.com
+  APP_URL: https://ignyte-fedramp-20x-631427647079.us-central1.run.app
+
+jobs:
+  deploy:
+    name: build and deploy to Cloud Run dev
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Pick the commit to deploy
+        id: commit
+        run: |
+          sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short=${sha:0:7}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.commit.outputs.sha }}
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push the image
+        run: |
+          gcloud auth configure-docker "$REGISTRY" --quiet
+          docker build -t "$IMAGE_REPO:${{ steps.commit.outputs.short }}" .
+          docker push "$IMAGE_REPO:${{ steps.commit.outputs.short }}"
+
+      - name: Deploy the revision
+        run: |
+          sed -e "s|IMAGE_PLACEHOLDER|$IMAGE_REPO:${{ steps.commit.outputs.short }}|" \
+              -e "s|COMMIT_PLACEHOLDER|${{ steps.commit.outputs.short }}|" \
+              deploy/cloud-run/ignyte-fedramp-20x.dev.yaml > "$RUNNER_TEMP/service.yaml"
+          gcloud run services replace "$RUNNER_TEMP/service.yaml" --project "$PROJECT_ID" --region "$REGION"
+
+      - name: Health check
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "$APP_URL/api/health"

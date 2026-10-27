@@ -66,6 +66,15 @@ Every staff route goes through one guard (`requireStaffUser`); a customer link t
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, build and the smoke test on every pull request and every push to `main`. It does not deploy.
 
+## Deploy
+
+Dev runs on Cloud Run: https://ignyte-fedramp-20x-631427647079.us-central1.run.app (project `ignyte-maaz20x-dev`, Postgres on the shared instance in `ignyte-data-dev`). Console links and the inventory of every resource are in the brain runbook `maaz20x-runbook-gcp-dev-console`.
+
+- **How `main` reaches dev.** When CI passes on a push to `main`, `.github/workflows/deploy-dev.yml` builds the `Dockerfile` for that exact commit, pushes `web:<short sha>` to Artifact Registry, applies `deploy/cloud-run/ignyte-fedramp-20x.dev.yaml` and fails unless `/api/health` answers 200. It signs in to Google Cloud through Workload Identity Federation as `github-deployer`; the repo holds no Google key.
+- **Deploy by hand.** Actions → "Deploy dev" → Run workflow on `main`.
+- **What runs at start-up.** The container migrates the database, applies the staff allowlist (`ADMIN_EMAILS`), then starts the app. Settings and secret references live in the service file; secret values live only in Secret Manager.
+- **Roll back.** Cloud Run console → service `ignyte-fedramp-20x` → Revisions → send 100 % of traffic to the previous revision. Or run the workflow by hand after reverting the commit on `main`.
+
 ## Status
 
 WI-010 (local skeleton) is in progress on `feat/wi-010-local-skeleton`, started at risk before gate 3; open questions are in `docs/at-risk-notes-wi-010.md`. Clickable mockups of screens A–E: `docs/mockups/` ([customer intake](https://claude.ai/artifact/WDpuTu3NEkoX474inoT2dG), [Ignyte console](https://claude.ai/artifact/N18wcZ6j6EuuUydAqGVJk5); sources and tours in [`docs/mockups/README.md`](docs/mockups/README.md)).
