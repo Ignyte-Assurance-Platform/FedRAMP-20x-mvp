@@ -24,9 +24,41 @@ function json(body: unknown, status = 200): Response {
 
 const STATUS = { expired: 410, locked: 423, conflict: 409, problems: 422, refused: 400 } as const;
 
+/** Tab 1 answers are a few KB of text; anyone holding a link can post here, so the body is capped. */
+export const INTAKE_BODY_MAX_BYTES = 256 * 1024;
+
+/**
+ * Reads the body as JSON, stopping at `max` bytes whatever Content-Length claims (chunked
+ * bodies have none). "too-large" past the cap, null when it is not JSON.
+ */
+export async function readJsonCapped(request: Request, max = INTAKE_BODY_MAX_BYTES): Promise<unknown> {
+  if (Number(request.headers.get("content-length") ?? 0) > max) return "too-large";
+  if (!request.body) return null;
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel();
+      return "too-large";
+    }
+    chunks.push(value);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
 export async function action({ request, params }: Route.ActionArgs) {
   if (request.method !== "POST") return json({ kind: "refused", message: "Method not allowed" }, 405);
-  const parsed = v.safeParse(Body, await request.json().catch(() => null));
+  const raw = await readJsonCapped(request);
+  if (raw === "too-large") return json({ kind: "refused", message: "The form is too large to save. Shorten the longest answers and try again." }, 413);
+  const parsed = v.safeParse(Body, raw);
   if (!parsed.success) return json({ kind: "refused", message: "The request could not be read. Reload the page and try again." }, 400);
   const body = parsed.output;
   try {
