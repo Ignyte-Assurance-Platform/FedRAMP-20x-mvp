@@ -14,5 +14,5 @@
 - [x] 2.6 WHEN the theme commit is reverted THEN the app builds and renders with the neutral theme again (no other file depends on the new tokens by name).
 
 ## 3. Verify
-- [ ] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear IGN-17
+- [x] 3.1 Automated review (PB - Review PR) against this spec · `.pb-cache/reviews/pr-26-2026-10-27.md`: 6/6 criteria, 0 blockers, 0 major, 2 minor, 5 nits
+- [x] 3.2 Human triage (gate 7) recorded in Linear IGN-17 · comment 3bdf321f (minor 1 and nits 3–4 fixed in 3884414, the rest accepted)
