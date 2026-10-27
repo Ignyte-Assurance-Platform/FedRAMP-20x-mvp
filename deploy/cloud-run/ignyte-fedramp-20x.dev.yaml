@@ -55,7 +55,7 @@ spec:
             - name: GOOGLE_ALLOWED_DOMAIN
               value: ignyteplatform.com
             - name: ADMIN_EMAILS
-              value: jesus.p@ignyteplatform.com
+              value: jesus.p@ignyteplatform.com,max@ignyteplatform.com,c.martinson@ignyteplatform.com
             - name: GOOGLE_CLIENT_ID
               value: 631427647079-j4tupgrigqjuhuafooqrjaqbinakulj7.apps.googleusercontent.com
             - name: GOOGLE_CLIENT_SECRET
