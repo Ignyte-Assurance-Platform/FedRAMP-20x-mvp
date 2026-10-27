@@ -1,6 +1,6 @@
 import { index, prefix, route, type RouteConfig } from "@react-router/dev/routes";
 
-// Explicit route config (ADR-0006): no file-name magic. Intake routes arrive with WI-004 to WI-006.
+// Explicit route config (ADR-0006): no file-name magic.
 export default [
   index("routes/home.tsx"),
   route("login", "routes/auth/login.tsx"),
@@ -9,10 +9,13 @@ export default [
   route("customers", "routes/customers/customers-list.tsx"),
   route("customers/new", "routes/customers/customer-new.tsx"),
   route("customers/:customerId/package", "routes/package/customer-package.tsx"),
+  // Screen E (WI-004): the customer's private link, no sign-in; the token is the only credential.
+  route("intake/:token", "routes/intake/intake-page.tsx"),
   ...prefix("api", [
     route("health", "routes/api/health.ts"),
     route("dev-login", "routes/api/dev-login.ts"),
     route("uploads/:token", "routes/api/uploads.$token.ts"),
+    route("intake/:token", "routes/api/intake.$token.ts"),
     route("customers/:customerId/package-overview/download", "routes/api/package-overview-download.ts"),
   ]),
 ] satisfies RouteConfig;

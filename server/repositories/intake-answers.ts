@@ -15,26 +15,37 @@ export interface IntakeSectionInput {
   section: string;
   formDefinitionVersion: string;
   answers: Record<string, unknown>;
+  /** The version the page loaded; 0 when the section had no row yet. */
+  expectedVersion: number;
 }
 
+export type IntakeSaveResult = { saved: IntakeAnswersRow } | { conflict: IntakeAnswersRow } | { stale: true };
+
 /**
- * Replaces a section's answers (ADR-0003 section save; the version check that makes it
- * optimistic arrives with WI-004). Bumps `version` and `updated_at` on every save.
+ * Versioned section save (WI-004 E2, ADR-0003): writes only if `expectedVersion` is still the
+ * stored one, bumps it and returns the row; otherwise stores nothing and returns the stored row
+ * as a conflict. The first save inserts version 1 and conflicts if another window got there
+ * first. This is the only write to intake_answers.
  */
-export async function upsertIntakeSection(db: Database, input: IntakeSectionInput): Promise<IntakeAnswersRow> {
-  const [row] = await db
-    .insert(schema.intakeAnswers)
-    .values(input)
-    .onConflictDoUpdate({
-      target: [schema.intakeAnswers.customerId, schema.intakeAnswers.section],
-      set: {
-        answers: input.answers,
-        formDefinitionVersion: input.formDefinitionVersion,
-        version: sql`${schema.intakeAnswers.version} + 1`,
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
-  if (!row) throw new Error("upsert into intake_answers returned no row");
-  return row;
+export async function saveIntakeSection(db: Database, input: IntakeSectionInput): Promise<IntakeSaveResult> {
+  const { expectedVersion, ...values } = input;
+  const where = and(eq(schema.intakeAnswers.customerId, input.customerId), eq(schema.intakeAnswers.section, input.section));
+  const [row] =
+    expectedVersion === 0
+      ? await db.insert(schema.intakeAnswers).values({ ...values, version: 1 }).onConflictDoNothing().returning()
+      : await db
+          .update(schema.intakeAnswers)
+          .set({
+            answers: values.answers,
+            formDefinitionVersion: values.formDefinitionVersion,
+            version: sql`${schema.intakeAnswers.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(and(where, eq(schema.intakeAnswers.version, expectedVersion)))
+          .returning();
+  if (row) return { saved: row };
+  const current = await findIntakeSection(db, input.customerId, input.section);
+  // A version the section never had (no row yet, or a crafted request): nothing to conflict with.
+  if (!current) return { stale: true };
+  return { conflict: current };
 }

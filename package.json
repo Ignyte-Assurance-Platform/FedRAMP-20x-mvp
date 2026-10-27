@@ -20,7 +20,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/db/migrate.ts",
     "db:seed": "tsx server/db/seed.ts",
-    "db:seed:allowlist": "tsx server/db/seed-allowlist.ts"
+    "db:seed:allowlist": "tsx server/db/seed-allowlist.ts",
+    "logos:publish": "tsx server/db/publish-logos.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "8.4.0",

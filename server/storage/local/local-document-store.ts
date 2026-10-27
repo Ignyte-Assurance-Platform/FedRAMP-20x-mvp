@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -68,6 +68,23 @@ export class LocalDocumentStore implements DocumentStore {
       const [info, meta] = await Promise.all([stat(file), readFile(`${file}.meta.json`, "utf8")]);
       const parsed = JSON.parse(meta) as { contentType: string; sha256: string };
       return { size: info.size, contentType: parsed.contentType, sha256: parsed.sha256, updatedAt: info.mtime };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw error;
+    }
+  }
+
+  async readStart(objectPath: string, bytes: number): Promise<Buffer | null> {
+    const file = this.resolve(objectPath);
+    try {
+      const handle = await open(file, "r");
+      try {
+        const buffer = Buffer.alloc(bytes);
+        const { bytesRead } = await handle.read(buffer, 0, bytes, 0);
+        return buffer.subarray(0, bytesRead);
+      } finally {
+        await handle.close();
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
       throw error;

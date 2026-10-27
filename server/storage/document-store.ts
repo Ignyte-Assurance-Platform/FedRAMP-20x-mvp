@@ -10,6 +10,8 @@ export interface DocumentStore {
   delete(objectPath: string): Promise<void>;
   /** null when the object does not exist. */
   stat(objectPath: string): Promise<ObjectStat | null>;
+  /** The first `bytes` bytes of an object (file signature checks), or null when it does not exist. */
+  readStart(objectPath: string, bytes: number): Promise<Buffer | null>;
 }
 
 export interface UploadUrlInput {

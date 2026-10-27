@@ -2,9 +2,11 @@ import { getEnv, type Env } from "~server/config";
 import type { DocumentStore } from "./document-store";
 import { GcsDocumentStore } from "./gcs/gcs-document-store";
 import { LocalDocumentStore } from "./local/local-document-store";
+import { GcsLogoPublisher, LocalLogoPublisher, type LogoPublisher } from "./logo-publisher";
 
 export * from "./document-store";
 export * from "./paths";
+export * from "./logo-publisher";
 export { GcsDocumentStore } from "./gcs/gcs-document-store";
 export { LocalDocumentStore } from "./local/local-document-store";
 
@@ -22,4 +24,20 @@ let instance: DocumentStore | undefined;
 export function getDocumentStore(): DocumentStore {
   instance ??= createDocumentStore(getEnv());
   return instance;
+}
+
+/** Same driver as the document store: Cloud Storage copies between the two buckets, local copies between two folders. */
+export function createLogoPublisher(env: Env): LogoPublisher {
+  if (env.STORAGE_DRIVER === "gcs") {
+    if (!env.GCS_BUCKET || !env.GCS_LOGO_BUCKET) throw new Error("GCS_BUCKET and GCS_LOGO_BUCKET are required when STORAGE_DRIVER=gcs");
+    return new GcsLogoPublisher({ documentsBucket: env.GCS_BUCKET, logosBucket: env.GCS_LOGO_BUCKET });
+  }
+  return new LocalLogoPublisher({ documentsDir: env.LOCAL_STORAGE_DIR, logosDir: env.LOCAL_LOGO_DIR });
+}
+
+let publisher: LogoPublisher | undefined;
+
+export function getLogoPublisher(): LogoPublisher {
+  publisher ??= createLogoPublisher(getEnv());
+  return publisher;
 }

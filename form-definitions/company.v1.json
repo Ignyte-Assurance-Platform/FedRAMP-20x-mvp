@@ -1,0 +1,52 @@
+{
+  "$comment": "Overlay of tab 1 (WI-004) on the vendored Package Overview schema: the fields, required flags, enums and formats come from the schema; this file adds only labels, help, notes, the 'Why we ask (client)' lines and what the customer never sees. Changing a line here is a text change, not a spec change.",
+  "form": "company",
+  "revision": 1,
+  "hidden": ["/assessor"],
+  "logo": "/serviceIdentification/logo",
+  "optional": ["/serviceIdentification/fedRampPackageId"],
+  "labels": {
+    "/serviceIdentification/fedRampPackageId": "FedRAMP package ID",
+    "/thirdPartyInformationResources": "Third-party information resources within the Minimum Assessment Scope"
+  },
+  "help": {
+    "/serviceIdentification/fedRampPackageId": "Only if FedRAMP already assigned you one",
+    "/serviceIdentification/ueiNumber": "If no UEI is available leave this blank",
+    "/serviceIdentification/logo": "PNG or JPEG, at least 256 px wide, up to 2 MB. Ignyte hosts it for your FedRAMP listing.",
+    "/contactInformation": "Include at least one Security contact and one Sales contact."
+  },
+  "notes": {
+    "/thirdPartyInformationResources": "This is not limited to services that touch federal data."
+  },
+  "placeholders": {
+    "/contactInformation/*/contactPhone": "202-555-0123 or (800) 555-0199 ext. 42"
+  },
+  "longText": [
+    "/serviceIdentification/serviceDescription",
+    "/serviceProperties/trustCenter/repositoryDescription",
+    "/serviceProperties/trustCenter/accessRequestInstructions",
+    "/serviceProperties/secureConfigurationGuidance/repositoryDescription",
+    "/serviceProperties/secureConfigurationGuidance/accessRequestInstructions",
+    "/serviceProperties/additionalRepositories/*/repositoryDescription",
+    "/serviceProperties/additionalRepositories/*/accessRequestInstructions",
+    "/certifiedServices/*/serviceDescription",
+    "/thirdPartyInformationResources/certified/*/useCase",
+    "/thirdPartyInformationResources/nonCertified/*/useCase"
+  ],
+  "why": {
+    "$source": "Brain projects/maaz20x/docs/maaz20x-intake-questionnaire.md §2, column 'Why we ask (client)', questions 1 to 5 (Christina Martinson, 2026-10-23).",
+    "/serviceIdentification/providerName": [
+      "Your company's legal name appears in your FedRAMP listing and package. If you have a UEI from SAM.gov, it is part of your public FedRAMP information; if you don't have one, leave it blank. Your headquarters location is for your consultant's records."
+    ],
+    "/contactInformation": [
+      "FedRAMP expects a senior official to accept any decision not to follow a rule, so we need to know who signs off for your company. (ex. CISO, CEO)",
+      "This is who we work with week to week on technical questions and evidence, so we know who to ask and who to keep informed."
+    ],
+    "/serviceIdentification/serviceName": [
+      "FedRAMP lists your product and each service it covers using the names you use in your marketing, so agencies can see exactly what is and isn't covered."
+    ],
+    "/serviceProperties/serviceType": [
+      "Your public FedRAMP information shows your service model and deployment model, and they help define what is in scope."
+    ]
+  }
+}
