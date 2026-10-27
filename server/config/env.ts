@@ -28,7 +28,9 @@ const EnvSchema = v.object({
   STORAGE_DRIVER: v.optional(v.picklist(["local", "gcs"]), "local"),
   LOCAL_STORAGE_DIR: v.optional(v.string(), ".data/storage"),
   GCS_BUCKET: optionalText,
-  /** Public base URL of the logos Ignyte hosts (WI-007): the only host Generate JSON requests. */
+  /** Public bucket that holds nothing but customer logos (WI-018); local stand-in: LOCAL_LOGO_DIR. */
+  GCS_LOGO_BUCKET: optionalText,
+  LOCAL_LOGO_DIR: v.optional(v.string(), ".data/logos"),
   /** AES-256-GCM key for the stored copy of intake link tokens (WI-003), 32 bytes in base64; from Secret Manager in production. */
   INTAKE_LINK_KEY: v.optional(
     v.pipe(
@@ -38,6 +40,7 @@ const EnvSchema = v.object({
       v.optional(v.pipe(v.string(), v.check((s) => Buffer.from(s, "base64").length === 32, "INTAKE_LINK_KEY must be 32 bytes in base64"))),
     ),
   ),
+  /** Public base URL of the logos Ignyte hosts (WI-007): the only host Generate JSON requests. */
   LOGO_PUBLIC_BASE_URL: v.optional(v.pipe(v.string(), v.trim(), v.transform((s) => (s === "" ? undefined : s)), v.optional(v.pipe(v.string(), v.url())))),
 });
 
@@ -85,6 +88,12 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
   }
   if (env.STORAGE_DRIVER === "gcs" && !env.GCS_BUCKET) {
     throw new ConfigError("Invalid environment:\n  - GCS_BUCKET: required when STORAGE_DRIVER=gcs");
+  }
+  if (env.STORAGE_DRIVER === "gcs" && !env.GCS_LOGO_BUCKET) {
+    throw new ConfigError("Invalid environment:\n  - GCS_LOGO_BUCKET: required when STORAGE_DRIVER=gcs (the public bucket for customer logos)");
+  }
+  if (env.GCS_LOGO_BUCKET && env.GCS_LOGO_BUCKET === env.GCS_BUCKET) {
+    throw new ConfigError("Invalid environment:\n  - GCS_LOGO_BUCKET must not be the documents bucket (GCS_BUCKET): logos are public, documents never are");
   }
   // WI-007: the Package Overview carries the public address of the hosted logo; without the
   // host no customer file can ever pass, so a production start without it is a mistake.

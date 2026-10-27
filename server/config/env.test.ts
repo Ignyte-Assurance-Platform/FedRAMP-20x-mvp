@@ -30,12 +30,12 @@ describe("parseEnv", () => {
   });
 
   it("accepts production without DEV_LOGIN, on Cloud Storage", () => {
-    const env = parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/", INTAKE_LINK_KEY: KEY });
+    const env = parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", GCS_LOGO_BUCKET: "maaz-logos", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/", INTAKE_LINK_KEY: KEY });
     expect(env.devLoginEnabled).toBe(false);
   });
 
   it.each([undefined, ""])("refuses production with LOGO_PUBLIC_BASE_URL=%j (WI-007: no file can carry a logo address)", (value) => {
-    expect(() => parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: value, INTAKE_LINK_KEY: KEY })).toThrowError(
+    expect(() => parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", GCS_LOGO_BUCKET: "maaz-logos", LOGO_PUBLIC_BASE_URL: value, INTAKE_LINK_KEY: KEY })).toThrowError(
       /Refusing to start: LOGO_PUBLIC_BASE_URL must be set in production/,
     );
   });
@@ -59,7 +59,13 @@ describe("parseEnv", () => {
 
   it("requires a bucket for the Cloud Storage driver", () => {
     expect(() => parseEnv({ ...base, STORAGE_DRIVER: "gcs" })).toThrowError(/GCS_BUCKET/);
-    expect(parseEnv({ ...base, STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs" }).GCS_BUCKET).toBe("maaz-docs");
+    expect(parseEnv({ ...base, STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", GCS_LOGO_BUCKET: "maaz-logos" }).GCS_BUCKET).toBe("maaz-docs");
+  });
+
+  it("requires the logos bucket for the Cloud Storage driver (WI-018)", () => {
+    expect(() => parseEnv({ ...base, STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs" })).toThrowError(/GCS_LOGO_BUCKET/);
+    expect(parseEnv(base).LOCAL_LOGO_DIR).toBe(".data/logos");
+    expect(() => parseEnv({ ...base, STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", GCS_LOGO_BUCKET: "maaz-docs" })).toThrowError(/must not be the documents bucket/);
   });
 
   it("treats Google as configured only when both id and secret are set", () => {
@@ -83,7 +89,7 @@ describe("parseEnv", () => {
 });
 
 describe("INTAKE_LINK_KEY (WI-003)", () => {
-  const prod = { ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/" };
+  const prod = { ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", GCS_LOGO_BUCKET: "maaz-logos", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/" };
   it("refuses production without it and rejects a key that is not 32 bytes", () => {
     expect(() => parseEnv(prod)).toThrowError(/INTAKE_LINK_KEY must be set in production/);
     expect(() => parseEnv({ ...prod, INTAKE_LINK_KEY: "c2hvcnQ=" })).toThrowError(/32 bytes/);

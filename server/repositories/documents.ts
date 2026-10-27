@@ -21,3 +21,11 @@ export async function findLatestDocumentUnder(db: Database, customerId: string, 
     orderBy: [desc(schema.documents.uploadedAt)],
   });
 }
+
+/** Every recorded customer logo (`customers/<id>/logo/…`), oldest first. */
+export async function listLogoDocuments(db: Database): Promise<DocumentRow[]> {
+  return db.query.documents.findMany({
+    where: like(schema.documents.objectPath, "customers/%/logo/%"),
+    orderBy: [schema.documents.uploadedAt],
+  });
+}
