@@ -10,7 +10,7 @@
 - [x] 2.2 WHEN a form action arrives with an `Origin` different from `APP_URL`'s origin THEN it is still rejected (CSRF protection unchanged)
 - [x] 2.3 WHEN the request is rewritten to the public origin THEN path, query string, method, headers and body are unchanged
 - [x] 2.4 WHEN the app runs in development THEN requests are not rewritten and local sign-in and smoke tests behave as before
-- [ ] 2.5 WHEN the fix is deployed to Cloud Run dev THEN Jesús signs in with Google with `jesus.p@ignyteplatform.com` and reaches the customer list (manual check, wi-002 scenario 2.1)
+- [x] 2.5 WHEN the fix is deployed to Cloud Run dev THEN Jesús signs in with Google with `jesus.p@ignyteplatform.com` and reaches the customer list (manual check, wi-002 scenario 2.1) · verified 2026-10-27 on Cloud Run dev, image web:e26fc73: Jesús signed in with Google, reached the customer list and created a test customer
 
 ## 3. Verify
 - [ ] 3.1 Automated review (PB - Review PR) against this spec
