@@ -663,6 +663,37 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     expect(await intakeAnswersRepo.findIntakeSection(getDb(), id, "company")).toBeUndefined();
   });
 
+  it("2.17 the first autosave, 2 s after typing stops, moves the customer from Not started to In progress", async () => {
+    const { id, token } = await newCustomer();
+    expect((await customerRow(id)).status).toBe("not_started");
+    const { createIntakeSaver } = await import("../../app/routes/intake/components/intake-saver");
+    let saved!: () => void;
+    const autosaved = new Promise<void>((resolve) => (saved = resolve));
+    const posted: Array<Record<string, unknown>> = [];
+    const saver = createIntakeSaver({
+      // The same request Screen E sends, against the real API.
+      post: async (body) => {
+        posted.push(body);
+        const res = await api(token, body);
+        return { status: res.status, data: (await res.json()) as Record<string, unknown> };
+      },
+      answers: {},
+      version: 0,
+      delayMs: 2000,
+      onState: (state) => state.kind === "saved" && saved(),
+      onConflict: () => undefined,
+    });
+    const typedAt = Date.now();
+    saver.changed({ serviceIdentification: { providerName: "Autosaved Co." } });
+    await autosaved;
+    expect(Date.now() - typedAt).toBeGreaterThanOrEqual(1990);
+    expect(posted).toEqual([{ intent: "save", answers: { serviceIdentification: { providerName: "Autosaved Co." } }, version: 0 }]);
+    expect((await customerRow(id)).status).toBe("in_progress");
+    const { getDb } = await import("~server/db");
+    const { intakeAnswersRepo } = await import("~server/repositories");
+    expect((await intakeAnswersRepo.findIntakeSection(getDb(), id, "company"))?.answers).toEqual({ serviceIdentification: { providerName: "Autosaved Co." } });
+  });
+
   it("a repeated logo-finish (double click, retry) answers the logo already recorded and adds no row", async () => {
     const { id, token } = await newCustomer();
     const start = await api(token, { intent: "logo-start", filename: "logo.png", contentType: "image/png", size: PNG_300.length, width: 300 });

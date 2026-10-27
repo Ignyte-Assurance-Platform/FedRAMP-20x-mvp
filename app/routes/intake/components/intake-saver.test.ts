@@ -31,6 +31,39 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("intake saver (WI-004 E2)", () => {
+  it("2.17 saves 2 s after the last change without pressing Save; each change restarts the wait", async () => {
+    const h = harness(1);
+    h.type({ a: 2 });
+    await vi.advanceTimersByTimeAsync(1500);
+    h.type({ a: 3 }); // still typing
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(h.calls).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(h.calls).toHaveLength(1);
+    expect(h.calls[0]!.body).toEqual({ intent: "save", answers: { a: 3 }, version: 1 });
+    h.calls[0]!.resolve(h.ok(2));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.last()).toMatchObject({ kind: "saved" });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(h.calls).toHaveLength(1); // nothing changed since: no further autosave
+  });
+
+  it("2.17 the Save button still works: it saves at once, cancels the pending autosave and keeps the new version", async () => {
+    const h = harness(1);
+    h.type({ a: 2 });
+    const saved = h.saver.save(); // Save pressed before the 2 s are up
+    expect(h.calls).toHaveLength(1);
+    expect(h.calls[0]!.body).toEqual({ intent: "save", answers: { a: 2 }, version: 1 });
+    h.calls[0]!.resolve(h.ok(2));
+    await saved;
+    expect(h.saver.version).toBe(2);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(h.calls).toHaveLength(1); // the autosave it replaced does not also go out
+    h.type({ a: 3 });
+    void h.saver.save();
+    expect(h.calls[1]!.body).toEqual({ intent: "save", answers: { a: 3 }, version: 2 });
+  });
+
   it("M2 Submit waits for the autosave in flight and sends the version it returned: no self-conflict", async () => {
     const h = harness(1);
     h.type({ a: 2 });
