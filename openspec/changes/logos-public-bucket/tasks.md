@@ -14,7 +14,7 @@
 - [x] 2.6 WHEN `LOGO_PUBLIC_BASE_URL` is set THEN the logo previews on Screens E and D use the public URL · Screen D already used the public URL (`loadTab1Answers`); Screen E now too: smoke "WI-018: with a logo host configured…" (finish and open)
 - [x] 2.7 WHEN the app starts in production without `GCS_LOGO_BUCKET` THEN it refuses to start with a message naming the setting · `env.test.ts` "requires the logos bucket for the Cloud Storage driver" (GCS_LOGO_BUCKET is required whenever STORAGE_DRIVER=gcs, so production too)
 - [x] 2.8 WHEN the app runs locally with `STORAGE_DRIVER=local` THEN logo upload, preview and Generate JSON behave as before this item, and the smoke tests pass · lint, typecheck, 226 unit and 40 smoke tests green locally
-- [x] 2.9 WHEN `npm run logos:publish` runs THEN every recorded logo missing from the logos bucket is copied, and a second run copies nothing · run twice locally against the smoke data: "4 recorded, 3 published now, 1 missing", then "0 published now"
+- [x] 2.9 WHEN `npm run logos:publish` runs THEN every recorded logo missing from the logos bucket is copied, and a second run copies nothing · run twice locally against the smoke data: "4 recorded, 3 published now, 1 missing", then "0 published now"; loop moved to `publishMissingLogos` with unit tests (second run copies nothing, one failure does not stop the run, exit code 1)
 
 ## 3. Verify
 - [ ] 3.1 Automated review (PB - Review PR) against this spec
