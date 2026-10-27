@@ -1,0 +1,97 @@
+# Cloud Run service for dev (WI-017). The deploy workflow (.github/workflows/deploy-dev.yml)
+# replaces IMAGE_PLACEHOLDER and COMMIT_PLACEHOLDER, then runs `gcloud run services replace`.
+# Secrets are Secret Manager references only; values never live in this file.
+# The app reaches the shared Postgres in ignyte-data-dev through the cloud-sql-proxy sidecar,
+# logged in as the web-app service account (IAM database auth, no password).
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ignyte-fedramp-20x
+  labels:
+    cloud.googleapis.com/location: us-central1
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      labels:
+        commit: COMMIT_PLACEHOLDER
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "2"
+        run.googleapis.com/container-dependencies: '{"app":["cloud-sql-proxy"]}'
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      serviceAccountName: web-app@ignyte-maaz20x-dev.iam.gserviceaccount.com
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - name: app
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: APP_URL
+              value: https://ignyte-fedramp-20x-631427647079.us-central1.run.app
+            - name: DATABASE_URL
+              value: postgres://web-app%40ignyte-maaz20x-dev.iam@127.0.0.1:5432/maaz20x
+            - name: STORAGE_DRIVER
+              value: gcs
+            - name: GCS_BUCKET
+              value: ignyte-maaz20x-dev-documents
+            - name: LOGO_PUBLIC_BASE_URL
+              value: https://storage.googleapis.com/ignyte-customer-logos-dev/
+            - name: GOOGLE_ALLOWED_DOMAIN
+              value: ignyteplatform.com
+            - name: ADMIN_EMAILS
+              value: jesus.p@ignyteplatform.com
+            - name: GOOGLE_CLIENT_ID
+              value: 631427647079-j4tupgrigqjuhuafooqrjaqbinakulj7.apps.googleusercontent.com
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: GOOGLE_CLIENT_SECRET
+                  key: latest
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: BETTER_AUTH_SECRET
+                  key: latest
+            - name: INTAKE_LINK_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: INTAKE_LINK_KEY
+                  key: latest
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 24
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.1
+          args:
+            - --auto-iam-authn
+            - --port=5432
+            - --health-check
+            - --http-address=0.0.0.0
+            - --http-port=9090
+            - --exit-zero-on-sigterm
+            - ignyte-data-dev:us-central1:ignyte-pg-dev
+          resources:
+            limits:
+              cpu: "1"
+              memory: 256Mi
+          startupProbe:
+            httpGet:
+              path: /startup
+              port: 9090
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 30

@@ -4,6 +4,7 @@ import { CopyLink } from "~/components/copy-link";
 import { AppShell } from "~/components/layout/app-shell";
 import { buttonVariants } from "~/components/ui/button";
 import { formatDate } from "~/lib/dates";
+import { PRODUCT_NAME } from "~/lib/product";
 import type { Route } from "./+types/customers-list";
 
 /** Screen B (WI-003): every customer, newest first; a row opens Screen D. Staff only. */
@@ -13,13 +14,13 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export function meta() {
-  return [{ title: "Customers · Maaz 20x" }];
+  return [{ title: `Customers · ${PRODUCT_NAME}` }];
 }
 
 const statusClass: Record<string, string> = {
   not_started: "bg-muted text-muted-foreground",
-  in_progress: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
-  submitted: "bg-green-600/15 text-green-800 dark:text-green-300",
+  in_progress: "bg-amber-500/15 text-amber-800",
+  submitted: "bg-green-600/15 text-green-800",
 };
 
 export default function CustomersList({ loaderData }: Route.ComponentProps) {
@@ -64,11 +65,11 @@ export default function CustomersList({ loaderData }: Route.ComponentProps) {
                       }}
                     >
                       <td className="px-3 py-2">
-                        <Link to={href} className="font-medium underline-offset-2 hover:underline">
+                        <Link to={href} className="font-medium text-foreground underline-offset-2 hover:underline">
                           {customer.name}
                         </Link>
                         {customer.regenerate && (
-                          <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-800 dark:text-amber-300">
+                          <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-800">
                             Regenerate
                           </span>
                         )}

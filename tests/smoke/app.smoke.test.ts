@@ -767,3 +767,72 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     expect(website?.question).toBe(getCompanyFormDefinition().labels["/serviceIdentification/website"]);
   });
 });
+
+describe("Ignyte theme (WI-015 §5)", () => {
+  /** WCAG 2 relative luminance of a #rgb or #rrggbb colour. */
+  function luminance(hex: string): number {
+    const h = hex.length === 4 ? [...hex.slice(1)].map((c) => c + c).join("") : hex.slice(1);
+    const [r, g, b] = [0, 2, 4].map((i) => {
+      const c = parseInt(h.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+  }
+  const contrast = (a: string, b: string) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi! + 0.05) / (lo! + 0.05);
+  };
+
+  async function builtCss(): Promise<string> {
+    const assets = await readdir(path.join(root, "build/client/assets"));
+    const files = assets.filter((f) => f.endsWith(".css"));
+    expect(files.length).toBeGreaterThan(0);
+    return (await Promise.all(files.map((f) => readFile(path.join(root, "build/client/assets", f), "utf8")))).join("\n");
+  }
+
+  it("serves the self-hosted fonts from the app's origin and never asks Google Fonts", async () => {
+    const css = await builtCss();
+    for (const host of ["fonts.googleapis.com", "fonts.gstatic.com"]) expect(css).not.toContain(host);
+    expect(css).not.toContain("prefers-color-scheme");
+    const urls = [...css.matchAll(/url\("?(\/fonts\/[^")]+\.woff2)"?\)/g)].map((m) => m[1]!);
+    expect(new Set(urls).size).toBe(3);
+    for (const url of new Set(urls)) {
+      const res = await app.request(url);
+      expect(res.status, url).toBe(200);
+      expect(res.headers.get("content-type")).toBe("font/woff2");
+      expect(res.headers.get("cache-control")).toBe("public, max-age=86400");
+    }
+    const login = await (await app.request("/login")).text();
+    for (const host of ["fonts.googleapis.com", "fonts.gstatic.com"]) expect(login).not.toContain(host);
+  });
+
+  it("keeps button, link and body text at 4.5:1 or more (WCAG AA)", async () => {
+    const css = await builtCss();
+    const token = (name: string) => {
+      const value = new RegExp(`--${name}:\\s*(#[0-9a-f]{3,6})\\b`, "i").exec(css)?.[1];
+      expect(value, `--${name}`).toBeDefined();
+      return value!;
+    };
+    const pairs: [string, string][] = [
+      ["primary-foreground", "primary"], // primary button
+      ["primary", "background"], // links and headings
+      ["foreground", "background"], // body text
+      ["muted-foreground", "background"], // secondary text
+      ["accent-foreground", "accent"], // hovered and selected items
+    ];
+    for (const [fg, bg] of pairs) expect(contrast(token(fg), token(bg)), `${fg} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("shows the product name and no 'Maaz 20x' on the sign-in page and the staff screens", async () => {
+    const login = await (await app.request("/login")).text();
+    expect(login).toContain("<title>Ignyte FedRAMP 20x</title>");
+    const signIn = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+    const cookie = signIn.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    for (const page of ["/customers", "/customers/new"]) {
+      const html = await (await app.request(page, { headers: { cookie } })).text();
+      expect(html, page).toContain("Ignyte FedRAMP 20x");
+      expect(html, page).not.toContain("Maaz 20x");
+    }
+    expect(login).not.toContain("Maaz 20x");
+  });
+});

@@ -1,3 +1,4 @@
 # Vendored FedRAMP schemas are checked against SHA-256 hashes in schemas/manifest.json (WI-007):
 # they must stay byte-exact on every platform, so no CRLF conversion.
 server/fedramp/schemas/*.json text eol=lf
+*.woff2 binary

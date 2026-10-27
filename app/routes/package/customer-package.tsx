@@ -291,7 +291,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
               <div className="grid gap-4">
                 <div role="status" aria-live="polite">
                   {latest.valid ? (
-                    <p className="rounded-md border border-green-600/40 bg-green-600/10 p-3 text-sm font-medium text-green-800 dark:text-green-300">
+                    <p className="rounded-md border border-green-600/40 bg-green-600/10 p-3 text-sm font-medium text-green-800">
                       ✓ Valid against FedRAMP Package Overview {latest.schemaVersion}
                     </p>
                   ) : (
@@ -305,7 +305,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
                   <dt className="text-muted-foreground">FedRAMP format version</dt>
                   <dd>
                     Package Overview {latest.schemaVersion}{" "}
-                    <span className="text-muted-foreground">(FedRAMP/schemas {latest.schemaCommit})</span>
+                    <span className="text-muted-foreground">(FedRAMP/schemas <span className="font-mono">{latest.schemaCommit}</span>)</span>
                   </dd>
                   <dt className="text-muted-foreground">FedRAMP rules version</dt>
                   <dd>

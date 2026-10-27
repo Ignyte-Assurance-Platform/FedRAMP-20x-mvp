@@ -1,7 +1,7 @@
 # maaz20x-customers-list-and-create Specification
 
 ## Purpose
-TBD - created by archiving change customers-list-and-create. Update Purpose after archive.
+Ignyte staff see every customer with its intake status and link (Screen B) and create a customer, which issues the customer's intake link (Screen C); the link token is stored only hashed and encrypted, and status follows the intake to In progress and Submitted, with Unlock to reopen it (brain wi-maaz20x-003).
 
 ## Requirements
 
