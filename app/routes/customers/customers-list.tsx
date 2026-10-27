@@ -65,7 +65,7 @@ export default function CustomersList({ loaderData }: Route.ComponentProps) {
                       }}
                     >
                       <td className="px-3 py-2">
-                        <Link to={href} className="font-medium underline-offset-2 hover:underline">
+                        <Link to={href} className="font-medium text-foreground underline-offset-2 hover:underline">
                           {customer.name}
                         </Link>
                         {customer.regenerate && (

@@ -45,6 +45,7 @@
   --secondary-foreground: #1f2328;
   --muted: #f3f4f6;
   --muted-foreground: #626a73;
+  /* Text on --accent uses --accent-foreground (6.2:1); --primary on it is 4.39:1, below AA. */
   --accent: #fbe9df;
   --accent-foreground: #9a3412;
   --accent-bar: #d9661f;
@@ -81,7 +82,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   /* As in the mockups: page headings and links in Ignyte orange. */
   h1,
