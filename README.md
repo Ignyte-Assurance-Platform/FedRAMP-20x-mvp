@@ -4,7 +4,7 @@ The tool Ignyte consultants use to take a Cloud Service Provider through FedRAMP
 
 ## Stack
 
-One TypeScript app: React Router (framework mode) on Hono, in one container on Cloud Run. Postgres (Cloud SQL) through Drizzle ORM. Better Auth with Google sign-in for staff. shadcn UI, Valibot for forms, ajv for the final FedRAMP JSON. Documents in a private Cloud Storage bucket. Decided in brain ADR-0001; the document worker (phase 3) in ADR-0002.
+One TypeScript app: React Router (framework mode) on Hono, in one container on Cloud Run. Postgres (Cloud SQL) through Drizzle ORM. Better Auth with Google sign-in for staff. shadcn UI, Valibot for forms, ajv for the final FedRAMP JSON. Documents in a private Cloud Storage bucket; customer logos, once checked, are copied to a separate public bucket. Decided in brain ADR-0001; the document worker (phase 3) in ADR-0002.
 
 ## Folder structure
 
@@ -34,7 +34,7 @@ npm run db:up     # starts Postgres (compose.yaml), runs migrations, the allowli
 npm run dev       # http://localhost:3000
 ```
 
-Open http://localhost:3000 and choose **Dev sign-in (local only)**. That button exists only with `NODE_ENV=development` and `DEV_LOGIN=1` (both set in `.env.example`); in production the app refuses to start if `DEV_LOGIN` is set at all. Uploaded files land under `.data/storage/customers/<id>/intake/<document-id>/<filename>`.
+Open http://localhost:3000 and choose **Dev sign-in (local only)**. That button exists only with `NODE_ENV=development` and `DEV_LOGIN=1` (both set in `.env.example`); in production the app refuses to start if `DEV_LOGIN` is set at all. Uploaded files land under `.data/storage/customers/<id>/intake/<document-id>/<filename>`; a checked logo is also copied to `.data/logos/customers/<id>/logo/` (the stand-in for the public logos bucket).
 
 `npm run db:up` uses Docker if it is running, otherwise Podman; force one with `CONTAINER_RUNTIME=podman`. `npm run db:down` stops the database.
 
@@ -62,7 +62,8 @@ Every staff route goes through one guard (`requireStaffUser`); a customer link t
 | `npm run db:generate` | New Drizzle migration after a schema change |
 | `npm run db:seed:allowlist` | Makes exactly `ADMIN_EMAILS` the active staff (plus the dev user outside production); removed emails are set inactive and their sessions deleted. The only seed production runs; it fails on an email outside `@ignyteplatform.com` or an empty list in production |
 | `npm run db:seed` | Local fixture seed (a sample customer); refuses to run in production |
-| `npm start` with `NODE_ENV=production` | Runs the built app; reads the real environment, not `.env`. Refuses to start if `DEV_LOGIN` is set, `STORAGE_DRIVER` is not `gcs`, or `LOGO_PUBLIC_BASE_URL` or `INTAKE_LINK_KEY` is empty |
+| `npm start` with `NODE_ENV=production` | Runs the built app; reads the real environment, not `.env`. Refuses to start if `DEV_LOGIN` is set, `STORAGE_DRIVER` is not `gcs`, or `GCS_LOGO_BUCKET`, `LOGO_PUBLIC_BASE_URL` or `INTAKE_LINK_KEY` is empty |
+| `npm run logos:publish` | Copies to the logos bucket every recorded logo it does not hold yet (one-off for logos from before WI-018); a second run copies nothing |
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, build and the smoke test on every pull request and every push to `main`. It does not deploy.
 

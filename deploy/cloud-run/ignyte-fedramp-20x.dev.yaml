@@ -48,6 +48,8 @@ spec:
               value: gcs
             - name: GCS_BUCKET
               value: ignyte-maaz20x-dev-documents
+            - name: GCS_LOGO_BUCKET
+              value: ignyte-customer-logos-dev
             - name: LOGO_PUBLIC_BASE_URL
               value: https://storage.googleapis.com/ignyte-customer-logos-dev/
             - name: GOOGLE_ALLOWED_DOMAIN
