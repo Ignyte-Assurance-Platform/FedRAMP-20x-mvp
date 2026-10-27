@@ -714,7 +714,7 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     const { getDocumentStore } = await import("~server/storage");
     const fedramp = await import("~server/fedramp");
     const store = getDocumentStore();
-    const failing = { publish: () => Promise.reject(new Error("logos bucket unreachable")), isPublished: async () => false };
+    const failing = { publish: () => Promise.reject(new Error("logos bucket unreachable")), isPublished: async () => false, unpublish: async () => undefined };
     const outcome = await services.finishLogoUpload(
       token,
       { logoId, filename: "logo.png", contentType: "image/png" },

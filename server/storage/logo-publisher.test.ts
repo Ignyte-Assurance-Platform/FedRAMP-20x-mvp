@@ -23,13 +23,19 @@ describe("LocalLogoPublisher", () => {
     await publisher.publish(objectPath);
     expect(await readFile(path.join(logosDir, objectPath), "utf8")).toBe("png bytes");
     expect(await publisher.isPublished(objectPath)).toBe(true);
+    await publisher.unpublish(objectPath);
+    expect(await publisher.isPublished(objectPath)).toBe(false);
   });
 
   it("fails when the checked object is missing, and refuses paths outside customers/", async () => {
     root = await mkdtemp(path.join(tmpdir(), "logos-"));
     const publisher = new LocalLogoPublisher({ documentsDir: path.join(root, "d"), logosDir: path.join(root, "l") });
     await expect(publisher.publish(objectPath)).rejects.toThrow();
-    await expect(publisher.publish("../secrets/x.png")).rejects.toThrow(/invalid object path/);
+    await expect(publisher.publish("../secrets/x.png")).rejects.toThrow(/not a logo object path/);
+    // A customer document under customers/ is never publishable, only the logo path is.
+    await expect(
+      publisher.publish("customers/1b0e8a4e-3a61-4d0a-9d2c-6c1b2b9f6f10/intake/5f0c6f2e-8e3b-4a57-9b0e-2b8c1d7a9e11/contract.pdf"),
+    ).rejects.toThrow(/not a logo object path/);
   });
 });
 

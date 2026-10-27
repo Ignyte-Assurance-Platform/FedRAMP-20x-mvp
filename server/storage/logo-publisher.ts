@@ -1,7 +1,7 @@
 import type { Storage } from "@google-cloud/storage";
-import { copyFile, mkdir, stat } from "node:fs/promises";
+import { copyFile, mkdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { assertObjectPath } from "./paths";
+import { assertLogoObjectPath } from "./paths";
 
 /**
  * Customer logos are uploaded and checked in the private documents store, then copied to the
@@ -13,6 +13,8 @@ export interface LogoPublisher {
   publish(objectPath: string, contentType: string): Promise<void>;
   /** True when the logos bucket already holds the object. */
   isPublished(objectPath: string): Promise<boolean>;
+  /** Removes a copy whose row could not be recorded; no error when it is not there. */
+  unpublish(objectPath: string): Promise<void>;
 }
 
 /** Browsers and FedRAMP's tooling may cache a logo for an hour; a replaced logo gets a new path. */
@@ -32,7 +34,7 @@ export class GcsLogoPublisher implements LogoPublisher {
   constructor(private readonly options: GcsLogoPublisherOptions) {}
 
   async publish(objectPath: string, contentType: string): Promise<void> {
-    assertObjectPath(objectPath);
+    assertLogoObjectPath(objectPath);
     const storage = await this.storage();
     const target = storage.bucket(this.options.logosBucket).file(objectPath);
     await storage
@@ -42,9 +44,14 @@ export class GcsLogoPublisher implements LogoPublisher {
   }
 
   async isPublished(objectPath: string): Promise<boolean> {
-    assertObjectPath(objectPath);
+    assertLogoObjectPath(objectPath);
     const [exists] = await (await this.storage()).bucket(this.options.logosBucket).file(objectPath).exists();
     return exists;
+  }
+
+  async unpublish(objectPath: string): Promise<void> {
+    assertLogoObjectPath(objectPath);
+    await (await this.storage()).bucket(this.options.logosBucket).file(objectPath).delete({ ignoreNotFound: true });
   }
 
   private async storage(): Promise<Storage> {
@@ -71,14 +78,14 @@ export class LocalLogoPublisher implements LogoPublisher {
   }
 
   async publish(objectPath: string): Promise<void> {
-    assertObjectPath(objectPath);
+    assertLogoObjectPath(objectPath);
     const target = path.join(this.logosDir, objectPath);
     await mkdir(path.dirname(target), { recursive: true });
     await copyFile(path.join(this.documentsDir, objectPath), target);
   }
 
   async isPublished(objectPath: string): Promise<boolean> {
-    assertObjectPath(objectPath);
+    assertLogoObjectPath(objectPath);
     try {
       await stat(path.join(this.logosDir, objectPath));
       return true;
@@ -86,5 +93,10 @@ export class LocalLogoPublisher implements LogoPublisher {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
       throw error;
     }
+  }
+
+  async unpublish(objectPath: string): Promise<void> {
+    assertLogoObjectPath(objectPath);
+    await rm(path.join(this.logosDir, objectPath), { force: true });
   }
 }

@@ -65,6 +65,7 @@ describe("parseEnv", () => {
   it("requires the logos bucket for the Cloud Storage driver (WI-018)", () => {
     expect(() => parseEnv({ ...base, STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs" })).toThrowError(/GCS_LOGO_BUCKET/);
     expect(parseEnv(base).LOCAL_LOGO_DIR).toBe(".data/logos");
+    expect(() => parseEnv({ ...base, STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", GCS_LOGO_BUCKET: "maaz-docs" })).toThrowError(/must not be the documents bucket/);
   });
 
   it("treats Google as configured only when both id and secret are set", () => {

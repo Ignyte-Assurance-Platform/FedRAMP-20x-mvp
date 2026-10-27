@@ -92,6 +92,9 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
   if (env.STORAGE_DRIVER === "gcs" && !env.GCS_LOGO_BUCKET) {
     throw new ConfigError("Invalid environment:\n  - GCS_LOGO_BUCKET: required when STORAGE_DRIVER=gcs (the public bucket for customer logos)");
   }
+  if (env.GCS_LOGO_BUCKET && env.GCS_LOGO_BUCKET === env.GCS_BUCKET) {
+    throw new ConfigError("Invalid environment:\n  - GCS_LOGO_BUCKET must not be the documents bucket (GCS_BUCKET): logos are public, documents never are");
+  }
   // WI-007: the Package Overview carries the public address of the hosted logo; without the
   // host no customer file can ever pass, so a production start without it is a mistake.
   if (env.NODE_ENV === "production" && !env.LOGO_PUBLIC_BASE_URL) {

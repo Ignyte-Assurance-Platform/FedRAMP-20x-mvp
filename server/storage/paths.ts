@@ -66,3 +66,10 @@ export function publicObjectUrl(baseUrl: string, objectPath: string): string {
   assertObjectPath(objectPath);
   return new URL(objectPath, baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`).href;
 }
+
+const LOGO_PATH = /^customers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/logo\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg)$/i;
+
+/** Only `customers/<id>/logo/<logo-id>.png|jpg` may ever be published (WI-018): never a document. */
+export function assertLogoObjectPath(objectPath: string): void {
+  if (!LOGO_PATH.test(objectPath)) throw new Error(`not a logo object path: ${objectPath}`);
+}

@@ -277,25 +277,31 @@ export async function finishLogoUpload(token: string, input: v.InferInput<typeof
     await deps.store.delete(objectPath);
     return { kind: "refused", message: `This file is not a PNG or JPEG image. ${LOGO_INSTRUCTIONS}` };
   }
-  // Only a checked logo becomes public (WI-018). If the copy fails nothing is recorded and the
-  // customer uploads again, so no row ever points at a logo the logos bucket does not hold.
+  // Only a checked logo becomes public (WI-018). If the copy or the row fails, the public copy and
+  // the upload are removed and the customer uploads again, so no row ever points at a logo the
+  // logos bucket does not hold, and no public logo is left without a row.
+  let row;
   try {
     await deps.logos.publish(objectPath, stat.contentType);
+    row = await documentsRepo.insertDocument(deps.db, {
+      id: parsed.logoId,
+      customerId: access.customer.id,
+      objectPath,
+      originalFilename: parsed.filename,
+      size: bytes.length,
+      contentType: stat.contentType,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      uploadedBy: `link:${access.customer.intakeTokenHash?.slice(0, 16) ?? "unknown"}`,
+    });
   } catch (error) {
+    // A second finish for the same logo (double click) may have recorded it meanwhile: keep it.
+    const raced = await documentsRepo.findDocument(deps.db, parsed.logoId);
+    if (raced?.customerId === access.customer.id && raced.objectPath === objectPath) return { kind: "stored", logo: await logoView(raced, deps) };
     console.error(`logo publish failed for ${objectPath}:`, error);
+    await deps.logos.unpublish(objectPath).catch(() => undefined);
     await deps.store.delete(objectPath);
     return { kind: "refused", message: `The upload did not arrive. ${LOGO_INSTRUCTIONS}` };
   }
-  const row = await documentsRepo.insertDocument(deps.db, {
-    id: parsed.logoId,
-    customerId: access.customer.id,
-    objectPath,
-    originalFilename: parsed.filename,
-    size: bytes.length,
-    contentType: stat.contentType,
-    sha256: createHash("sha256").update(bytes).digest("hex"),
-    uploadedBy: `link:${access.customer.intakeTokenHash?.slice(0, 16) ?? "unknown"}`,
-  });
   await markIntakeStarted(access.customer.id, deps);
   return { kind: "stored", logo: await logoView(row, deps) };
 }
