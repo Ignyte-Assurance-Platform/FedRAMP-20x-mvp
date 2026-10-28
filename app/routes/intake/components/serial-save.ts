@@ -20,12 +20,16 @@ export function createSerialSave<T>(
   let running: Promise<void> | undefined;
 
   async function drain() {
-    while (pending) {
-      const { change } = pending;
-      pending = undefined;
-      await send(change);
+    try {
+      while (pending) {
+        const { change } = pending;
+        pending = undefined;
+        await send(change);
+      }
+    } finally {
+      // A send that throws must not leave the queue stuck on a rejected promise.
+      running = undefined;
     }
-    running = undefined;
   }
 
   return {

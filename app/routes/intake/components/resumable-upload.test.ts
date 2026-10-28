@@ -63,6 +63,18 @@ describe("uploadResumable", () => {
     expect(calls).toBe(MAX_STALLS);
   });
 
+  it("#42 re-review: three drops on the same part with nothing stored still finish within the retries", async () => {
+    let partPuts = 0;
+    const fetch = (async (_url: string, init: RequestInit) => {
+      const range = new Headers(init.headers).get("content-range")!;
+      if (range.startsWith("bytes */")) return new Response(null, { status: 308 });
+      if (++partPuts <= 3) throw new TypeError("network error");
+      return new Response(null, { status: 200 });
+    }) as unknown as typeof globalThis.fetch;
+    await uploadResumable({ url: "https://s", file: new Blob(["x".repeat(5)]), fetch, wait: noWait });
+    expect(partPuts).toBe(4);
+  });
+
   it("reads the stored range of a 308", () => {
     expect(storedBytes(new Response(null, { status: 308, headers: { range: "bytes=0-9" } }))).toBe(10);
     expect(storedBytes(new Response(null, { status: 308 }))).toBe(0);

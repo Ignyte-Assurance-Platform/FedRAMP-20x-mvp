@@ -67,6 +67,17 @@ describe("createSerialSave", () => {
     ]);
   });
 
+  it("a send that throws does not stop later saves", async () => {
+    const sent: number[] = [];
+    const saver = createSerialSave<number>(async (n) => {
+      sent.push(n);
+      if (n === 1) throw new Error("boom");
+    });
+    await expect(saver.save(1)).rejects.toThrow("boom");
+    await saver.save(2);
+    expect(sent).toEqual([1, 2]);
+  });
+
   it("discard drops the waiting change", async () => {
     const fake = slowSend<number>();
     const saver = createSerialSave(fake.send);

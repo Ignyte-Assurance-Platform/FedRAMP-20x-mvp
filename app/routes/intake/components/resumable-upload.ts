@@ -6,7 +6,10 @@
  * and continues from there, never from the start.
  */
 
-/** 308s in a row that do not move the offset before giving up (e.g. the browser cannot read Range). */
+/**
+ * 308s in a row answering a part that do not move the offset before giving up (e.g. the browser
+ * cannot read Range). A status query after a drop never counts: retries decide there.
+ */
 export const MAX_STALLS = 3;
 
 /** Cloud Storage wants parts in multiples of 256 KiB (except the last). */
@@ -79,6 +82,9 @@ export async function uploadResumable(options: ResumableUploadOptions): Promise<
       options.onProgress?.(total, total);
       return;
     }
-    if (status?.status === 308) moveTo(storedBytes(status));
+    if (status?.status === 308) {
+      offset = storedBytes(status);
+      options.onProgress?.(offset, total);
+    }
   }
 }
