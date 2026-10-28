@@ -1,9 +1,9 @@
 # Tasks — Screen E tab 3 — document upload to the private bucket
 
-> Brain work item: [[wi-maaz20x-006-intake-documents]] · brain_commit af98c57a31cf67d1c4ae3d3af4c1ed0020914e43 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md
+> Brain work item: [[wi-maaz20x-006-intake-documents]] · brain_commit a8e6ccc7d635c524a9aee82d5646f946cbaafa38 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md
 
 ## 1. Setup
-- [x] 1.1 Read the frozen brain spec at brain_commit af98c57; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md`)
+- [ ] 1.1 Read the frozen brain spec at brain_commit a8e6ccc; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md`)
 
 ## 2. Implement
 - [x] 2.1 WHEN the customer picks SOC 2 Type II THEN the list shows the SOC 2 items and the "Everyone" items, and the "Expected date of the next report" date field
@@ -19,11 +19,12 @@
 - [x] 2.11 WHEN a file has no "What is this?", or a policy file has no version or last-updated date THEN Submit is blocked with the file named
 - [x] 2.12 WHEN the customer renames a file THEN only the display name changes and the download still returns the original object
 - [x] 2.13 WHEN the customer replaces a file THEN they see only the new version and Ignyte sees "replaced on [date]" with both versions downloadable
-- [x] 2.14 WHEN the customer has submitted THEN tabs 1 and 2 are read-only, tab 3 still accepts uploads, renames and replacements, and the x is not shown
+- [x] 2.14 WHEN the customer has submitted THEN tabs 1 and 2 are read-only, tab 3 still accepts uploads, renames, replacements and certification changes, and the x is not shown
 - [x] 2.15 WHEN a file is uploaded after Submit THEN Screen D labels it "added after submission"
-- [x] 2.16 WHEN Screen D opens THEN each listed item shows a check if a current file has that kind, and "missing" otherwise
-- [x] 2.17 WHEN Ignyte removes a file THEN it disappears from both sides and the object stays in the bucket
+- [ ] 2.16 WHEN the customer has submitted and changes the certification, its date or the expected date of the next report THEN the change is saved and Screen D shows "changed after submission on [date]" next to the certification; saving the same values again, or a change made before Submit, shows no label
+- [x] 2.17 WHEN Screen D opens THEN each listed item shows a check if a current file has that kind, and "missing" otherwise
+- [x] 2.18 WHEN Ignyte removes a file THEN it disappears from both sides and the object stays in the bucket
 
 ## 3. Verify
 - [ ] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear 
+- [ ] 3.2 Human triage (gate 7) recorded in Linear IGN-24 and IGN-25

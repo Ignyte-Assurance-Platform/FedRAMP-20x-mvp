@@ -1191,7 +1191,7 @@ describe("Screen E tab 3, documents (WI-006)", () => {
     expect((await documentRows(id)).find((r) => r.id === before.documentId)?.addedAfterSubmit).toBe(false);
   });
 
-  it("2.16 the checklist shows each listed item as received when a current file has that kind, and missing otherwise", async () => {
+  it("2.17 the checklist shows each listed item as received when a current file has that kind, and missing otherwise", async () => {
     const { id, token } = await newCustomer();
     await api(token, { intent: "certification-save", certification: { type: "fedramp_rev5", period_end_date: "2026-05-01", next_report_expected: null }, version: 0 });
     const sar = await uploadDocument(token, "Rev5 package.pdf", PDF(100));
@@ -1204,7 +1204,7 @@ describe("Screen E tab 3, documents (WI-006)", () => {
     expect(checklist.find((c) => c.kind === "policies")).toEqual({ kind: "policies", label: "Security policies and procedures", present: false });
   });
 
-  it("2.17 Ignyte's Remove hides the file on both sides and the object stays in the bucket; the customer's x before Submit does the same", async () => {
+  it("2.18 Ignyte's Remove hides the file on both sides and the object stays in the bucket; the customer's x before Submit does the same", async () => {
     const { id, token, userId } = await newCustomer();
     const services = await import("~server/services");
     const { getDocumentStore } = await import("~server/storage");

@@ -351,7 +351,7 @@ export async function updateDocument(token: string, input: v.InferInput<typeof U
 
 const RemoveInput = v.object({ documentId: v.pipe(v.string(), v.uuid()) });
 
-/** The customer's x (2.14): until Submit only; soft, the object stays (2.17). */
+/** The customer's x (2.14): until Submit only; soft, the object stays (2.18). */
 export async function removeDocumentByCustomer(token: string, input: v.InferInput<typeof RemoveInput>, deps: IntakeDocumentsDeps = defaultDeps()): Promise<Refusal | { kind: "removed" }> {
   const parsed = v.parse(RemoveInput, input);
   const found = await access(token, deps);
@@ -402,7 +402,7 @@ export interface DocumentsScreen {
   files: ScreenDFile[];
 }
 
-/** Screen D (2.13, 2.15, 2.16): the certification, the received/missing checklist and every current file with its earlier versions. */
+/** Screen D (2.13, 2.15, 2.17): the certification, the received/missing checklist and every current file with its earlier versions. */
 export async function getDocumentsScreen(customerId: string, deps: Pick<IntakeDocumentsDeps, "db" | "now" | "definition"> = defaultDeps()): Promise<DocumentsScreen> {
   const section = await intakeAnswersRepo.findIntakeSection(deps.db, customerId, DOCUMENTS_SECTION);
   const certification = certificationOf(section?.answers);
@@ -444,7 +444,7 @@ export async function getDocumentsScreen(customerId: string, deps: Pick<IntakeDo
   };
 }
 
-/** Ignyte's Remove (2.17): any version, soft; the object stays in the bucket. */
+/** Ignyte's Remove (2.18): any version, soft; the object stays in the bucket. */
 export async function removeDocumentByStaff(customerId: string, documentId: string, userId: string, deps: Pick<IntakeDocumentsDeps, "db" | "now"> = defaultDeps()): Promise<void> {
   const row = await documentsRepo.removeIntakeDocument(deps.db, customerId, documentId, `user:${userId}`, deps.now(), { currentOnly: false });
   if (!row) throw new IntakeDocumentError("This file was already removed.");

@@ -2,7 +2,7 @@
 
 ### Requirement: Screen E tab 3 — document upload to the private bucket
 
-The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-006-intake-documents]] at brain_commit af98c57; scope in proposal.md).
+The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-006-intake-documents]] at brain_commit a8e6ccc; scope in proposal.md).
 
 #### Scenario: the customer picks SOC 2 Type II
 - **WHEN** the customer picks SOC 2 Type II
@@ -58,11 +58,15 @@ The system SHALL behave as every scenario below states (brain work item [[wi-maa
 
 #### Scenario: the customer has submitted
 - **WHEN** the customer has submitted
-- **THEN** tabs 1 and 2 are read-only, tab 3 still accepts uploads, renames and replacements, and the x is not shown
+- **THEN** tabs 1 and 2 are read-only, tab 3 still accepts uploads, renames, replacements and certification changes, and the x is not shown
 
 #### Scenario: a file is uploaded after Submit
 - **WHEN** a file is uploaded after Submit
 - **THEN** Screen D labels it "added after submission"
+
+#### Scenario: the customer has submitted and changes the certification, its date or the expected date of the next report
+- **WHEN** the customer has submitted and changes the certification, its date or the expected date of the next report
+- **THEN** the change is saved and Screen D shows "changed after submission on [date]" next to the certification; saving the same values again, or a change made before Submit, shows no label
 
 #### Scenario: Screen D opens
 - **WHEN** Screen D opens

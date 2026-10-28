@@ -89,7 +89,7 @@ export async function insertReplacement(db: Database, row: NewDocumentRow & { re
 
 class NotCurrent extends Error {}
 
-/** Soft removal (2.17): the row is hidden on both sides, the object stays. Null when it is not there or already removed; the customer's x only reaches current versions. */
+/** Soft removal (2.18): the row is hidden on both sides, the object stays. Null when it is not there or already removed; the customer's x only reaches current versions. */
 export async function removeIntakeDocument(db: Database, customerId: string, id: string, removedBy: string, now: Date, options: { currentOnly: boolean }): Promise<DocumentRow | undefined> {
   const [row] = await db
     .update(schema.documents)
