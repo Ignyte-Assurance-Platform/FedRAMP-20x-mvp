@@ -1,6 +1,6 @@
 # Design — Screen E tab 3 — document upload to the private bucket
 
-> Brain work item: [[wi-maaz20x-006-intake-documents]] · brain_commit af98c57a31cf67d1c4ae3d3af4c1ed0020914e43 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md
+> Brain work item: [[wi-maaz20x-006-intake-documents]] · brain_commit a8e6ccc7d635c524a9aee82d5646f946cbaafa38 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md
 
 ## Behavior
 
@@ -20,8 +20,8 @@
 - **Rename** changes only the name shown in the list, at any time; the stored file is untouched.
 - **Replace** uploads a new version at any time, before or after Submit. The previous version is kept: the customer sees only the current one; Ignyte sees "replaced on [date]" with the earlier versions downloadable.
 - **Remove (x)** is available to the customer until Submit. After Submit the x is gone for the customer; Ignyte can still remove a file on Screen D.
-- **After "Submit to Ignyte"** tabs 1 and 2 are locked (wi-004) but tab 3 stays open: the customer can add, rename and replace files. Files added after Submit are labelled **"added after submission"** on Screen D.
-- **Screen D (customer page)** shows the certification, its date (with the same 12-month warning) and, for SOC 2, the expected date of the next report; then the checklist of every item shown to that customer with a check when at least one file has that "What is this?" value and **"missing"** otherwise; then the file list with kind, version and date for policies, "added after submission" and "replaced on" labels, Download and Remove.
+- **After "Submit to Ignyte"** tabs 1 and 2 are locked (wi-004) but tab 3 stays open: the customer can add, rename and replace files, and change the certification, its date and the expected date of the next report. Files added after Submit are labelled **"added after submission"** on Screen D. A change to any of the three certification answers while the customer is Submitted is labelled **"changed after submission on [date]"** next to the certification on Screen D (the date of the latest such change); the earlier values are not kept. Saving the same values again is not a change. The label stays after an unlock and a new Submit, like the file label.
+- **Screen D (customer page)** shows the certification, its date (with the same 12-month warning) and, for SOC 2, the expected date of the next report, with the "changed after submission on [date]" label when it applies; then the checklist of every item shown to that customer with a check when at least one file has that "What is this?" value and **"missing"** otherwise; then the file list with kind, version and date for policies, "added after submission" and "replaced on" labels, Download and Remove.
 - Files are only stored: nothing reads or analyses them and no AI is used. They are kept with no retention period; nothing is deleted automatically.
 
 ## Data and fields
@@ -30,9 +30,11 @@ Tab 3 answers in `intake_answers` (JSON column, same pattern as tabs 1 and 2):
 
 ```json
 {
-  "certification": { "type": "soc2_type2 | fedramp_ready | fedramp_rev5 | govramp | null", "period_end_date": "YYYY-MM-DD | null", "next_report_expected": "YYYY-MM-DD | null" }
+  "certification": { "type": "soc2_type2 | fedramp_ready | fedramp_rev5 | govramp | null", "period_end_date": "YYYY-MM-DD | null", "next_report_expected": "YYYY-MM-DD | null", "changed_after_submit_at": "ISO timestamp | null" }
 }
 ```
+
+`changed_after_submit_at` is set by the server, never by the browser: on a save while the customer is Submitted, when `type`, `period_end_date` or `next_report_expected` differs from the stored value, it becomes the time of that save; otherwise it keeps its stored value.
 
 `documents` table per [[maaz20x-contract-document-storage]] §3, plus:
 
@@ -60,7 +62,7 @@ The item list per certification, its labels and grey lines live in a form defini
 
 ## Permissions
 
-Customer (link holder): upload, set kind, rename, replace before and after Submit; remove only before Submit. Ignyte users on Screen D: read, download every version, remove any file. The customer never sees earlier versions or removed files.
+Customer (link holder): upload, set kind, rename, replace and change the certification answers before and after Submit; remove only before Submit. Ignyte users on Screen D: read, download every version, remove any file. The customer never sees earlier versions or removed files.
 
 ## Flows
 
@@ -71,7 +73,7 @@ sequenceDiagram
   participant B as Bucket (private)
   participant DB as Postgres
   C->>A: choose certification + date (Save)
-  A->>DB: upsert intake_answers tab 3
+  A->>DB: upsert intake_answers tab 3 (changed_after_submit_at if Submitted and a value changed)
   C->>A: request upload (name, type, size)
   A->>A: check type, zip, size
   A->>B: open resumable session (size, type fixed)

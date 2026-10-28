@@ -1,6 +1,6 @@
 # Screen E tab 3 — document upload to the private bucket
 
-> Brain work item: [[wi-maaz20x-006-intake-documents]] · brain_commit af98c57a31cf67d1c4ae3d3af4c1ed0020914e43 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md
+> Brain work item: [[wi-maaz20x-006-intake-documents]] · brain_commit a8e6ccc7d635c524a9aee82d5646f946cbaafa38 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md
 > Compiled by PB - Spec Compile. Do NOT edit intent here; intent changes go back to the brain (Escalation Rule).
 
 ## Why
@@ -15,6 +15,7 @@
   - Types: add PNG, JPG and SVG, Visio, CSV (scanner exports), JSON and XML (OSCAL); refuse zip files until virus scanning exists.
   - A "What is this?" dropdown per file matching the list, so the consultant sees which items are missing.
   - Let the customer upload more files after "Submit to Ignyte". Jesús's proposal (tabs 1 and 2 lock, tab 3 stays open; later files flagged; removal only by Ignyte after Submit; rename and replace with history) — Christina: "Yes that works", then asked about rename and live update, answered by Jesús on 2026-10-20 (rename the display name; "Replace" keeps the previous version; no in-tool editing).
+  - Certification after Submit (2026-10-28, found in the review of FedRAMP-20x-mvp #42, IGN-24): the spec said what the customer can do with files after Submit, not with the certification answers. Jesús asked Christina: A) stay editable, B) lock with tabs 1 and 2, C) stay editable and label any change on the customer's page, like late files. **Christina: "C".**
   - Retention: Christina asked for a written rule and deferred to Max. **Max, 2026-10-20: "remove the retention period for now. We sometimes have to hold records as auditors. Let's keep it until it grows and then we figure out a deletion."**
 
 ## What changes
