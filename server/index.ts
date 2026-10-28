@@ -2,6 +2,8 @@
  * The only entry point of the app (ADR-0006 rule 8). It serves:
  * - built static assets with long-lived immutable cache headers (ADR-0005),
  * - Better Auth under /api/auth/*,
+ * - the local storage driver's signed URLs under /api/uploads/:token (404 with Cloud Storage),
+ *   outside React Router because a resumable session answers 308 without a Location header,
  * - everything else through React Router (pages, data requests, resource routes),
  *   with Cache-Control: no-store unless a handler set something else.
  * In development it also runs Vite in middleware mode for HMR.
@@ -17,7 +19,7 @@ import { getAuth } from "~server/auth";
 import { getEnv } from "~server/config";
 import { closeDb } from "~server/db";
 import { withPublicOrigin } from "~server/http/public-origin";
-import { getPackageOverviewGenerator } from "~server/services";
+import { getPackageOverviewGenerator, handleLocalStorageRequest } from "~server/services";
 
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const NO_STORE = "no-store";
@@ -63,6 +65,9 @@ export function createApp({ getBuild, mode, publicOrigin }: AppOptions): Hono {
   }
 
   app.on(["GET", "POST"], "/api/auth/*", (c) => getAuth().handler(c.req.raw));
+  // The local driver's upload, session and download URLs. A session part answers 308 with a Range
+  // header and no Location, as Cloud Storage does; React Router would take that for a redirect.
+  app.on(["GET", "PUT"], "/api/uploads/:token", (c) => handleLocalStorageRequest(c.req.param("token"), c.req.raw));
 
   const handleRequest = createRequestHandler(getBuild, mode);
   const toPublic = mode === "production" && publicOrigin ? (r: Request) => withPublicOrigin(r, publicOrigin) : (r: Request) => r;

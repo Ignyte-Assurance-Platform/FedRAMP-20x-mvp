@@ -8,7 +8,7 @@ export { createSchemaValidator, type SchemaValidator } from "./validate";
 export { problemsFromSchemaErrors, SchemaNavigator, type FormLabels, type Problem } from "./messages";
 export { buildPackageOverview, fallbackPackageId, type PackageOverviewInputs } from "./mapping/package-overview";
 export { createTab1Checker, type Tab1Checker } from "./tab1-check";
-export { buildFormDefinition, getCompanyFormDefinition, loadFormOverlay, type FormOverlay } from "./form-definition";
+export { buildFormDefinition, FORM_DEFINITIONS_DIR, getCompanyFormDefinition, loadFormOverlay, type FormOverlay } from "./form-definition";
 export { answerSections, type AnswerLabels, type AnswerRow, type AnswerSection } from "./answer-rows";
 export {
   createPackageOverviewGenerator,

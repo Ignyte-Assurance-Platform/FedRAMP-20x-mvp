@@ -3,7 +3,6 @@
  * the local Postgres, migrated and seeded. Run `npm run build`, `npm run db:up`, then
  * `npm run test:smoke`. CI does the same with a Postgres service container.
  */
-import { createHash } from "node:crypto";
 import { access, readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -108,46 +107,6 @@ describe("app against the local database", () => {
 
     const data = await app.request("/_root.data", { headers: { cookie } });
     expect(data.headers.get("cache-control")).toBe("no-store");
-  });
-
-  it("stores an upload under the contract path and records its documents row", async () => {
-    const { startIntakeUpload, completeIntakeUpload } = await import("~server/services");
-    const { getDb, schema } = await import("~server/db");
-    const [customer] = await getDb().select().from(schema.customers).limit(1);
-    expect(customer, "seeded customer missing: run npm run db:seed").toBeDefined();
-
-    const content = "%PDF-1.7 smoke test";
-    const started = await startIntakeUpload({
-      customerId: customer!.id,
-      filename: "Smoke Test.pdf",
-      contentType: "application/pdf",
-      size: content.length,
-    });
-
-    const put = await app.request(started.upload.url, {
-      method: "PUT",
-      headers: started.upload.headers,
-      body: content,
-    });
-    expect(put.status).toBe(200);
-
-    const row = await completeIntakeUpload({
-      customerId: customer!.id,
-      documentId: started.documentId,
-      filename: "Smoke Test.pdf",
-      uploadedBy: "user:smoke",
-    });
-
-    const expectedPath = `customers/${customer!.id}/intake/${started.documentId}/Smoke Test.pdf`;
-    expect(row).toMatchObject({
-      objectPath: expectedPath,
-      size: content.length,
-      contentType: "application/pdf",
-      sha256: createHash("sha256").update(content).digest("hex"),
-      uploadedBy: "user:smoke",
-    });
-    const onDisk = path.join(storageDir, "customers", customer!.id, "intake", started.documentId, "Smoke Test.pdf");
-    expect(await readFile(onDisk, "utf8")).toBe(content);
   });
 
   it("generates, stores and downloads a Package Overview file (WI-007)", async () => {
@@ -890,6 +849,392 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     const outcome = await services.generatePackageOverviewForCustomer(id, userId);
     const website = outcome.problems.find((p) => p.path === "/serviceIdentification/website");
     expect(website?.question).toBe(getCompanyFormDefinition().labels["/serviceIdentification/website"]);
+  });
+});
+
+describe("Screen E tab 3, documents (WI-006)", () => {
+  const PDF = (size: number) => {
+    const bytes = Buffer.alloc(size, 0x20);
+    Buffer.from("%PDF-1.7\n").copy(bytes);
+    return bytes;
+  };
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(56)]);
+  const ZIP_CONTAINER = Buffer.concat([Buffer.from("PK\u0003\u0004"), Buffer.alloc(60, 1)]);
+  const MB = 1024 * 1024;
+
+  async function newCustomer() {
+    const services = await import("~server/services");
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    const [user] = await getDb().select().from(schema.users).where(eq(schema.users.email, "dev@ignyteplatform.com"));
+    const { customer, link } = await services.createCustomer(
+      { name: `Docs Co ${Date.now()}`, serviceName: "Example Records Platform", serviceDescription: "Records management.", contactName: "Pat", contactEmail: "pat@example.com" },
+      user!.id,
+    );
+    return { id: customer.id, token: link.split("/intake/")[1]!, userId: user!.id };
+  }
+
+  const api = (token: string, body: Record<string, unknown>) =>
+    app.request(`http://localhost:3000/api/intake/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+  /** fetch for the browser-side uploader, served by the app in process (the local driver's session route). */
+  const appFetch = ((url: string, init?: RequestInit) => app.request(url, init)) as unknown as typeof fetch;
+
+  type Stored = { kind: "stored"; document: { id: string; displayName: string; size: number; kind: string | null } };
+
+  async function startUpload(token: string, filename: string, size: number, replaces?: string) {
+    const { documentContentType } = await import("~/lib/documents");
+    return api(token, { intent: "document-start", filename, contentType: documentContentType(filename) ?? "application/octet-stream", size, ...(replaces ? { replaces } : {}) });
+  }
+
+  async function uploadDocument(token: string, filename: string, bytes: Buffer, options: { replaces?: string; partBytes?: number; fetch?: typeof fetch } = {}) {
+    const start = await startUpload(token, filename, bytes.length, options.replaces);
+    expect(start.status, await start.clone().text()).toBe(200);
+    const { documentId, upload } = (await start.json()) as { documentId: string; upload: { url: string } };
+    const { uploadResumable } = await import("../../app/routes/intake/components/resumable-upload");
+    await uploadResumable({ url: upload.url, file: new Blob([new Uint8Array(bytes)]), partBytes: options.partBytes ?? 8 * MB, fetch: options.fetch ?? appFetch, wait: async () => undefined });
+    const finish = await api(token, { intent: "document-finish", documentId, filename, size: bytes.length, ...(options.replaces ? { replaces: options.replaces } : {}) });
+    return { documentId, finish };
+  }
+
+  async function tab(token: string) {
+    const services = await import("~server/services");
+    const view = await services.openIntake(token);
+    if (view.kind !== "open") throw new Error(view.kind);
+    return view.documents;
+  }
+
+  async function screenD(customerId: string) {
+    return (await import("~server/services")).getDocumentsScreen(customerId);
+  }
+
+  async function documentRows(customerId: string) {
+    const { getDb, schema } = await import("~server/db");
+    const { and, eq, like } = await import("drizzle-orm");
+    return getDb()
+      .select()
+      .from(schema.documents)
+      .where(and(eq(schema.documents.customerId, customerId), like(schema.documents.objectPath, `customers/${customerId}/intake/%`)));
+  }
+
+  async function staffDownload(customerId: string, documentId: string) {
+    const services = await import("~server/services");
+    const url = await services.documentDownloadUrl(customerId, documentId);
+    const res = await app.request(url);
+    return { res, bytes: Buffer.from(await res.arrayBuffer()) };
+  }
+
+  async function submitWithLogo(token: string) {
+    const golden = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
+    const start = await api(token, { intent: "logo-start", filename: "logo.png", contentType: "image/png", size: PNG.length, width: 300 });
+    const { logoId, upload } = (await start.json()) as { logoId: string; upload: { url: string; method: string; headers: Record<string, string> } };
+    await app.request(upload.url, { method: upload.method, headers: upload.headers, body: new Uint8Array(PNG) });
+    await api(token, { intent: "logo-finish", logoId, filename: "logo.png", contentType: "image/png" });
+    return api(token, { intent: "submit", answers: golden, version: 0 });
+  }
+
+  it("2.1–2.4 saves the certification and its dates before and after Submit; a date over 12 months old warns on both sides and blocks nothing", async () => {
+    const { id, token } = await newCustomer();
+    expect((await tab(token)).certification).toEqual({ type: null, period_end_date: null, next_report_expected: null });
+    const saved = await api(token, { intent: "certification-save", certification: { type: "soc2_type2", period_end_date: "2024-06-30", next_report_expected: "2026-12-31" }, version: 0 });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toMatchObject({ kind: "saved", version: 1, old: true });
+    expect((await tab(token)).certification).toEqual({ type: "soc2_type2", period_end_date: "2024-06-30", next_report_expected: "2026-12-31" });
+    const d = await screenD(id);
+    expect(d.certification).toMatchObject({ label: "SOC 2 Type II", periodEnd: "2024-06-30", nextReport: "2026-12-31", old: true });
+    expect(d.checklist.map((c) => c.kind).slice(0, 4)).toEqual(["soc2_report", "bridge_letter", "engagement_docs", "supplemental_evidence"]);
+
+    // Another certification drops the next-report date (asked for SOC 2 only).
+    const ready = await api(token, { intent: "certification-save", certification: { type: "fedramp_ready", period_end_date: "2026-09-01", next_report_expected: "2027-01-01" }, version: 1 });
+    expect(await ready.json()).toMatchObject({ kind: "saved", version: 2, old: false, certification: { next_report_expected: null } });
+    expect((await screenD(id)).checklist.map((c) => c.kind).slice(0, 2)).toEqual(["rar", "sap"]);
+
+    // A stale version conflicts and returns what is stored.
+    const conflict = await api(token, { intent: "certification-save", certification: { type: "govramp", period_end_date: null, next_report_expected: null }, version: 1 });
+    expect(conflict.status).toBe(409);
+    expect(await conflict.json()).toMatchObject({ kind: "conflict", version: 2, certification: { type: "fedramp_ready" } });
+
+    // The old date never blocks Submit, and the tab still saves after it.
+    await api(token, { intent: "certification-save", certification: { type: "soc2_type2", period_end_date: "2020-01-01", next_report_expected: null }, version: 2 });
+    expect((await submitWithLogo(token)).status).toBe(200);
+    const after = await api(token, { intent: "certification-save", certification: { type: "soc2_type2", period_end_date: "2026-03-31", next_report_expected: null }, version: 3 });
+    expect(after.status).toBe(200);
+  });
+
+  it("2.5 a 250 MB PDF goes to the bucket in a resumable session and appears in both lists with Cloud Storage's checksums", { timeout: 180_000 }, async () => {
+    const { id, token } = await newCustomer();
+    const bytes = PDF(250 * MB);
+    const { documentId, finish } = await uploadDocument(token, "SOC 2 report.pdf", bytes);
+    expect(finish.status).toBe(200);
+    expect(((await finish.json()) as Stored).document).toMatchObject({ id: documentId, displayName: "SOC 2 report.pdf", size: 250 * MB });
+    expect((await tab(token)).documents.map((d) => d.id)).toEqual([documentId]);
+    expect((await screenD(id)).files.map((f) => f.id)).toEqual([documentId]);
+
+    const [row] = await documentRows(id);
+    const { createHash } = await import("node:crypto");
+    expect(row).toMatchObject({
+      objectPath: `customers/${id}/intake/${documentId}/SOC 2 report.pdf`,
+      contentType: "application/pdf",
+      sha256: null,
+      md5: createHash("md5").update(bytes).digest("base64"),
+      addedAfterSubmit: false,
+    });
+    expect(row!.crc32c).toMatch(/^[A-Za-z0-9+/]{6}==$/);
+  });
+
+  it("2.6 when the connection drops halfway the upload continues from where it stopped, not from the start", async () => {
+    const { token } = await newCustomer();
+    const bytes = PDF(3 * 256 * 1024);
+    const ranges: string[] = [];
+    let calls = 0;
+    const dropping = (async (url: string, init?: RequestInit) => {
+      calls++;
+      ranges.push(new Headers(init?.headers).get("content-range")!);
+      if (calls === 2) {
+        // Halfway through the second part the connection drops: the app receives half of it, then a broken stream.
+        const half = (init!.body as Blob).slice(0, 128 * 1024);
+        const body = new ReadableStream({
+          async start(controller) {
+            controller.enqueue(new Uint8Array(await half.arrayBuffer()));
+            controller.error(new Error("connection reset"));
+          },
+        });
+        await Promise.resolve(app.request(url, { method: "PUT", headers: init!.headers, body, duplex: "half" } as RequestInit)).catch(() => undefined);
+        throw new TypeError("network error");
+      }
+      return app.request(url, init);
+    }) as unknown as typeof fetch;
+    const { finish } = await uploadDocument(token, "plan.pdf", bytes, { partBytes: 256 * 1024, fetch: dropping });
+    expect(finish.status).toBe(200);
+    expect(ranges).toEqual([`bytes 0-262143/786432`, `bytes 262144-524287/786432`, `bytes */786432`, `bytes 262144-524287/786432`, `bytes 524288-786431/786432`]);
+    expect(ranges.filter((r) => r.startsWith("bytes 0-"))).toHaveLength(1);
+  });
+
+  it("2.7 an upload started but never finished writes no row and appears in neither list", async () => {
+    const { id, token } = await newCustomer();
+    const start = await startUpload(token, "half.pdf", 1000);
+    const { upload } = (await start.json()) as { upload: { url: string } };
+    await app.request(upload.url, { method: "PUT", headers: { "content-range": "bytes 0-499/1000" }, body: new Uint8Array(PDF(500)) });
+    const complete = await startUpload(token, "never-finished.pdf", 100);
+    const done = (await complete.json()) as { upload: { url: string } };
+    await app.request(done.upload.url, { method: "PUT", headers: { "content-range": "bytes 0-99/100" }, body: new Uint8Array(PDF(100)) });
+    expect(await documentRows(id)).toEqual([]);
+    expect((await tab(token)).documents).toEqual([]);
+    expect((await screenD(id)).files).toEqual([]);
+  });
+
+  it("2.8 a finished upload that fails the signature or size check is deleted and gets no row", async () => {
+    const { id, token } = await newCustomer();
+    const { getDocumentStore } = await import("~server/storage");
+    for (const [filename, bytes] of [
+      ["fake.pdf", Buffer.from("<html><script>alert(1)</script></html>")],
+      ["fake.docx", PDF(64)],
+      ["binary.csv", Buffer.from([0x61, 0x00, 0x62])],
+    ] as const) {
+      const { documentId, finish } = await uploadDocument(token, filename, bytes);
+      expect(finish.status, filename).toBe(400);
+      expect(((await finish.json()) as { message: string }).message).toContain("so it was not kept");
+      expect(await getDocumentStore().stat(`customers/${id}/intake/${documentId}/${filename}`)).toBeNull();
+    }
+    // The size announced at finish must be the stored size.
+    const start = await startUpload(token, "short.pdf", 64);
+    const { documentId, upload } = (await start.json()) as { documentId: string; upload: { url: string } };
+    await app.request(upload.url, { method: "PUT", headers: { "content-range": "bytes 0-63/64" }, body: new Uint8Array(PDF(64)) });
+    expect((await api(token, { intent: "document-finish", documentId, filename: "short.pdf", size: 65 })).status).toBe(400);
+    expect(await getDocumentStore().stat(`customers/${id}/intake/${documentId}/short.pdf`)).toBeNull();
+    expect(await documentRows(id)).toEqual([]);
+  });
+
+  it("2.9 a 251 MB file, a .zip and an .exe are refused before any session opens, each with its message", async () => {
+    const { token } = await newCustomer();
+    const refusals = [
+      ["big.pdf", 251 * MB, "Files can be up to 250 MB each"],
+      ["package.zip", MB, "Please upload the files inside the zip one by one"],
+      ["setup.exe", MB, "This file type is not accepted. Accepted: PDF, Word, Excel, PNG, JPG, SVG, Visio, CSV, JSON, XML"],
+    ] as const;
+    for (const [filename, size, message] of refusals) {
+      const res = await api(token, { intent: "document-start", filename, contentType: "application/octet-stream", size });
+      expect(res.status, filename).toBe(400);
+      expect(await res.json()).toEqual({ kind: "refused", message });
+    }
+    // A content type that does not match the extension is refused too.
+    expect((await api(token, { intent: "document-start", filename: "a.pdf", contentType: "text/html", size: 10 })).status).toBe(400);
+  });
+
+  it("2.10 PNG, SVG, VSDX, CSV, JSON and XML files are accepted", async () => {
+    const { id, token } = await newCustomer();
+    const files = [
+      ["diagram.png", PNG],
+      ["diagram.svg", Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'><rect width='1' height='1'/></svg>")],
+      ["boundary.vsdx", ZIP_CONTAINER],
+      ["assets.csv", Buffer.from("name,owner\nweb,ops\n")],
+      ["sbom.json", Buffer.from('{"components":[]}')],
+      ["config.xml", Buffer.from("<?xml version='1.0'?><config/>")],
+    ] as const;
+    for (const [filename, bytes] of files) {
+      const { finish } = await uploadDocument(token, filename, bytes);
+      expect(finish.status, filename).toBe(200);
+    }
+    expect((await documentRows(id)).map((r) => r.contentType).sort()).toEqual(
+      ["application/json", "application/vnd.ms-visio.drawing.main+xml", "application/xml", "image/png", "image/svg+xml", "text/csv"].sort(),
+    );
+  });
+
+  it("2.11 Submit is blocked with the file named while a file has no What is this?, an Other has no note or a policy lacks version or date", async () => {
+    const { id, token } = await newCustomer();
+    const { documentId } = await uploadDocument(token, "Policies.pdf", PDF(100));
+    const blocked = await submitWithLogo(token);
+    expect(blocked.status).toBe(422);
+    const first = (await blocked.json()) as { problems: { path: string; message: string }[]; version: number };
+    expect(first.problems).toEqual([expect.objectContaining({ path: `/documents/${documentId}`, message: "“Policies.pdf”: choose what this file is (“What is this?”)." })]);
+
+    expect((await api(token, { intent: "document-update", documentId, kind: "policies" })).status).toBe(200);
+    const policy = await api(token, { intent: "submit", answers: (await import("../../server/fedramp/testdata/golden-answers.json")).default, version: first.version });
+    expect(((await policy.json()) as { problems: { message: string }[] }).problems.map((p) => p.message)).toEqual([
+      "“Policies.pdf”: add the policy version.",
+      "“Policies.pdf”: add the date the policy was last updated.",
+    ]);
+    expect((await api(token, { intent: "document-update", documentId, policyVersion: "3.1", policyUpdatedOn: "2026-09-01" })).status).toBe(200);
+    const golden = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
+    const tab1 = await (await import("~server/services")).openIntake(token);
+    const ok = await api(token, { intent: "submit", answers: golden, version: tab1.kind === "open" ? tab1.version : 0 });
+    expect(ok.status).toBe(200);
+    expect((await documentRows(id))[0]).toMatchObject({ kind: "policies", policyVersion: "3.1", policyUpdatedOn: "2026-09-01" });
+  });
+
+  it("2.12 Rename changes only the display name; the download still returns the original object", async () => {
+    const { id, token } = await newCustomer();
+    const bytes = PDF(300);
+    const { documentId } = await uploadDocument(token, "scan-0042.pdf", bytes);
+    const renamed = await api(token, { intent: "document-update", documentId, displayName: "Vulnerability scan Q3" });
+    expect(((await renamed.json()) as { document: { displayName: string } }).document.displayName).toBe("Vulnerability scan Q3");
+    const [row] = await documentRows(id);
+    expect(row).toMatchObject({ displayName: "Vulnerability scan Q3", originalFilename: "scan-0042.pdf", objectPath: `customers/${id}/intake/${documentId}/scan-0042.pdf` });
+    const { res, bytes: downloaded } = await staffDownload(id, documentId);
+    expect(res.status).toBe(200);
+    expect(downloaded.equals(bytes)).toBe(true);
+    expect(res.headers.get("content-disposition")).toBe("attachment; filename*=UTF-8''scan-0042.pdf");
+    expect((await screenD(id)).files[0]).toMatchObject({ displayName: "Vulnerability scan Q3", originalFilename: "scan-0042.pdf" });
+  });
+
+  it("2.13 Replace: the customer sees only the new version; Ignyte sees replaced on [date] and downloads both", async () => {
+    const { id, token } = await newCustomer();
+    const v1 = PDF(200);
+    const v2 = PDF(400);
+    const first = await uploadDocument(token, "IR plan v1.pdf", v1);
+    await api(token, { intent: "document-update", documentId: first.documentId, kind: "ir_plan_test" });
+    const second = await uploadDocument(token, "IR plan v2.pdf", v2, { replaces: first.documentId });
+    expect(second.finish.status).toBe(200);
+    expect(((await second.finish.json()) as Stored).document).toMatchObject({ displayName: "IR plan v2.pdf", kind: "ir_plan_test" });
+
+    expect((await tab(token)).documents.map((d) => d.displayName)).toEqual(["IR plan v2.pdf"]);
+    const [file] = (await screenD(id)).files;
+    expect(file).toMatchObject({ id: second.documentId, kindLabel: "Incident response plan and last test" });
+    expect(file!.versions).toEqual([expect.objectContaining({ id: first.documentId, originalFilename: "IR plan v1.pdf", replacedOn: expect.any(Date) })]);
+    expect((await staffDownload(id, first.documentId)).bytes.equals(v1)).toBe(true);
+    expect((await staffDownload(id, second.documentId)).bytes.equals(v2)).toBe(true);
+
+    // The replaced version can no longer be renamed, replaced again or removed by the customer.
+    expect((await api(token, { intent: "document-update", documentId: first.documentId, displayName: "x" })).status).toBe(400);
+    expect((await startUpload(token, "v3.pdf", 10, first.documentId)).status).toBe(400);
+    expect((await api(token, { intent: "document-remove", documentId: first.documentId })).status).toBe(400);
+  });
+
+  it("2.14, 2.15 after Submit tab 1 is read-only, tab 3 still uploads, renames and replaces, the x is refused, and late files are labelled", async () => {
+    const { id, token } = await newCustomer();
+    const before = await uploadDocument(token, "Boundary.pdf", PDF(100));
+    await api(token, { intent: "document-update", documentId: before.documentId, kind: "boundary_diagram" });
+    expect((await submitWithLogo(token)).status).toBe(200);
+
+    expect((await api(token, { intent: "save", answers: {}, version: 1 })).status).toBe(423);
+    const late = await uploadDocument(token, "Training.pdf", PDF(100));
+    expect(late.finish.status).toBe(200);
+    expect((await api(token, { intent: "document-update", documentId: late.documentId, displayName: "Training records 2026", kind: "training" })).status).toBe(200);
+    const replaced = await uploadDocument(token, "Boundary v2.pdf", PDF(150), { replaces: before.documentId });
+    expect(replaced.finish.status).toBe(200);
+    const removal = await api(token, { intent: "document-remove", documentId: late.documentId });
+    expect(removal.status).toBe(423);
+    expect(((await removal.json()) as { message: string }).message).toContain("can no longer be removed");
+
+    const view = await tab(token);
+    expect(view.submitted).toBe(true);
+    expect(view.documents.map((d) => d.displayName).sort()).toEqual(["Boundary v2.pdf", "Training records 2026"]);
+    const files = (await screenD(id)).files;
+    expect(files.find((f) => f.id === late.documentId)?.addedAfterSubmit).toBe(true);
+    expect(files.find((f) => f.id === replaced.documentId)?.addedAfterSubmit).toBe(true);
+    expect((await documentRows(id)).find((r) => r.id === before.documentId)?.addedAfterSubmit).toBe(false);
+  });
+
+  it("2.16 the checklist shows each listed item as received when a current file has that kind, and missing otherwise", async () => {
+    const { id, token } = await newCustomer();
+    await api(token, { intent: "certification-save", certification: { type: "fedramp_rev5", period_end_date: "2026-05-01", next_report_expected: null }, version: 0 });
+    const sar = await uploadDocument(token, "Rev5 package.pdf", PDF(100));
+    await api(token, { intent: "document-update", documentId: sar.documentId, kind: "rev5_package_sar" });
+    const other = await uploadDocument(token, "Notes.pdf", PDF(100));
+    await api(token, { intent: "document-update", documentId: other.documentId, kind: "other", kindNote: "Pen test summary" });
+    const checklist = (await screenD(id)).checklist;
+    expect(checklist).toHaveLength(9);
+    expect(checklist.filter((c) => c.present).map((c) => c.kind)).toEqual(["rev5_package_sar"]);
+    expect(checklist.find((c) => c.kind === "policies")).toEqual({ kind: "policies", label: "Security policies and procedures", present: false });
+  });
+
+  it("2.17 Ignyte's Remove hides the file on both sides and the object stays in the bucket; the customer's x before Submit does the same", async () => {
+    const { id, token, userId } = await newCustomer();
+    const services = await import("~server/services");
+    const { getDocumentStore } = await import("~server/storage");
+    const a = await uploadDocument(token, "a.pdf", PDF(100));
+    const b = await uploadDocument(token, "b.pdf", PDF(100));
+
+    await services.removeDocumentByStaff(id, a.documentId, userId);
+    expect((await api(token, { intent: "document-remove", documentId: b.documentId })).status).toBe(200);
+
+    expect((await tab(token)).documents).toEqual([]);
+    expect((await screenD(id)).files).toEqual([]);
+    const rows = await documentRows(id);
+    expect(rows.find((r) => r.id === a.documentId)).toMatchObject({ removedBy: `user:${userId}`, removedAt: expect.any(Date) });
+    expect(rows.find((r) => r.id === b.documentId)?.removedBy).toMatch(/^link:/);
+    for (const doc of [a, b]) {
+      const row = rows.find((r) => r.id === doc.documentId)!;
+      expect(await getDocumentStore().stat(row.objectPath), row.objectPath).not.toBeNull();
+    }
+    await expect(services.documentDownloadUrl(id, a.documentId)).rejects.toThrow("File not found");
+  });
+
+  it("two finishes of the same upload at the same time give one row and no 500 (as IGN-21 for the logo)", async () => {
+    const { id, token } = await newCustomer();
+    const start = await startUpload(token, "same.pdf", 64);
+    const { documentId, upload } = (await start.json()) as { documentId: string; upload: { url: string } };
+    await app.request(upload.url, { method: "PUT", headers: { "content-range": "bytes 0-63/64" }, body: new Uint8Array(PDF(64)) });
+    const services = await import("~server/services");
+    const { getDb } = await import("~server/db");
+    const { getDocumentStore } = await import("~server/storage");
+    // Both finishes have found no row before either inserts: the second insert collides on the primary key.
+    let arrived = 0;
+    let bothArrived!: () => void;
+    const barrier = new Promise<void>((resolve) => (bothArrived = resolve));
+    const store = getDocumentStore();
+    const racing = Object.assign(Object.create(Object.getPrototypeOf(store) as object) as typeof store, store, {
+      stat: async (objectPath: string) => {
+        const result = await store.stat(objectPath);
+        if (++arrived === 2) bothArrived();
+        await barrier;
+        return result;
+      },
+    });
+    const deps = { db: getDb(), store: racing, now: () => new Date(), definition: services.getDocumentsDefinition(), appOrigin: "http://localhost:3000" };
+    const finish = () => services.finishDocumentUpload(token, { documentId, filename: "same.pdf", size: 64 }, deps);
+    const outcomes = await Promise.all([finish(), finish()]);
+    expect(arrived).toBe(2);
+    expect(outcomes.map((o) => o.kind)).toEqual(["stored", "stored"]);
+    expect(await documentRows(id)).toHaveLength(1);
+    expect(await store.stat(`customers/${id}/intake/${documentId}/same.pdf`)).not.toBeNull();
+  });
+
+  it("IGN-16 2.7 after Submit tab 1 is read-only and tab 3 still accepts files", async () => {
+    const { token } = await newCustomer();
+    expect((await submitWithLogo(token)).status).toBe(200);
+    expect((await api(token, { intent: "save", answers: {}, version: 1 })).status).toBe(423);
+    expect((await uploadDocument(token, "late.pdf", PDF(100))).finish.status).toBe(200);
   });
 });
 

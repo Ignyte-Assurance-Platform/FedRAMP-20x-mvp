@@ -1,0 +1,52 @@
+{
+  "$comment": "Tab 3 (WI-006 §3, §4): the certifications, the 'Useful things to upload' items each one shows, their labels and grey lines, and the tab's texts. The kinds are the keys of spec §4; the labels are spec §3 verbatim. Changing a line here is a text change, not a code change.",
+  "form": "documents",
+  "revision": 1,
+  "labels": {
+    "certification": "Which certification do you hold?",
+    "periodEnd": "Report period end date or assessment completion date",
+    "nextReport": "Expected date of the next report",
+    "useful": "Useful things to upload",
+    "drop": "Drag files here, or click to choose",
+    "whatIsThis": "What is this?",
+    "otherNote": "Short note",
+    "policyVersion": "Version",
+    "policyUpdatedOn": "Last updated"
+  },
+  "messages": {
+    "old": "FedRAMP requires a certification from the past 12 months (FRC-CLA-ASF). You can continue; your consultant will follow up.",
+    "type": "This file type is not accepted. Accepted: PDF, Word, Excel, PNG, JPG, SVG, Visio, CSV, JSON, XML",
+    "zip": "Please upload the files inside the zip one by one",
+    "size": "Files can be up to 250 MB each"
+  },
+  "certifications": [
+    { "key": "soc2_type2", "label": "SOC 2 Type II" },
+    { "key": "fedramp_ready", "label": "FedRAMP Ready" },
+    { "key": "fedramp_rev5", "label": "FedRAMP Rev 5 (authorized)" },
+    { "key": "govramp", "label": "GovRAMP" }
+  ],
+  "items": [
+    { "kind": "soc2_report", "label": "Complete SOC 2 Type II report", "shownTo": ["soc2_type2"] },
+    { "kind": "bridge_letter", "label": "Bridge or gap letter (if applicable)", "shownTo": ["soc2_type2"] },
+    {
+      "kind": "engagement_docs",
+      "label": "Audit engagement documentation",
+      "help": "An audit engagement letter, a certification from a successful audit, or a bridge letter if you are currently under audit",
+      "shownTo": ["soc2_type2"]
+    },
+    { "kind": "supplemental_evidence", "label": "Supplemental compliance evidence (if applicable)", "shownTo": ["soc2_type2"] },
+    { "kind": "rar", "label": "Readiness Assessment Report", "shownTo": ["fedramp_ready", "govramp"] },
+    { "kind": "sap", "label": "Security Assessment Plan", "shownTo": ["fedramp_ready", "govramp"] },
+    { "kind": "rev5_package_sar", "label": "Previous FedRAMP package and SAR", "shownTo": ["fedramp_rev5"] },
+    { "kind": "boundary_diagram", "label": "Authorization boundary or architecture diagram", "shownTo": "everyone" },
+    { "kind": "policies", "label": "Security policies and procedures", "shownTo": "everyone" },
+    { "kind": "ir_plan_test", "label": "Incident response plan and last test", "shownTo": "everyone" },
+    { "kind": "vuln_scans", "label": "Vulnerability scan summaries", "shownTo": "everyone" },
+    { "kind": "crypto_cmvp", "label": "Crypto modules with CMVP certificate numbers", "shownTo": "everyone" },
+    { "kind": "training", "label": "Training materials or records", "shownTo": "everyone" },
+    { "kind": "change_logs", "label": "Change logs or monitoring evidence", "shownTo": "everyone" },
+    { "kind": "third_parties", "label": "Third-party and subprocessor list", "shownTo": "everyone" }
+  ],
+  "other": { "kind": "other", "label": "Other" },
+  "nextReportFor": ["soc2_type2"]
+}
