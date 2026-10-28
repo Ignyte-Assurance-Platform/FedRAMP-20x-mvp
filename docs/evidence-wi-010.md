@@ -11,7 +11,7 @@ Real command output for each acceptance criterion in brain work item `wi-maaz20x
 | 1 | Clean machine to a running, seeded app in under 10 minutes | Met: about 1.5 min including the Postgres image pull |
 | 2 | Dev sign-in without Google when `DEV_LOGIN=1` and `NODE_ENV=development` | Met |
 | 3 | Production with `DEV_LOGIN` set refuses to start with a clear error | Met |
-| 4 | Local upload lands at `customers/<id>/intake/<document-id>/<filename>` with a `documents` row (path, size, type, SHA-256) | Met |
+| 4 | Local upload lands at `customers/<id>/intake/<document-id>/<filename>` with a `documents` row (path, size, type, SHA-256) | Met; superseded for documents on 2026-10-28 (MD5 and CRC32C, `sha256` null), see the update under §4 |
 | 5 | CI runs lint, typecheck, tests and build on PRs and blocks the merge on failure | Workflow added; blocking needs branch protection (at-risk note 9); first CI run is on the draft PR |
 | 6 | Static assets immutable; pages with customer data `no-store` | Met |
 | 7 | `server/` imported only through per-module aliases, and only from routes or `server/index.ts`; ESLint fails otherwise | Met (ESLint plus a client-build guard) |
@@ -120,6 +120,12 @@ Smoke test `✓ stores an upload under the contract path and records its documen
 - the file is on disk at `<LOCAL_STORAGE_DIR>/customers/<customer id>/intake/<document id>/Smoke Test.pdf` with the same content.
 
 Unit tests for the store: `✓ stores an upload at the contract path and reports size, type and SHA-256`, plus rejection of a tampered, expired or wrong-operation token, a mismatched content type, an over-size upload (nothing left behind), and path traversal.
+
+**Update 2026-10-28 (IGN-24, FedRAMP-20x-mvp #41 and #42).** The smoke test quoted above was removed with the single signed PUT for documents. Documents now upload in resumable sessions opened by the server, and the row records the checksums Cloud Storage computes, MD5 and CRC32C, with `sha256` null. This is decision 2 of wi-maaz20x-006 §8 (engineer review, 2026-10-27), and it applies to both drivers. The contract path is unchanged. Current evidence:
+
+- Smoke `✓ 2.5 a 250 MB PDF goes to the bucket in a resumable session and appears in both lists with Cloud Storage's checksums`: the row's `objectPath` is `customers/<customer id>/intake/<document id>/SOC 2 report.pdf`, `contentType` `application/pdf`, `md5` equal to the MD5 of the bytes sent, `sha256` null, `crc32c` set.
+- Unit (local driver) `✓ stores the object only when the last part arrives, with Cloud Storage's MD5 and CRC32C and no SHA-256`, plus the resume, status-query and refusal cases next to it.
+- The single signed PUT with SHA-256 still exists for the customer logo: unit `✓ stores an upload at the contract path and reports size, type and SHA-256`.
 
 ## 5. CI on pull requests
 
