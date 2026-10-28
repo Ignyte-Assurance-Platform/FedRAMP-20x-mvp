@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
+import { documentProblems, type CustomerDocument } from "~/lib/documents";
 import { checkAnswers, type FormDefinition, type FormField } from "~/lib/form-definition";
 import { fieldDomId, Fields, type Answers } from "./form-fields";
 import { IntakeExpired } from "./intake-expired";
 import { createIntakeSaver, type Conflict, type SaveState } from "./intake-saver";
+import { IntakeTab3, type IntakeTab3View } from "./intake-tab3";
 
 /**
- * Screen E tab 1 (WI-004): the generated form with Save, autosave 2 s after typing stops,
- * versioned saves with Keep mine / Take theirs, Submit, and the logo upload Ignyte hosts.
- * Everything posts to /api/intake/<token>; the token is the only credential.
+ * Screen E (WI-004): tab 1 is the generated form with Save, autosave 2 s after typing stops,
+ * versioned saves with Keep mine / Take theirs, Submit, and the logo upload Ignyte hosts. Tab 3
+ * (WI-006) holds the certification and the documents and stays open after Submit; Submit also
+ * checks its files. Everything posts to /api/intake/<token>; the token is the only credential.
  */
 
 export interface IntakeTab1View {
@@ -20,6 +23,7 @@ export interface IntakeTab1View {
   version: number;
   savedAt: Date | string | null;
   logo: { documentId: string; fileName: string; previewUrl: string } | null;
+  documents: IntakeTab3View;
 }
 
 export const AUTOSAVE_MS = 2000;
@@ -36,6 +40,8 @@ const LOGO_TYPES = ["image/png", "image/jpeg"];
 const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 const LOGO_MIN_WIDTH = 256;
 const LOGO_INSTRUCTIONS = "Upload a PNG or JPEG logo, at least 256 px wide and up to 2 MB.";
+
+const isDocumentPath = (path: string) => path.startsWith("/documents/");
 
 const timeFormat = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
 
@@ -76,6 +82,8 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
   const [logo, setLogo] = useState(view.logo);
   const [logoMessage, setLogoMessage] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
+  const [tab, setTab] = useState<1 | 3>(1);
+  const [documents, setDocuments] = useState<CustomerDocument[]>(view.documents.documents);
 
 
   const post = useCallback(
@@ -115,7 +123,7 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
   }
 
   async function submit() {
-    const local = checkAnswers(view.definition.fields, answers, "", Boolean(logo));
+    const local = [...checkAnswers(view.definition.fields, answers, "", Boolean(logo)), ...documentProblems(documents)];
     if (local.length) {
       setProblems(local);
       focusFirst(local);
@@ -153,6 +161,7 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
   function focusFirst(found: Problem[]) {
     const first = found[0];
     if (!first) return;
+    setTab(isDocumentPath(first.path) ? 3 : 1);
     requestAnimationFrame(() => document.getElementById(fieldDomId(nearestField(first.path)))?.focus());
   }
 
@@ -244,11 +253,27 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
           </div>
           <nav aria-label="Intake tabs">
             <ol className="grid grid-cols-3 gap-2 text-sm">
-              <li aria-current="step" className="rounded-md border-b-4 border-primary px-2 py-1 font-medium">
-                1. Company &amp; service{submitted ? " · Submitted" : ""}
+              <li>
+                <button
+                  type="button"
+                  aria-current={tab === 1 ? "step" : undefined}
+                  onClick={() => setTab(1)}
+                  className={`w-full rounded-md border-b-4 px-2 py-1 text-left ${tab === 1 ? "border-primary font-medium" : "border-muted text-muted-foreground"}`}
+                >
+                  1. Company &amp; service{submitted ? " · Submitted" : ""}
+                </button>
               </li>
               <li className="rounded-md border-b-4 border-muted px-2 py-1 text-muted-foreground">2. Security indicators · coming soon</li>
-              <li className="rounded-md border-b-4 border-muted px-2 py-1 text-muted-foreground">3. Documents · coming soon</li>
+              <li>
+                <button
+                  type="button"
+                  aria-current={tab === 3 ? "step" : undefined}
+                  onClick={() => setTab(3)}
+                  className={`w-full rounded-md border-b-4 px-2 py-1 text-left ${tab === 3 ? "border-primary font-medium" : "border-muted text-muted-foreground"}`}
+                >
+                  3. Documents{documents.length ? ` · ${documents.length}` : ""}
+                </button>
+              </li>
             </ol>
           </nav>
         </div>
@@ -298,7 +323,7 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
             <ul className="mt-2 grid list-disc gap-1 pl-5">
               {problems.map((p) => (
                 <li key={`${p.path}:${p.message}`}>
-                  <a href={`#${fieldDomId(nearestField(p.path))}`} className="underline">
+                  <a href={`#${fieldDomId(nearestField(p.path))}`} onClick={() => setTab(isDocumentPath(p.path) ? 3 : 1)} className="underline">
                     {p.message}
                   </a>
                 </li>
@@ -307,7 +332,21 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
           </div>
         )}
 
+        <div hidden={tab !== 3}>
+          <IntakeTab3
+            view={view.documents}
+            documents={documents}
+            onDocumentsChange={(update) => {
+              setDocuments(update);
+              setProblems((current) => current.filter((p) => !isDocumentPath(p.path)));
+            }}
+            submitted={submitted}
+            post={post}
+          />
+        </div>
+
         <form
+          hidden={tab !== 1}
           className="grid gap-6"
           noValidate
           onSubmit={(e) => {

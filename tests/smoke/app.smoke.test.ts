@@ -1230,6 +1230,46 @@ describe("Screen E tab 3, documents (WI-006)", () => {
     expect(await store.stat(`customers/${id}/intake/${documentId}/same.pdf`)).not.toBeNull();
   });
 
+  it("the pages: Screen E shows tab 3; Screen D shows the card, downloads through a signed attachment URL for staff only, and Remove posts", async () => {
+    const { id, token } = await newCustomer();
+    await api(token, { intent: "certification-save", certification: { type: "soc2_type2", period_end_date: "2024-01-31", next_report_expected: null }, version: 0 });
+    const bytes = Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>");
+    const { documentId } = await uploadDocument(token, "boundary.svg", bytes);
+    await api(token, { intent: "document-update", documentId, kind: "boundary_diagram" });
+
+    const intake = await (await app.request(`/intake/${token}`)).text();
+    expect(intake).toContain("3. Documents");
+    expect(intake).toContain("Which certification do you hold?");
+    expect(intake).toContain("FRC-CLA-ASF");
+    expect(intake).toContain("boundary.svg");
+
+    const href = `/api/customers/${id}/documents/${documentId}/download`;
+    expect((await app.request(`http://localhost:3000${href}`)).status).not.toBe(302);
+    const signIn = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+    const cookie = signIn.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    const page = await (await app.request(`/customers/${id}/package`, { headers: { cookie } })).text();
+    expect(page).toContain("Documents (tab 3)");
+    expect(page).toContain("FRC-CLA-ASF");
+    expect(page).toContain('aria-label="received">✓</span>Authorization boundary or architecture diagram');
+    expect(page).toContain(">missing</span>Complete SOC 2 Type II report");
+    expect(page).toContain(href);
+
+    const redirect = await app.request(`http://localhost:3000${href}`, { headers: { cookie } });
+    expect(redirect.status).toBe(302);
+    const file = await app.request(redirect.headers.get("location")!);
+    expect(Buffer.from(await file.arrayBuffer()).equals(bytes)).toBe(true);
+    expect(file.headers.get("content-disposition")).toBe("attachment; filename*=UTF-8''boundary.svg");
+
+    const removed = await app.request(`http://localhost:3000/customers/${id}/package`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/x-www-form-urlencoded", origin: "http://localhost:3000" },
+      body: new URLSearchParams({ intent: "remove-document", documentId }),
+    });
+    expect(removed.status).toBe(200);
+    expect((await screenD(id)).files).toEqual([]);
+    expect((await app.request(`http://localhost:3000${href}`, { headers: { cookie } })).status).toBe(404);
+  });
+
   it("IGN-16 2.7 after Submit tab 1 is read-only and tab 3 still accepts files", async () => {
     const { token } = await newCustomer();
     expect((await submitWithLogo(token)).status).toBe(200);

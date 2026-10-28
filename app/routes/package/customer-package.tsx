@@ -4,10 +4,13 @@ import { MissingAcronymError } from "~server/fedramp";
 import {
   CustomerError,
   generatePackageOverviewForCustomer,
+  getDocumentsScreen,
+  IntakeDocumentError,
   getIntakeLinkSection,
   issueNewIntakeLink,
   getPackageOverviewScreen,
   PackageOverviewError,
+  removeDocumentByStaff,
   requireStaffUser,
   savePackageOverviewInputs,
   setAssessorConfirmed,
@@ -21,6 +24,7 @@ import { Label } from "~/components/ui/label";
 import { formatDateTime } from "~/lib/dates";
 import { PRODUCT_NAME } from "~/lib/product";
 import { AnswersReadOnly, LOGO_PATH } from "./components/answers-read-only";
+import { DocumentsSection } from "./components/documents-section";
 import { IntakeLinkSection } from "./components/intake-link-section";
 import { ProblemList } from "./components/problem-list";
 import { PublishingChecklist } from "./components/publishing-checklist";
@@ -29,7 +33,8 @@ import type { Route } from "./+types/customer-package";
 /**
  * Screen D (WI-007): the customer's tab 1 answers read-only, the Ignyte-only boxes,
  * Generate JSON with its result, the latest file with its versions and the download.
- * WI-003 adds the "Intake link" section (Copy, Issue new link, Unlock) above them.
+ * WI-003 adds the "Intake link" section (Copy, Issue new link, Unlock) above them; WI-006 adds
+ * tab 3: the certification, the received/missing checklist and the files, with Download and Remove.
  * Staff only; customer link tokens are refused (requireStaffUser).
  */
 
@@ -46,6 +51,7 @@ const ActionInput = v.variant("intent", [
   v.object({ intent: v.literal("generate") }),
   v.object({ intent: v.literal("issue-link") }),
   v.object({ intent: v.literal("unlock") }),
+  v.object({ intent: v.literal("remove-document"), documentId: v.pipe(v.string(), v.uuid()) }),
 ]);
 
 interface ActionResult {
@@ -55,6 +61,8 @@ interface ActionResult {
   /** Outcome of issue-link and unlock, shown in the "Intake link" section that triggered them. */
   linkMessage?: string;
   linkError?: string;
+  /** Outcome of remove-document, shown in the "Documents" card. */
+  documentsError?: string;
   generated: { fileId: string; valid: boolean; problemCount: number } | null;
 }
 
@@ -65,7 +73,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   try {
     const screen = await getPackageOverviewScreen(customerId.output);
     const intakeLink = await getIntakeLinkSection(customerId.output);
-    return { user, screen, intakeLink };
+    const documents = await getDocumentsScreen(customerId.output);
+    return { user, screen, intakeLink, documents };
   } catch (error) {
     if (error instanceof PackageOverviewError || error instanceof CustomerError) throw data(error.message, { status: error.status });
     throw error;
@@ -95,6 +104,9 @@ export async function action({ request, params }: Route.ActionArgs) {
       case "unlock":
         await unlockIntake(customerId.output, user.id);
         return data<ActionResult>({ error: null, generated: null, linkMessage: "Unlocked. The customer can edit the intake again." });
+      case "remove-document":
+        await removeDocumentByStaff(customerId.output, input.output.documentId, user.id);
+        return data<ActionResult>({ error: null, generated: null });
       case "generate": {
         const outcome = await generatePackageOverviewForCustomer(customerId.output, user.id);
         return data<ActionResult>({
@@ -108,7 +120,10 @@ export async function action({ request, params }: Route.ActionArgs) {
     const failed = (message: string, status: number) =>
       intent === "issue-link" || intent === "unlock"
         ? data<ActionResult>({ error: null, linkError: message, generated: null }, { status })
-        : data<ActionResult>({ error: message, generated: null }, { status });
+        : intent === "remove-document"
+          ? data<ActionResult>({ error: null, documentsError: message, generated: null }, { status })
+          : data<ActionResult>({ error: message, generated: null }, { status });
+    if (error instanceof IntakeDocumentError) return failed(error.message, error.status);
     if (error instanceof MissingAcronymError) return failed(error.message, 400);
     if (error instanceof PackageOverviewError || error instanceof CustomerError) return failed(error.message, error.status);
     if (error instanceof v.ValiError) return failed(error.message, 400);
@@ -124,7 +139,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 const noticeClass = "rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm";
 
 export default function CustomerPackage({ loaderData, actionData }: Route.ComponentProps) {
-  const { user, screen, intakeLink } = loaderData;
+  const { user, screen, intakeLink, documents } = loaderData;
   const { customer, inputs, answers, status, latest, schemaVersion } = screen;
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -176,6 +191,23 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
           </CardHeader>
           <CardContent>
             <AnswersReadOnly sections={answers} logoUrl={screen.logoUrl} logoUploaded={screen.logoUploaded} packageIdFallback={screen.packageIdFallback} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Documents (tab 3)</CardTitle>
+            <CardDescription>
+              What the customer uploaded, stored only: nothing reads the files. Remove hides a file on both sides; the stored copy stays.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {actionData?.documentsError && (
+              <p role="alert" className="text-sm text-destructive">
+                {actionData.documentsError}
+              </p>
+            )}
+            <DocumentsSection customerId={customer.id} data={documents} busy={busy} />
           </CardContent>
         </Card>
 

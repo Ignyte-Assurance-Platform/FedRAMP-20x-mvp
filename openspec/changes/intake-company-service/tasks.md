@@ -12,7 +12,7 @@
 - [x] 2.4 WHEN Trust Center has authenticationRequired true and no accessRequestInstructions THEN Submit shows an error on that group
 - [x] 2.5 WHEN Save is clicked THEN the partial object is stored with its `form_definition_version` and a bumped `version`, the form definition's schema version and commit equal those read from the vendored manifest (no literals), and the customer status becomes In progress
 - [x] 2.6 WHEN the link is reopened after Save THEN every saved answer is shown
-- [ ] 2.7 WHEN Submit succeeds THEN tabs 1 and 2 are read-only, tab 3 still accepts files, and the customer status is Submitted (tabs 1 and 2 read-only and Submitted are done and smoke-tested; "tab 3 still accepts files" lands with wi-006, tab 3 is "coming soon" here)
+- [x] 2.7 WHEN Submit succeeds THEN tabs 1 and 2 are read-only, tab 3 still accepts files, and the customer status is Submitted (tab 3 landed with wi-006, IGN-24: smoke "IGN-16 2.7 after Submit tab 1 is read-only and tab 3 still accepts files")
 - [x] 2.8 WHEN Ignyte unlocks the customer THEN the link is editable again and status returns to In progress
 - [x] 2.9 WHEN the golden example values (`server/fedramp/testdata/golden-answers.json`) are entered THEN tab 1 submits with zero validation errors
 - [x] 2.10 WHEN a PNG logo of 300 px width and 500 KB is uploaded THEN a preview is shown, the file is stored on Ignyte's side and the generated JSON uses the Ignyte-hosted URL as `serviceIdentification.logo`
