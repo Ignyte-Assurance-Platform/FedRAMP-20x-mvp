@@ -14,7 +14,7 @@ function fakes(inStore: string[], failOn: string[] = []) {
     isPublished: async (p) => published.has(p),
     unpublish: async (p) => void published.delete(p),
   };
-  const store = { stat: async (p: string) => (inStore.includes(p) ? { size: 1, contentType: "image/png", sha256: null, updatedAt: new Date() } : null) };
+  const store = { stat: async (p: string) => (inStore.includes(p) ? { size: 1, contentType: "image/png", sha256: null, md5: null, crc32c: null, updatedAt: new Date() } : null) };
   return { publisher, store, published };
 }
 

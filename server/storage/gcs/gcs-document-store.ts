@@ -5,6 +5,8 @@ import {
   type DocumentStore,
   type DownloadUrlOptions,
   type ObjectStat,
+  type ResumableSession,
+  type ResumableUploadInput,
   type SignedUrl,
   type UploadUrlInput,
 } from "../document-store";
@@ -46,6 +48,19 @@ export class GcsDocumentStore implements DocumentStore {
     return { url, method: "PUT", headers: { "content-type": input.contentType, ...signed }, expiresAt };
   }
 
+  async createResumableUpload(input: ResumableUploadInput): Promise<ResumableSession> {
+    assertObjectPath(input.objectPath);
+    // The library sends contentLength as X-Upload-Content-Length (Cloud Storage refuses a final
+    // size that differs), the origin so the browser may PUT the parts, and if-generation-match 0
+    // so the session can only create the object, never overwrite one.
+    const [url] = await (await this.bucket()).file(input.objectPath).createResumableUpload({
+      origin: input.origin,
+      metadata: { contentType: input.contentType, contentLength: input.size },
+      preconditionOpts: { ifGenerationMatch: 0 },
+    });
+    return { url };
+  }
+
   async createDownloadUrl(objectPath: string, options: DownloadUrlOptions = {}): Promise<SignedUrl> {
     assertObjectPath(objectPath);
     const expiresAt = urlExpiry(options.expiresInSeconds);
@@ -75,6 +90,8 @@ export class GcsDocumentStore implements DocumentStore {
       contentType: meta.contentType ?? "application/octet-stream",
       // Cloud Storage keeps MD5/CRC32C, not SHA-256; see docs/at-risk-notes-wi-010.md.
       sha256: typeof custom === "string" ? custom : null,
+      md5: meta.md5Hash ?? null,
+      crc32c: meta.crc32c ?? null,
       updatedAt: new Date(meta.updated ?? Date.now()),
     };
   }

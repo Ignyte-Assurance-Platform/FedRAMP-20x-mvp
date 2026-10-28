@@ -2,13 +2,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 /** Short-lived, HMAC-signed grant for one operation on one object (local driver only). */
 export interface LocalGrant {
-  op: "put" | "get";
+  op: "put" | "get" | "session";
   path: string;
   /** Expiry, unix seconds. */
   exp: number;
   ct?: string;
   max?: number;
   fn?: string;
+  /** Exact size of a resumable session's object. */
+  size?: number;
 }
 
 export function signGrant(grant: LocalGrant, secret: string): string {

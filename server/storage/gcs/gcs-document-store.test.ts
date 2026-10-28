@@ -14,6 +14,12 @@ function fakeStorage() {
           calls.push(options);
           return ["https://storage.googleapis.com/signed"];
         },
+        createResumableUpload: async (options: Record<string, unknown>) => {
+          calls.push(options);
+          return ["https://storage.googleapis.com/upload/session"];
+        },
+        exists: async () => [true],
+        getMetadata: async () => [{ size: "29", contentType: "application/pdf", md5Hash: "bWQ1", crc32c: "Y3JjMw==", updated: "2026-10-28T10:00:00Z" }],
       }),
     }),
   } as unknown as Storage;
@@ -37,5 +43,25 @@ describe("GcsDocumentStore.createUploadUrl", () => {
       "x-goog-content-length-range": "0,100",
       "x-goog-if-generation-match": "0",
     });
+  });
+});
+
+describe("GcsDocumentStore resumable uploads (WI-006 §8)", () => {
+  it("opens the session with the exact size, the content type, the app's origin and a create-only precondition", async () => {
+    const { storage, calls } = fakeStorage();
+    const store = new GcsDocumentStore({ bucket: "maaz-docs", storage });
+    const session = await store.createResumableUpload({ objectPath, contentType: "application/pdf", size: 262_144_000, origin: "https://app.example.test" });
+    expect(session).toEqual({ url: "https://storage.googleapis.com/upload/session" });
+    expect(calls[0]).toEqual({
+      origin: "https://app.example.test",
+      metadata: { contentType: "application/pdf", contentLength: 262_144_000 },
+      preconditionOpts: { ifGenerationMatch: 0 },
+    });
+  });
+
+  it("reports the MD5 and CRC32C Cloud Storage computed, never a SHA-256 it does not have", async () => {
+    const { storage } = fakeStorage();
+    const store = new GcsDocumentStore({ bucket: "maaz-docs", storage });
+    expect(await store.stat(objectPath)).toMatchObject({ size: 29, contentType: "application/pdf", md5: "bWQ1", crc32c: "Y3JjMw==", sha256: null });
   });
 });

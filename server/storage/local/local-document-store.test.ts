@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { intakeObjectPath } from "../paths";
-import { LocalDocumentStore } from "./local-document-store";
+import { crc32cBase64, crc32cUpdate } from "./crc32c";
+import { LocalDocumentStore, parseContentRange } from "./local-document-store";
 
 const customerId = "8a3c2f9e-1b2d-4c5e-9f00-112233445566";
 const documentId = "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e";
@@ -103,5 +104,102 @@ describe("LocalDocumentStore", () => {
 
   it("never resolves outside its root", () => {
     expect(() => store.resolve("customers/../../outside")).toThrow();
+  });
+});
+
+/** A body that sends `sent` and then breaks, as a dropped connection does. */
+const brokenBody = (sent: string) =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(sent));
+      controller.error(new Error("connection reset"));
+    },
+  });
+
+describe("LocalDocumentStore resumable sessions (WI-006 §8)", () => {
+  const content = "%PDF-1.7 0123456789abcdefghij"; // 29 bytes
+  const size = content.length;
+  const open = async () => tokenOf((await store.createResumableUpload({ objectPath, contentType: pdf, size, origin: "http://localhost:3000" })).url);
+  const part = (token: string, start: number, end: number, body = content.slice(start, end + 1)) =>
+    store.receivePart(token, `bytes ${start}-${end}/${size}`, bodyOf(body));
+  const status = (token: string) => store.receivePart(token, `bytes */${size}`, null);
+
+  it("parses Content-Range parts and status queries, and refuses anything else", () => {
+    expect(parseContentRange("bytes 0-9/29")).toEqual({ start: 0, end: 9, total: 29 });
+    expect(parseContentRange("bytes */29")).toEqual({ total: 29 });
+    expect(parseContentRange("bytes 9-0/29")).toBeNull();
+    expect(parseContentRange("bytes 0-29/29")).toBeNull();
+    expect(parseContentRange(null)).toBeNull();
+  });
+
+  it("stores the object only when the last part arrives, with Cloud Storage's MD5 and CRC32C and no SHA-256", async () => {
+    const token = await open();
+    const first = await part(token, 0, 9);
+    expect(first.status).toBe(308);
+    expect(first.headers.get("range")).toBe("bytes=0-9");
+    expect(await store.stat(objectPath)).toBeNull();
+
+    expect((await part(token, 10, size - 1)).status).toBe(200);
+    expect(await readFile(store.resolve(objectPath), "utf8")).toBe(content);
+    expect(await store.stat(objectPath)).toMatchObject({
+      size,
+      contentType: pdf,
+      sha256: null,
+      md5: createHash("md5").update(content).digest("base64"),
+      crc32c: crc32cBase64(crc32cUpdate(0, Buffer.from(content))),
+    });
+  });
+
+  it("answers a status query with the stored range, and none before the first byte", async () => {
+    const token = await open();
+    const empty = await status(token);
+    expect(empty.status).toBe(308);
+    expect(empty.headers.get("range")).toBeNull();
+    await part(token, 0, 9);
+    expect((await status(token)).headers.get("range")).toBe("bytes=0-9");
+  });
+
+  it("a part cut off midway is dropped whole: the status query names the last complete part, and the upload resumes there", async () => {
+    const token = await open();
+    await part(token, 0, 9);
+    await expect(store.receivePart(token, `bytes 10-19/${size}`, brokenBody("0123"))).rejects.toThrow("connection reset");
+    expect((await status(token)).headers.get("range")).toBe("bytes=0-9");
+    expect((await part(token, 10, size - 1)).status).toBe(200);
+    expect(await readFile(store.resolve(objectPath), "utf8")).toBe(content);
+  });
+
+  it("a part that does not start where the stored bytes end gets 308 with the stored range, and nothing is written", async () => {
+    const token = await open();
+    await part(token, 0, 9);
+    const skipped = await part(token, 20, size - 1);
+    expect(skipped.status).toBe(308);
+    expect(skipped.headers.get("range")).toBe("bytes=0-9");
+    const again = await part(token, 0, 9);
+    expect(again.headers.get("range")).toBe("bytes=0-9");
+  });
+
+  it("refuses a size other than the session's, a body longer or shorter than its range, and a tampered token", async () => {
+    const token = await open();
+    expect((await store.receivePart(token, "bytes 0-9/30", bodyOf(content.slice(0, 10)))).status).toBe(400);
+    expect((await part(token, 0, 9, "too long for the range")).status).toBe(400);
+    expect((await part(token, 0, 9, "short")).status).toBe(400);
+    expect((await status(token)).headers.get("range")).toBeNull();
+    expect((await part(`${token}x`, 0, 9)).status).toBe(403);
+  });
+
+  it("a finished session answers 200 and never changes the stored object", async () => {
+    const token = await open();
+    await part(token, 0, size - 1);
+    expect((await part(token, 0, size - 1, "X".repeat(size))).status).toBe(200);
+    expect(await readFile(store.resolve(objectPath), "utf8")).toBe(content);
+  });
+
+  it("put() routes a session token to the session and a signed upload URL to the single upload", async () => {
+    const token = await open();
+    const res = await store.put(token, new Request("http://localhost/", { method: "PUT", headers: { "content-range": `bytes 0-${size - 1}/${size}` }, body: content }));
+    expect(res.status).toBe(200);
+    const other = intakeObjectPath(customerId, "1f1e2d3c-4b5a-4968-8778-695a4b3c2d1e", "b.pdf");
+    const single = await store.createUploadUrl({ objectPath: other, contentType: pdf, maxBytes: 100 });
+    expect((await store.put(tokenOf(single.url), new Request("http://localhost/", { method: "PUT", headers: { "content-type": pdf }, body: "x" }))).status).toBe(200);
   });
 });
