@@ -48,7 +48,7 @@ describe("Screen D documents (WI-006)", () => {
     expect(render({ ...base, certification: { ...base.certification, old: false } })).not.toContain("FRC-CLA-ASF");
   });
 
-  it("2.16 the checklist shows a check for a received item and missing otherwise", () => {
+  it("2.17 the checklist shows a check for a received item and missing otherwise", () => {
     const html = render(base);
     expect(html).toMatch(/aria-label="received">✓<\/span>Complete SOC 2 Type II report/);
     expect(html).toMatch(/>missing<\/span>Security policies and procedures/);
