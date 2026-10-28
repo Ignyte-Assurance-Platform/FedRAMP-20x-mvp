@@ -42,6 +42,19 @@ export interface IntakeSaver {
   readonly version: number;
 }
 
+/**
+ * Submit after the other tabs' saves (WI-005 E3b): each saver is flushed first, one after the
+ * other; the first that does not end "saved" stops Submit before it sends anything, so nothing
+ * is locked. Otherwise `send` runs (tab 1's checks and its submit).
+ */
+export async function submitAfterFlush<T>(others: Pick<IntakeSaver, "flush">[], send: () => Promise<T>): Promise<{ stopped: FlushResult } | { sent: T }> {
+  for (const saver of others) {
+    const flushed = await saver.flush();
+    if (flushed !== "saved") return { stopped: flushed };
+  }
+  return { sent: await send() };
+}
+
 export function createIntakeSaver(options: IntakeSaverOptions): IntakeSaver {
   let version = options.version;
   let answers = options.answers;

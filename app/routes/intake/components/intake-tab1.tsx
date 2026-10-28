@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { documentProblems, type CustomerDocument } from "~/lib/documents";
+import type { KsisAnswers } from "~/lib/ksis";
 import { checkAnswers, type FormDefinition, type FormField } from "~/lib/form-definition";
 import { fieldDomId, Fields, type Answers } from "./form-fields";
 import { IntakeExpired } from "./intake-expired";
-import { createIntakeSaver, type Conflict, type SaveState } from "./intake-saver";
+import { createIntakeSaver, submitAfterFlush, type Conflict, type FlushResult, type SaveState } from "./intake-saver";
+import { IntakeTab2, type IntakeTab2View } from "./intake-tab2";
 import { IntakeTab3, type IntakeTab3View } from "./intake-tab3";
 
 /**
@@ -23,6 +25,7 @@ export interface IntakeTab1View {
   version: number;
   savedAt: Date | string | null;
   logo: { documentId: string; fileName: string; previewUrl: string } | null;
+  ksis: IntakeTab2View;
   documents: IntakeTab3View;
 }
 
@@ -42,6 +45,13 @@ const LOGO_MIN_WIDTH = 256;
 const LOGO_INSTRUCTIONS = "Upload a PNG or JPEG logo, at least 256 px wide and up to 2 MB.";
 
 const isDocumentPath = (path: string) => path.startsWith("/documents/");
+
+/** Why Submit stopped before sending anything, when tab 2's pending changes could not be saved (E3b). */
+export function ksisFlushMessage(result: FlushResult): string | null {
+  if (result === "conflict") return "Nothing was submitted: your answers on tab 2 were changed in another window. Choose Keep mine or Take theirs there, then submit again.";
+  if (result === "failed") return "Nothing was submitted: your answers on tab 2 could not be saved. Check the connection and try again.";
+  return null;
+}
 
 const timeFormat = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
 
@@ -82,7 +92,11 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
   const [logo, setLogo] = useState(view.logo);
   const [logoMessage, setLogoMessage] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
-  const [tab, setTab] = useState<1 | 3>(1);
+  const [tab, setTab] = useState<1 | 2 | 3>(1);
+  const [ksisAnswers, setKsisAnswers] = useState<KsisAnswers>(view.ksis.answers);
+  const [ksisSaveState, setKsisSaveState] = useState<SaveState>(view.ksis.savedAt ? { kind: "saved", at: new Date(view.ksis.savedAt) } : { kind: "idle" });
+  const [ksisConflict, setKsisConflict] = useState<Conflict | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [documents, setDocuments] = useState<CustomerDocument[]>(view.documents.documents);
 
 
@@ -116,6 +130,24 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
     }),
   );
   useEffect(() => saver.pause(locked), [locked, saver]);
+  // Tab 2 (WI-005 E3): its own section, same rules: autosave, one request at a time, Keep mine / Take theirs.
+  const [ksisSaver] = useState(() =>
+    createIntakeSaver({
+      post,
+      answers: view.ksis.answers as unknown as Answers,
+      version: view.ksis.version,
+      delayMs: AUTOSAVE_MS,
+      onState: setKsisSaveState,
+      onConflict: setKsisConflict,
+      section: "ksis",
+    }),
+  );
+  useEffect(() => ksisSaver.pause(locked || Boolean(ksisConflict)), [locked, ksisConflict, ksisSaver]);
+
+  function changeKsis(next: KsisAnswers) {
+    setKsisAnswers(next);
+    ksisSaver.changed(next as unknown as Answers);
+  }
 
   function change(next: Answers) {
     setAnswers(next);
@@ -123,6 +155,17 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
   }
 
   async function submit() {
+    setSubmitError(null);
+    // E3b: tab 2's pending changes are saved first; if that fails or conflicts, nothing is submitted.
+    const outcome = await submitAfterFlush([ksisSaver], checkAndSubmit);
+    if ("stopped" in outcome) {
+      const message = ksisFlushMessage(outcome.stopped);
+      if (message) setSubmitError(message);
+      if (outcome.stopped === "conflict") setTab(2);
+    }
+  }
+
+  async function checkAndSubmit() {
     const local = [...checkAnswers(view.definition.fields, answers, "", Boolean(logo)), ...documentProblems(documents)];
     if (local.length) {
       setProblems(local);
@@ -200,14 +243,15 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
   if (expired) return <IntakeExpired message={expired} />;
 
   const problemMap = new Map(problems.map((p) => [p.path, p.message]));
-  const saveText =
-    saveState.kind === "saving"
+  const textOf = (state: SaveState) =>
+    state.kind === "saving"
       ? "Saving…"
-      : saveState.kind === "saved"
-        ? `Saved ${timeFormat.format(saveState.at)}`
-        : saveState.kind === "failed"
-          ? (saveState.message ?? NOT_SAVED_YET)
+      : state.kind === "saved"
+        ? `Saved ${timeFormat.format(state.at)}`
+        : state.kind === "failed"
+          ? (state.message ?? NOT_SAVED_YET)
           : "";
+  const saveText = textOf(saveState);
 
   const renderLogo = (field: FormField, describedBy: string | undefined) => (
     <div className="grid gap-2">
@@ -263,7 +307,16 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
                   1. Company &amp; service{submitted ? " · Submitted" : ""}
                 </button>
               </li>
-              <li className="rounded-md border-b-4 border-muted px-2 py-1 text-muted-foreground">2. Security indicators · coming soon</li>
+              <li>
+                <button
+                  type="button"
+                  aria-current={tab === 2 ? "step" : undefined}
+                  onClick={() => setTab(2)}
+                  className={`w-full rounded-md border-b-4 px-2 py-1 text-left ${tab === 2 ? "border-primary font-medium" : "border-muted text-muted-foreground"}`}
+                >
+                  2. Security indicators{submitted ? " · Submitted" : ""}
+                </button>
+              </li>
               <li>
                 <button
                   type="button"
@@ -331,6 +384,36 @@ export function IntakeTab1({ view, token }: { view: IntakeTab1View; token: strin
             </ul>
           </div>
         )}
+
+        {submitError && (
+          <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+            {submitError}
+          </p>
+        )}
+
+        <div hidden={tab !== 2}>
+          <IntakeTab2
+            view={view.ksis}
+            answers={ksisAnswers}
+            onChange={changeKsis}
+            locked={locked}
+            saveText={textOf(ksisSaveState)}
+            saving={ksisSaveState.kind === "saving"}
+            onSave={() => void ksisSaver.save()}
+            conflict={ksisConflict}
+            onKeepMine={() => {
+              const theirs = ksisConflict!.version;
+              setKsisConflict(null);
+              void ksisSaver.save(theirs);
+            }}
+            onTakeTheirs={() => {
+              ksisSaver.takeTheirs(ksisConflict!);
+              setKsisAnswers(ksisConflict!.answers as unknown as KsisAnswers);
+              setKsisConflict(null);
+              setKsisSaveState({ kind: "idle" });
+            }}
+          />
+        </div>
 
         <div hidden={tab !== 3}>
           <IntakeTab3

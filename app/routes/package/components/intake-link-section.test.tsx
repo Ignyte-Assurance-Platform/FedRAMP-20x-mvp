@@ -48,6 +48,15 @@ const loaderData: ScreenDProps["loaderData"] = {
   },
   intakeLink: { status: "submitted", statusLabel: "Submitted", link: { url: base.url, expired: false, issuedAt: new Date("2026-10-23T12:00:00Z"), expiresAt: new Date("2026-11-22T12:00:00Z"), issuedBy: "Dev" }, unlockedAt: null, unlockedBy: null },
   documents: { certification: { label: null, periodEnd: null, nextReport: null, old: false, oldMessage: "" }, checklist: [], files: [] },
+  ksis: {
+    rulesVersion: "r1",
+    rulesNote: null,
+    counts: "0/7 answered, 0 needs help",
+    followUps: [],
+    blocks: [],
+    review: { cmvpValidated: null, cmvpNote: null, logContextNote: null, updatedAt: null, updatedBy: null },
+    savedAt: null,
+  },
 };
 
 function renderScreenD(actionData?: ScreenDProps["actionData"]): string {

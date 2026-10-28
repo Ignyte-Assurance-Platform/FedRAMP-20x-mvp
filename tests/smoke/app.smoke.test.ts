@@ -1129,6 +1129,45 @@ describe("Screen E tab 2, KSIs (WI-005)", () => {
     }
   });
 
+  it("the pages: the intake page renders tab 2 from the rules, and Screen D shows it with follow-ups and saves Ignyte's fields", async () => {
+    const { id, token } = await newCustomer();
+    const { getRulesLibrary } = await import("~server/fedramp");
+    const rules = getRulesLibrary().current;
+    await saveKsis(token, { ksi: { "KSI-SVC-SIN": { questions: { "16": "TLS 1.3 via AWS-LC" }, need_help: true } } }, 0);
+    const intake = await (await app.request(`/intake/${token}`)).text();
+    expect(intake).toContain(">2. Security indicators</button>");
+    expect(intake).toContain(`>FedRAMP rules ${rules.version}</p>`);
+    expect(intake).toContain("Logging Changes");
+    expect(intake).toContain("TLS 1.3 via AWS-LC");
+    expect(intake).not.toContain("CMVP validated?");
+
+    const signIn = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
+    const cookie = signIn.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    const page = await (await app.request(`/customers/${id}/package`, { headers: { cookie } })).text();
+    expect(page).toContain(">Security indicators (tab 2)<");
+    // Answered and help ticked: counts in both (2.9).
+    expect(page).toContain(">1/7 answered, 1 needs help</p>");
+    expect(page).toMatch(/aria-label="Follow-ups"[\s\S]*KSI-SVC-SIN Securing Information<\/a> · Needs help/);
+    expect(page).toContain("CMVP validated?");
+    expect(page).toContain("Log retention and review (optional context)");
+    expect(page).toContain("TLS 1.3 via AWS-LC");
+
+    const post = (body: Record<string, string>) =>
+      app.request(`http://localhost:3000/customers/${id}/package`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/x-www-form-urlencoded", origin: "http://localhost:3000" },
+        body: new URLSearchParams(body),
+      });
+    expect((await post({ intent: "ksi-review", cmvpValidated: "yes", cmvpNote: "Cert #4282", logContextNote: "CloudWatch, 1 year" })).status).toBe(200);
+    const services = await import("~server/services");
+    expect((await services.getKsisScreen(id)).review).toMatchObject({ cmvpValidated: true, cmvpNote: "Cert #4282", logContextNote: "CloudWatch, 1 year" });
+    expect((await post({ intent: "ksi-review", cmvpValidated: "no", cmvpNote: "x".repeat(2001), logContextNote: "" })).status).toBe(400);
+    expect((await services.getKsisScreen(id)).review.cmvpValidated).toBe(true);
+    expect((await post({ intent: "ksi-review", cmvpValidated: "maybe", cmvpNote: "", logContextNote: "" })).status).toBe(400);
+    // The customer's intake data still never holds them.
+    expect(await (await app.request(`/intake/${token}`)).text()).not.toContain("Cert #4282");
+  });
+
   it("review of #49: Screen D for an unknown customer is a 404, not an empty card", async () => {
     const services = await import("~server/services");
     await expect(services.getKsisScreen("00000000-0000-4000-8000-000000000000")).rejects.toMatchObject({ status: 404 });

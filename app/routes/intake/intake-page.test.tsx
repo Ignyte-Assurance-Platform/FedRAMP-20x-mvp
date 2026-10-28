@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { buildFormDefinition } from "~server/fedramp";
+import { buildFormDefinition, getRulesLibrary } from "~server/fedramp";
 import { checkAnswers, packageIdFallback } from "~/lib/form-definition";
 import { PACKAGE_ID_NOTE } from "./components/form-fields";
 import { IntakeExpired } from "./components/intake-expired";
@@ -8,6 +8,9 @@ import documentsJson from "../../../form-definitions/documents.v1.json";
 import type { DocumentsDefinition } from "~/lib/documents";
 import { IntakeTab1, logoFileRefusal, type IntakeTab1View } from "./components/intake-tab1";
 import { IntakeTab3, type IntakeTab3View } from "./components/intake-tab3";
+import ksisJson from "../../../form-definitions/ksis.v1.json";
+import { normalizeKsisAnswers, type KsisAnswers, type KsisDefinition } from "~/lib/ksis";
+import { IntakeTab2, type IntakeTab2View } from "./components/intake-tab2";
 
 /** Markup checks of Screen E tab 1 (WI-004); typing, autosave timing and uploads need a browser and run in the smoke test or not at all. */
 
@@ -26,6 +29,21 @@ function documentsView(overrides: Partial<IntakeTab3View> = {}): IntakeTab3View 
   };
 }
 
+const ksisDefinition = ksisJson as KsisDefinition;
+const rules = getRulesLibrary().current;
+
+function ksisView(overrides: Partial<IntakeTab2View> = {}): IntakeTab2View {
+  return {
+    definition: ksisDefinition,
+    rulesVersion: rules.version,
+    statements: Object.fromEntries(ksisDefinition.ksis.map((b) => [b.code, { name: rules.ksis[b.code]!.name, statement: rules.ksis[b.code]!.statement }])),
+    answers: normalizeKsisAnswers(ksisDefinition, undefined),
+    version: 0,
+    savedAt: null,
+    ...overrides,
+  };
+}
+
 function view(overrides: Partial<IntakeTab1View> = {}): IntakeTab1View {
   return {
     customer: { name: "Example Cloud Co.", serviceName: "Example Records Platform" },
@@ -36,6 +54,7 @@ function view(overrides: Partial<IntakeTab1View> = {}): IntakeTab1View {
     version: 1,
     savedAt: null,
     logo: null,
+    ksis: ksisView(),
     documents: documentsView(),
     ...overrides,
   };
@@ -208,5 +227,155 @@ describe("Screen E tab 3, documents (WI-006)", () => {
 
   it("never renders an uploaded file, an SVG included, as an image", () => {
     expect(renderTab3(documentsView({ documents: [doc()] }))).not.toContain("<img");
+  });
+});
+
+describe("Screen E tab 2, KSIs (WI-005)", () => {
+  const renderTab2 = (answers: KsisAnswers = normalizeKsisAnswers(ksisDefinition, undefined), locked = false) =>
+    renderToStaticMarkup(
+      <IntakeTab2
+        view={ksisView()}
+        answers={answers}
+        onChange={() => undefined}
+        locked={locked}
+        saveText=""
+        saving={false}
+        onSave={() => undefined}
+        conflict={null}
+        onKeepMine={() => undefined}
+        onTakeTheirs={() => undefined}
+      />,
+    );
+  const withAnswers = (edit: (a: KsisAnswers) => void) => {
+    const a = normalizeKsisAnswers(ksisDefinition, undefined);
+    edit(a);
+    return a;
+  };
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const blockHtml = (html: string, key: string) => html.slice(html.indexOf(`data-ksi="${key}"`), html.indexOf("</details>", html.indexOf(`data-ksi="${key}"`)));
+
+  it("tab 2 is a real tab between tabs 1 and 3, no longer 'coming soon', also after Submit", () => {
+    for (const html of [render(view()), render(view({ locked: true, status: "submitted" }))]) {
+      expect(html).toMatch(/<button[^>]*>2\. Security indicators(?: · Submitted)?<\/button>/);
+      expect(html).not.toContain("coming soon");
+    }
+  });
+
+  it("2.1 seven collapsible blocks in playbook order with code and name, then one Vulnerability detection block", () => {
+    const html = renderTab2();
+    const keys = [...html.matchAll(/<details[^>]*data-ksi="([^"]+)"/g)].map((m) => m[1]);
+    expect(keys).toEqual([...ksisDefinition.ksis.map((b) => b.code), "vulnerability_detection"]);
+    for (const block of ksisDefinition.ksis) {
+      const part = blockHtml(html, block.code);
+      expect(part).toContain(`>${block.code}</span>`);
+      expect(part).toContain(`<span class="flex-1 font-semibold">${escape(rules.ksis[block.code]!.name)}</span>`);
+    }
+    expect(blockHtml(html, "vulnerability_detection")).toContain(">Vulnerability detection</span>");
+  });
+
+  it("2.2 the statement is FedRAMP's word for word, with the version read from the vendored file under it, before the questions", () => {
+    const html = renderTab2();
+    for (const block of ksisDefinition.ksis) {
+      const part = blockHtml(html, block.code);
+      const statement = part.indexOf(`>${escape(rules.ksis[block.code]!.statement)}</blockquote>`);
+      const version = part.indexOf(`>FedRAMP rules ${rules.version}</p>`);
+      const question = part.indexOf(escape(block.questions[0]!.text));
+      expect(statement, block.code).toBeGreaterThan(-1);
+      expect(version).toBeGreaterThan(statement);
+      expect(question).toBeGreaterThan(version);
+    }
+    expect(html).toContain("otherwise strong passwords with phishing-resistant MFA is used.</blockquote>");
+  });
+
+  it("2.3 the optional How often? line with its grey line on KSI-IAM-AAM, KSI-IAM-APM and KSI-SVC-SIN only, once per block", () => {
+    const html = renderTab2();
+    for (const block of ksisDefinition.ksis) {
+      const part = blockHtml(html, block.code);
+      const lines = part.split(">How often?</label>").length - 1;
+      expect(lines, block.code).toBe(["KSI-IAM-AAM", "KSI-IAM-APM", "KSI-SVC-SIN"].includes(block.code) ? 1 : 0);
+      expect(part.includes("FedRAMP expects ongoing activities to run on a known, documented cycle.")).toBe(lines === 1);
+    }
+  });
+
+  it("2.4, 2.5 the questions and the why-we-ask lines are the form definition's; intake 24 and 17 are not shown", () => {
+    const html = renderTab2();
+    for (const block of ksisDefinition.ksis) {
+      for (const q of block.questions) expect(html).toContain(escape(q.text));
+      expect(html).toContain(escape(block.why));
+    }
+    for (const q of ksisDefinition.readiness.questions) {
+      expect(html).toContain(escape(q.text));
+      expect(html).toContain(escape(q.why));
+    }
+    expect(html).toContain(escape(ksisDefinition.readiness.note));
+    expect(html).not.toMatch(/q-24"|q-17"|documented recovery procedures|Where do logs go/i);
+    expect(blockHtml(html, "KSI-IAM-APM").match(/<textarea/g)).toHaveLength(2);
+  });
+
+  it("question 19 is labelled Recommended; question 18 is not", () => {
+    const part = blockHtml(renderTab2(), "vulnerability_detection");
+    const q19 = part.indexOf(escape(ksisDefinition.readiness.questions[1]!.text));
+    expect(part.indexOf(">Recommended</span>")).toBeGreaterThan(q19);
+    expect(part.split(">Recommended</span>").length - 1).toBe(1);
+  });
+
+  it("2.6, 2.7, 2.8, 2.9 each block shows its status label from the shared function", () => {
+    const html = renderTab2(
+      withAnswers((a) => {
+        a.ksi["KSI-CED-RAT"]!.questions["22"] = "Yearly quiz";
+        a.ksi["KSI-IAM-APM"]!.questions["14"] = "FIDO2";
+        a.ksi["KSI-IAM-AAM"]!.how_often = "Quarterly";
+        a.ksi["KSI-SVC-SIN"]!.questions["16"] = "TLS";
+        a.ksi["KSI-SVC-SIN"]!.need_help = true;
+        a.readiness.vulnerability_detection.questions["19"] = "30 days";
+      }),
+    );
+    const label = (key: string) => /(Answered|Partly answered|Needs help|Not answered)<\/span><\/summary>/.exec(blockHtml(html, key))?.[1];
+    expect(label("KSI-CED-RAT")).toBe("Answered");
+    expect(label("KSI-IAM-APM")).toBe("Partly answered");
+    expect(label("KSI-IAM-AAM")).toBe("Not answered");
+    expect(label("KSI-SVC-SIN")).toBe("Needs help");
+    expect(label("KSI-CMT-LMC")).toBe("Not answered");
+    expect(label("vulnerability_detection")).toBe("Not answered");
+  });
+
+  it("2.10 shows the two counts over the seven KSI blocks, without the Vulnerability detection block", () => {
+    const html = renderTab2(
+      withAnswers((a) => {
+        for (const block of ksisDefinition.ksis.slice(0, 5)) for (const q of block.questions) a.ksi[block.code]!.questions[q.id] = "Yes";
+        a.ksi["KSI-CED-RAT"]!.need_help = true;
+        a.readiness.vulnerability_detection = { questions: { "18": "Scans", "19": "" }, need_help: true };
+      }),
+    );
+    expect(html).toContain(">5/7 answered, 1 needs help</p>");
+  });
+
+  it("2.14 after Submit every answer box, How often? line and need-help checkbox is read-only, and there is no Save", () => {
+    const html = renderTab2(undefined, true);
+    const controls = [...html.matchAll(/<(textarea|input)[^>]*>/g)].map((m) => m[0]);
+    expect(controls.length).toBe(8 + 2 + 3 + 8); // answers, vulnerability answers, How often? lines, checkboxes
+    for (const control of controls) expect(control).toContain('disabled=""');
+    expect(html).not.toContain(">Save<");
+    const open = renderTab2();
+    for (const control of [...open.matchAll(/<(textarea|input)[^>]*>/g)].map((m) => m[0])) expect(control).not.toContain('disabled=""');
+  });
+
+  it("2.12 the browser keeps answers within 10,000 and How often? within 200", () => {
+    const html = renderTab2();
+    expect(html.match(/<textarea[^>]*maxLength="10000"/g)).toHaveLength(10);
+    expect(html.match(/<input[^>]*maxLength="200"/g)).toHaveLength(3);
+  });
+
+  it("2.16 the customer form never shows Ignyte's CMVP control or log-context note", () => {
+    for (const html of [renderTab2(), render(view())]) {
+      expect(html).not.toMatch(/CMVP validated|Log retention and review|cmvp|log_context/);
+    }
+  });
+
+  it("2.13 a Submit stopped by tab 2's save says why, and nothing else", async () => {
+    const { ksisFlushMessage } = await import("./components/intake-tab1");
+    expect(ksisFlushMessage("conflict")).toMatch(/^Nothing was submitted: your answers on tab 2 were changed in another window/);
+    expect(ksisFlushMessage("failed")).toMatch(/^Nothing was submitted: your answers on tab 2 could not be saved/);
+    expect(ksisFlushMessage("saved")).toBeNull();
   });
 });
