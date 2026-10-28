@@ -41,7 +41,7 @@ export class SchemaManifestError extends Error {
  * ~server/services. So the vendored files are found from the repo root, the nearest
  * package.json above this file, never from this file's own directory.
  */
-function repoRoot(from: string): string {
+export function repoRoot(from: string): string {
   let dir = from;
   while (!existsSync(path.join(dir, "package.json"))) {
     const parent = path.dirname(dir);

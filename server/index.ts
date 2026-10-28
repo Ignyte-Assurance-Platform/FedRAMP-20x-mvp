@@ -18,6 +18,7 @@ import { createRequestHandler, type ServerBuild } from "react-router";
 import { getAuth } from "~server/auth";
 import { getEnv } from "~server/config";
 import { closeDb } from "~server/db";
+import { getRulesLibrary } from "~server/fedramp";
 import { withPublicOrigin } from "~server/http/public-origin";
 import { getPackageOverviewGenerator, handleLocalStorageRequest } from "~server/services";
 
@@ -79,6 +80,7 @@ export function createApp({ getBuild, mode, publicOrigin }: AppOptions): Hono {
 export async function startServer(): Promise<Server> {
   const env = getEnv(); // throws, and the process exits, on a bad config or DEV_LOGIN in production
   getPackageOverviewGenerator(); // throws, and the process exits, when a vendored schema does not match schemas/manifest.json (WI-007 §5)
+  getRulesLibrary(); // the same for the vendored FedRAMP rules: hash and schema of every version folder (WI-005 E1)
   const mode = env.NODE_ENV === "production" ? "production" : "development";
 
   let server: Server;

@@ -32,3 +32,18 @@ describe("production start-up guard", () => {
     expect(result.stderr).toContain("Refusing to start: DEV_LOGIN is set while NODE_ENV=production");
   });
 });
+
+describe("vendored rules start-up guard (WI-005 2.18)", () => {
+  it.each(["hash", "schema"] as const)("refuses to start when the rules file fails its %s check", async (tamper) => {
+    const { makeRulesRoot } = await import("../../server/fedramp/testdata/rules-fixture");
+    const fixture = makeRulesRoot({ tamper });
+    try {
+      const result = start({ NODE_ENV: "development", FEDRAMP_RULES_DIR: fixture.root, DEV_LOGIN: "1" });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Refusing to start:");
+      expect(result.stderr).toMatch(tamper === "hash" ? /does not match its SHA-256/ : /do not match their schema/);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});

@@ -6,6 +6,7 @@ import {
   getCompanyFormDefinition,
   createPackageOverviewGenerator,
   fallbackPackageId,
+  getRulesLibrary,
   LOGO_HOST_NOT_CONFIGURED,
   SchemaNavigator,
   todayInNewYork,
@@ -40,6 +41,8 @@ export interface PackageOverviewDeps {
   logoBaseUrl: string | undefined;
   fetch: FetchLike;
   now: () => Date;
+  /** The vendored FedRAMP rules version stamped on each generated file (WI-005 E1, WI-007 §4). */
+  rulesVersion?: string;
 }
 
 let generator: PackageOverviewGenerator | undefined;
@@ -197,7 +200,7 @@ export async function generatePackageOverview(request: GenerateRequest, deps: Pa
     generatedBy: request.userId,
     schemaVersion: result.schemaVersion,
     schemaCommit: result.schemaCommit,
-    rulesVersion: null, // WI-012 vendors the rules
+    rulesVersion: deps.rulesVersion ?? getRulesLibrary().current.version,
     valid: result.valid,
     errors: result.problems,
     answersUpdatedAt: request.answersUpdatedAt,

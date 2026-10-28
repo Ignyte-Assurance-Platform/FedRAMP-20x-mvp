@@ -3,7 +3,7 @@
 > Brain work item: [[wi-maaz20x-005-intake-ksis]] · brain_commit 50fdb15cd9b3c71e2a85818932a3e17d50e3bf16 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-005-intake-ksis.md
 
 ## 1. Setup
-- [ ] 1.1 Read the frozen brain spec at brain_commit 50fdb15; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-005-intake-ksis.md`)
+- [x] 1.1 Read the frozen brain spec at brain_commit 50fdb15; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-005-intake-ksis.md`)
 
 ## 2. Implement
 - [ ] 2.1 WHEN tab 2 opens THEN seven collapsible blocks are shown in playbook order with the KSI code and name, followed by one "Vulnerability detection" block
@@ -23,8 +23,8 @@
 - [ ] 2.15 WHEN Submit is clicked with empty blocks THEN Submit is not blocked by this tab, and the "Not answered" and "Needs help" blocks appear as follow-ups on Screen D, computed from the saved answers; a "Partly answered" block is not listed
 - [ ] 2.16 WHEN an Ignyte user opens Screen D THEN KSI-SVC-SIN shows the "CMVP validated?" control and the log-context note field, and the customer form and the customer's intake data never contain them; WHEN the customer's intake action receives those fields THEN it refuses them
 - [ ] 2.17 WHEN a newer rules version is vendored and a customer's saved `rules_version` is older THEN Screen D renders that customer's statements from the saved version with the note "Answered under FedRAMP rules <saved>; current rules <current>."; WHEN the customer saves again THEN `rules_version` becomes the current version
-- [ ] 2.18 WHEN the vendored rules file does not match its manifest hash or its schema THEN tests fail and the app refuses to start
-- [ ] 2.19 WHEN a Package Overview file is generated THEN its `rules_version` is the vendored rules version, not null
+- [x] 2.18 WHEN the vendored rules file does not match its manifest hash or its schema THEN tests fail and the app refuses to start
+- [x] 2.19 WHEN a Package Overview file is generated THEN its `rules_version` is the vendored rules version, not null
 
 ## 3. Verify
 - [ ] 3.1 Automated review (PB - Review PR) against this spec

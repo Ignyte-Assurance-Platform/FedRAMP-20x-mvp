@@ -2,3 +2,6 @@
 # they must stay byte-exact on every platform, so no CRLF conversion.
 server/fedramp/schemas/*.json text eol=lf
 *.woff2 binary
+
+# Vendored FedRAMP consolidated rules (WI-005 E1) are hashed in each version's manifest.json too.
+server/fedramp/rules/**/*.json text eol=lf
