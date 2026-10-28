@@ -1140,6 +1140,32 @@ describe("Screen E tab 3, documents (WI-006)", () => {
     expect((await api(token, { intent: "document-remove", documentId: first.documentId })).status).toBe(400);
   });
 
+  it("#42 review: a version Ignyte removed from the middle of a chain hides only that version on Screen D", async () => {
+    const { id, token, userId } = await newCustomer();
+    const services = await import("~server/services");
+    const v1 = await uploadDocument(token, "Plan v1.pdf", PDF(100));
+    const v2 = await uploadDocument(token, "Plan v2.pdf", PDF(100), { replaces: v1.documentId });
+    const v3 = await uploadDocument(token, "Plan v3.pdf", PDF(100), { replaces: v2.documentId });
+    await services.removeDocumentByStaff(id, v2.documentId, userId);
+    const [file] = (await screenD(id)).files;
+    expect(file!.id).toBe(v3.documentId);
+    expect(file!.versions.map((v) => v.id)).toEqual([v1.documentId]);
+    expect((await screenD(id)).files).toHaveLength(1);
+  });
+
+  it("#42 review: an update that sets the kind drops fields of another kind sent with it", async () => {
+    const { token } = await newCustomer();
+    const doc = await uploadDocument(token, "Policy.pdf", PDF(100));
+    await api(token, { intent: "document-update", documentId: doc.documentId, kind: "other", kindNote: "old note" });
+    const res = await api(token, { intent: "document-update", documentId: doc.documentId, kindNote: "stale", kind: "policies", policyVersion: "3" });
+    expect(res.status).toBe(200);
+    const [stored] = (await tab(token)).documents;
+    expect(stored).toMatchObject({ kind: "policies", kindNote: null, policyVersion: "3" });
+    const back = await api(token, { intent: "document-update", documentId: doc.documentId, policyVersion: "9", kind: "other", kindNote: "kept" });
+    expect(back.status).toBe(200);
+    expect((await tab(token)).documents[0]).toMatchObject({ kind: "other", kindNote: "kept", policyVersion: null, policyUpdatedOn: null });
+  });
+
   it("2.14, 2.15 after Submit tab 1 is read-only, tab 3 still uploads, renames and replaces, the x is refused, and late files are labelled", async () => {
     const { id, token } = await newCustomer();
     const before = await uploadDocument(token, "Boundary.pdf", PDF(100));

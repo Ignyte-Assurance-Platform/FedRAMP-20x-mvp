@@ -339,9 +339,11 @@ export async function updateDocument(token: string, input: v.InferInput<typeof U
     if (fields.kind !== OTHER_KIND) fields.kindNote = null;
     if (fields.kind !== POLICIES_KIND) Object.assign(fields, { policyVersion: null, policyUpdatedOn: null });
   }
-  if (parsed.kindNote !== undefined) fields.kindNote = parsed.kindNote || null;
-  if (parsed.policyVersion !== undefined) fields.policyVersion = parsed.policyVersion || null;
-  if (parsed.policyUpdatedOn !== undefined) fields.policyUpdatedOn = parsed.policyUpdatedOn;
+  // When the same request sets the kind (the page merges queued changes), fields of another kind are dropped.
+  const allows = (kind: string) => parsed.kind === undefined || fields.kind === kind;
+  if (parsed.kindNote !== undefined && allows(OTHER_KIND)) fields.kindNote = parsed.kindNote || null;
+  if (parsed.policyVersion !== undefined && allows(POLICIES_KIND)) fields.policyVersion = parsed.policyVersion || null;
+  if (parsed.policyUpdatedOn !== undefined && allows(POLICIES_KIND)) fields.policyUpdatedOn = parsed.policyUpdatedOn;
   const row = await documentsRepo.updateCurrentIntakeDocument(deps.db, found.customer.id, parsed.documentId, fields);
   if (!row) return { kind: "refused", message: DOCUMENT_GONE_MESSAGE };
   return { kind: "updated", document: toCustomerDocument(row) };
@@ -404,12 +406,14 @@ export interface DocumentsScreen {
 export async function getDocumentsScreen(customerId: string, deps: Pick<IntakeDocumentsDeps, "db" | "now" | "definition"> = defaultDeps()): Promise<DocumentsScreen> {
   const section = await intakeAnswersRepo.findIntakeSection(deps.db, customerId, DOCUMENTS_SECTION);
   const certification = certificationOf(section?.answers);
-  const rows = await documentsRepo.listIntakeDocuments(deps.db, customerId, { current: false });
+  // Removed rows are read too, so the chain of versions runs through one Ignyte removed (#42 review).
+  const rows = await documentsRepo.listIntakeDocuments(deps.db, customerId, { current: false, includeRemoved: true });
   const byId = new Map(rows.map((row) => [row.id, row]));
-  const current = rows.filter((row) => !row.supersededAt);
+  const current = rows.filter((row) => !row.supersededAt && !row.removedAt);
   const files = current.map((row): ScreenDFile => {
     const versions: ScreenDVersion[] = [];
     for (let earlier = row.replacesDocumentId ? byId.get(row.replacesDocumentId) : undefined; earlier; earlier = earlier.replacesDocumentId ? byId.get(earlier.replacesDocumentId) : undefined) {
+      if (earlier.removedAt) continue;
       versions.push({ id: earlier.id, originalFilename: earlier.originalFilename, size: earlier.size, uploadedAt: earlier.uploadedAt, replacedOn: earlier.supersededAt ?? earlier.uploadedAt });
     }
     return {

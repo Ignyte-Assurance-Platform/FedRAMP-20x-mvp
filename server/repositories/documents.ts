@@ -26,10 +26,17 @@ export async function findLatestDocumentUnder(db: Database, customerId: string, 
 const intakeOf = (customerId: string) =>
   and(eq(schema.documents.customerId, customerId), like(schema.documents.objectPath, `customers/${customerId}/intake/%`));
 
-/** A customer's tab 3 documents that are not removed, oldest first; `current` leaves out replaced versions. */
-export async function listIntakeDocuments(db: Database, customerId: string, options: { current: boolean }): Promise<DocumentRow[]> {
+/**
+ * A customer's tab 3 documents, oldest first: not removed unless `includeRemoved`; `current`
+ * leaves out replaced versions.
+ */
+export async function listIntakeDocuments(db: Database, customerId: string, options: { current: boolean; includeRemoved?: boolean }): Promise<DocumentRow[]> {
   return db.query.documents.findMany({
-    where: and(intakeOf(customerId), isNull(schema.documents.removedAt), options.current ? isNull(schema.documents.supersededAt) : undefined),
+    where: and(
+      intakeOf(customerId),
+      options.includeRemoved ? undefined : isNull(schema.documents.removedAt),
+      options.current ? isNull(schema.documents.supersededAt) : undefined,
+    ),
     orderBy: [asc(schema.documents.uploadedAt), asc(schema.documents.id)],
   });
 }
