@@ -8,6 +8,7 @@ import { getDb, type Database } from "~server/db";
 import { getDocumentStore, getLogoPublisher, logoObjectPath, logoObjectPrefix, publicObjectUrl, type DocumentStore, type LogoPublisher } from "~server/storage";
 import { CustomerError, markIntakeStarted, resolveIntakeToken, submitIntake } from "./customers";
 import { documentsSubmitProblems, getDocumentsDefinition, loadDocumentsTab, type DocumentsTabView } from "./intake-documents";
+import { loadKsisTab, saveKsisSection, type KsisDeps, type KsisTabView } from "./intake-ksis";
 import { INTAKE_LINK_EXPIRED_MESSAGE } from "./intake-link";
 import { TAB1_SECTION } from "./package-overview";
 
@@ -27,6 +28,9 @@ export interface IntakeDeps {
   now: () => Date;
   definition: FormDefinition;
   checker: Tab1Checker;
+  /** Tab 2 (WI-005): the vendored rules and ksis.v1.json; the process-wide ones when left out. */
+  rules?: KsisDeps["rules"];
+  ksisDefinition?: KsisDeps["definition"];
 }
 
 let checker: Tab1Checker | undefined;
@@ -90,6 +94,8 @@ export interface IntakeView {
   version: number;
   savedAt: Date | null;
   logo: IntakeLogo | null;
+  /** Tab 2 (WI-005): read-only with tab 1 after Submit. Never holds Ignyte's consultant fields. */
+  ksis: KsisTabView;
   /** Tab 3 (WI-006): open before and after Submit. */
   documents: DocumentsTabView;
 }
@@ -121,11 +127,23 @@ export async function openIntake(token: string, deps: IntakeDeps = defaultDeps()
     version: section?.version ?? 0,
     savedAt: section?.updatedAt ?? null,
     logo: await currentLogo(customer.id, deps),
+    ksis: await loadKsisTab(customer.id, ksisDeps(deps)),
     documents: await loadDocumentsTab(customer, { db: deps.db, now: deps.now, definition: getDocumentsDefinition() }),
   };
 }
 
+const ksisDeps = (deps: IntakeDeps) => ({
+  db: deps.db,
+  now: deps.now,
+  ...(deps.rules ? { rules: deps.rules } : {}),
+  ...(deps.ksisDefinition ? { definition: deps.ksisDefinition } : {}),
+});
+
+/** The sections a customer saves through the link: tab 1 (company) and tab 2 (ksis), never tab 3's (E3). */
+export const SAVE_SECTIONS = ["company", "ksis"] as const;
+
 const SaveInput = v.object({
+  section: v.optional(v.picklist(SAVE_SECTIONS)),
   answers: v.record(v.string(), v.unknown()),
   version: v.pipe(v.number(), v.integer(), v.minValue(0)),
 });
@@ -139,6 +157,14 @@ export type SaveOutcome =
   | { kind: "saved"; version: number; savedAt: Date }
   | { kind: "conflict"; answers: Record<string, unknown>; version: number; savedAt: Date };
 
+/** Tab 2 save (WI-005 E3, E4): the same lock as tab 1 through writable(), then the ksis section. */
+async function saveKsis(token: string, input: { answers: unknown; version: number }, deps: IntakeDeps): Promise<SaveOutcome> {
+  const access = await writable(token, deps);
+  if ("kind" in access) return access;
+  const outcome = await saveKsisSection(access.customer, input, ksisDeps(deps));
+  return outcome.kind === "conflict" ? { ...outcome, answers: outcome.answers as unknown as Record<string, unknown> } : outcome;
+}
+
 async function writable(token: string, deps: Pick<IntakeDeps, "db" | "now">): Promise<{ customer: CustomerRow } | IntakeRefusal> {
   const access = await resolveIntakeToken(token, deps);
   if (!access.ok) return { kind: "expired", message: access.message };
@@ -146,9 +172,10 @@ async function writable(token: string, deps: Pick<IntakeDeps, "db" | "now">): Pr
   return { customer: access.customer };
 }
 
-/** Save and autosave (E2): written only if the page's version is still current; status to In progress on the first save. */
+/** Save and autosave (E2): written only if the page's version is still current; status to In progress on the first save. Tab 2 when `section` is "ksis". */
 export async function saveIntake(token: string, input: SaveIntakeInput, deps: IntakeDeps = defaultDeps()): Promise<SaveOutcome> {
-  const { answers, version } = v.parse(SaveInput, input);
+  const { section, answers, version } = v.parse(SaveInput, input);
+  if (section === "ksis") return saveKsis(token, { answers, version }, deps);
   const access = await writable(token, deps);
   if ("kind" in access) return access;
   const clean = withoutIgnyteOwned(answers);
@@ -176,7 +203,7 @@ export type SubmitOutcome = SaveOutcome | { kind: "problems"; problems: Problem[
  * and the logo rule, and tab 3's files (WI-006 2.11). With problems nothing is locked; without, tabs 1 and 2 lock (Submitted).
  */
 export async function submitTab1(token: string, input: SaveIntakeInput, deps: IntakeDeps = defaultDeps()): Promise<SubmitOutcome> {
-  const saved = await saveIntake(token, input, deps);
+  const saved = await saveIntake(token, { ...input, section: "company" }, deps);
   if (saved.kind !== "saved") return saved;
   const access = await resolveIntakeToken(token, deps);
   if (!access.ok) return { kind: "expired", message: access.message };

@@ -8,7 +8,7 @@ interface Call {
   resolve: (result: PostResult) => void;
 }
 
-function harness(version = 1) {
+function harness(version = 1, section?: "company" | "ksis") {
   const calls: Call[] = [];
   const states: SaveState[] = [];
   const conflicts: Conflict[] = [];
@@ -19,6 +19,7 @@ function harness(version = 1) {
     delayMs: 2000,
     onState: (s) => states.push(s),
     onConflict: (c) => conflicts.push(c),
+    ...(section ? { section } : {}),
   });
   const type = (next: Record<string, unknown>) => {
     saver.changed(next);
@@ -159,5 +160,73 @@ describe("intake saver (WI-004 E2)", () => {
     expect(h.calls).toHaveLength(1);
     void h.saver.save(5); // Keep mine
     expect(h.calls[1]!.body).toMatchObject({ version: 5, answers: { a: 4 } });
+  });
+});
+
+describe("tab 2 saver and Submit's flush (WI-005 E3, E3b)", () => {
+  it("2.11 posts tab 2 saves with section ksis and the version the last save returned; tab 1's carry no section", async () => {
+    const tab2 = harness(0, "ksis");
+    tab2.type({ ksi: { "KSI-CED-RAT": { questions: { "22": "Q" } } } });
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(tab2.calls[0]!.body).toMatchObject({ intent: "save", section: "ksis", version: 0 });
+    tab2.calls[0]!.resolve(tab2.ok(1));
+    await vi.advanceTimersByTimeAsync(0);
+    tab2.type({ ksi: {} });
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(tab2.calls[1]!.body).toMatchObject({ section: "ksis", version: 1 });
+
+    const tab1 = harness(1);
+    tab1.type({ a: 2 });
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(tab1.calls[0]!.body).not.toHaveProperty("section");
+  });
+
+  it("2.13 flush saves pending changes at once, without waiting for the autosave delay", async () => {
+    const h = harness(3, "ksis");
+    h.type({ x: 1 });
+    const flushing = h.saver.flush();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.calls).toHaveLength(1);
+    h.calls[0]!.resolve(h.ok(4));
+    expect(await flushing).toBe("saved");
+    expect(h.saver.version).toBe(4);
+  });
+
+  it("2.13 flush waits for the save in flight, then saves what was typed meanwhile, one request at a time", async () => {
+    const h = harness(1, "ksis");
+    h.type({ x: 1 });
+    await vi.advanceTimersByTimeAsync(2000);
+    h.type({ x: 2 }); // typed while the first save is on its way
+    const flushing = h.saver.flush();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.calls).toHaveLength(1);
+    h.calls[0]!.resolve(h.ok(2));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.calls).toHaveLength(2);
+    expect(h.calls[1]!.body).toMatchObject({ answers: { x: 2 }, version: 2 });
+    h.calls[1]!.resolve(h.ok(3));
+    expect(await flushing).toBe("saved");
+  });
+
+  it("2.13 flush with nothing pending is saved without a request", async () => {
+    const h = harness(1, "ksis");
+    expect(await h.saver.flush()).toBe("saved");
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it.each([
+    ["a network error", null, "failed"],
+    ["a server error", { status: 500, data: {} }, "failed"],
+    ["a refusal", { status: 400, data: { message: "too long" } }, "failed"],
+    ["a conflict", { status: 409, data: { answers: { x: 0 }, version: 9 } }, "conflict"],
+    ["a locked intake", { status: 423, data: {} }, "closed"],
+  ] as const)("2.13 flush reports %s, so Submit stops", async (_name, answer, expected) => {
+    const h = harness(1, "ksis");
+    h.type({ x: 1 });
+    const flushing = h.saver.flush();
+    await vi.advanceTimersByTimeAsync(0);
+    h.calls[0]!.resolve(answer as PostResult);
+    expect(await flushing).toBe(expected);
+    expect(h.calls).toHaveLength(1);
   });
 });

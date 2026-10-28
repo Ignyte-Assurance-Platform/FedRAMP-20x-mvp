@@ -2,6 +2,7 @@ export * from "./customers";
 export * from "./documents";
 export * from "./intake";
 export * from "./intake-documents";
+export * from "./intake-ksis";
 export * from "./intake-link";
 export * from "./logos";
 export * from "./health";

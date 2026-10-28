@@ -16,8 +16,8 @@
 - [ ] 2.8 WHEN some but not all questions of a block have an answer THEN the block shows "Partly answered"; WHEN nothing is filled and help is not ticked THEN "Not answered"
 - [ ] 2.9 WHEN "need help" is ticked on a block whose questions are all answered THEN the block shows "Needs help" and counts in both "answered" and "needs help"; WHEN only "need help" is ticked and nothing is typed THEN it counts only in "needs help"
 - [ ] 2.10 WHEN tab 2 is shown THEN the two counts over the seven KSI blocks appear, for example "5/7 answered, 1 needs help", and the Vulnerability detection block is not counted
-- [ ] 2.11 WHEN Save is clicked THEN answers, "How often?" values and flags persist per KSI and question with `rules_version` set by the server to the vendored version, and reopening the link shows them
-- [ ] 2.12 WHEN a save carries a key that is not in the form definition, or a value over its limit THEN the server refuses it
+- [x] 2.11 WHEN Save is clicked THEN answers, "How often?" values and flags persist per KSI and question with `rules_version` set by the server to the vendored version, and reopening the link shows them
+- [x] 2.12 WHEN a save carries a key that is not in the form definition, or a value over its limit THEN the server refuses it
 - [ ] 2.13 WHEN Submit is clicked with unsaved tab 2 changes THEN they are saved first; WHEN that save fails or conflicts THEN Submit stops, shows it and nothing is locked
 - [ ] 2.14 WHEN the customer has submitted THEN tab 2 is read-only, the "need help" checkbox included, and a tab 2 save is refused; WHEN Ignyte unlocks THEN tab 2 is editable again
 - [ ] 2.15 WHEN Submit is clicked with empty blocks THEN Submit is not blocked by this tab, and the "Not answered" and "Needs help" blocks appear as follow-ups on Screen D, computed from the saved answers; a "Partly answered" block is not listed
