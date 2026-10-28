@@ -14,8 +14,8 @@ export default [
   ...prefix("api", [
     route("health", "routes/api/health.ts"),
     route("dev-login", "routes/api/dev-login.ts"),
-    route("uploads/:token", "routes/api/uploads.$token.ts"),
     route("intake/:token", "routes/api/intake.$token.ts"),
     route("customers/:customerId/package-overview/download", "routes/api/package-overview-download.ts"),
+    route("customers/:customerId/documents/:documentId/download", "routes/api/document-download.ts"),
   ]),
 ] satisfies RouteConfig;

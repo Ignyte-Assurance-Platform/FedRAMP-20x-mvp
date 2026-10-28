@@ -45,8 +45,8 @@ Open http://localhost:3000 and choose **Dev sign-in (local only)**. That button 
 | A, sign in | `/login` | Anyone; Ignyte Google Workspace accounts on the allowlist get in |
 | B, customers list | `/customers` (`/` redirects here) | Ignyte staff |
 | C, create customer | `/customers/new` | Ignyte staff |
-| D, customer page (intake link, Package Overview JSON) | `/customers/:customerId/package` | Ignyte staff |
-| E, customer intake | `/intake/:token` (page), `/api/intake/:token` (save, Submit, logo; JSON, body capped at 256 KB) | The customer, with the link; no sign-in. The link expires 30 days after it is issued |
+| D, customer page (intake link, tab 1 answers, tab 3 documents, Package Overview JSON) | `/customers/:customerId/package`, `/api/customers/:customerId/documents/:documentId/download` (signed attachment URL) | Ignyte staff |
+| E, customer intake | `/intake/:token` (page), `/api/intake/:token` (save, Submit, logo, tab 3 certification and documents; JSON, body capped at 256 KB). Documents go straight to the bucket in resumable sessions (up to 250 MB each); with `STORAGE_DRIVER=local` the session and signed URLs are served at `/api/uploads/:token` | The customer, with the link; no sign-in. The link expires 30 days after it is issued |
 
 Every staff route goes through one guard (`requireStaffUser`); a customer link token is never accepted there.
 

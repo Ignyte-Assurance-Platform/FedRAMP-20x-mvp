@@ -73,5 +73,6 @@ export function urlExpiry(seconds = DEFAULT_URL_TTL_SECONDS): Date {
 }
 
 export function attachmentDisposition(filename: string): string {
-  return `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`;
+  const encoded = encodeURIComponent(filename).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename*=UTF-8''${encoded}`;
 }

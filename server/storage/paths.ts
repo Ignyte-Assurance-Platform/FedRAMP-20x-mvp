@@ -1,18 +1,6 @@
-/** Object paths and upload limits from the brain contract "customer document storage layout". */
+/** Object paths from the brain contract "customer document storage layout"; tab 3's accepted types and size are in app/lib/documents.ts (WI-006 §5). */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Contract §2: PDF, Word, Excel. */
-export const ALLOWED_CONTENT_TYPES: ReadonlySet<string> = new Set([
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-]);
-
-/** Contract §2: 100 MB per file for the MVP. */
-export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 /**
  * Keeps the original name readable but safe as one path segment: no separators,

@@ -7,6 +7,7 @@ import { getEnv } from "~server/config";
 import { getDb, type Database } from "~server/db";
 import { getDocumentStore, getLogoPublisher, logoObjectPath, logoObjectPrefix, publicObjectUrl, type DocumentStore, type LogoPublisher } from "~server/storage";
 import { CustomerError, markIntakeStarted, resolveIntakeToken, submitIntake } from "./customers";
+import { documentsSubmitProblems, getDocumentsDefinition, loadDocumentsTab, type DocumentsTabView } from "./intake-documents";
 import { INTAKE_LINK_EXPIRED_MESSAGE } from "./intake-link";
 import { TAB1_SECTION } from "./package-overview";
 
@@ -89,6 +90,8 @@ export interface IntakeView {
   version: number;
   savedAt: Date | null;
   logo: IntakeLogo | null;
+  /** Tab 3 (WI-006): open before and after Submit. */
+  documents: DocumentsTabView;
 }
 
 async function logoView(row: { id: string; originalFilename: string; objectPath: string }, deps: Pick<IntakeDeps, "store" | "logoBaseUrl">): Promise<IntakeLogo> {
@@ -118,6 +121,7 @@ export async function openIntake(token: string, deps: IntakeDeps = defaultDeps()
     version: section?.version ?? 0,
     savedAt: section?.updatedAt ?? null,
     logo: await currentLogo(customer.id, deps),
+    documents: await loadDocumentsTab(customer, { db: deps.db, now: deps.now, definition: getDocumentsDefinition() }),
   };
 }
 
@@ -169,7 +173,7 @@ export type SubmitOutcome = SaveOutcome | { kind: "problems"; problems: Problem[
 
 /**
  * Submit: saves what is on the page (same version rule), then checks tab 1 against the schema
- * and the logo rule. With problems nothing is locked; without, tabs 1 and 2 lock (Submitted).
+ * and the logo rule, and tab 3's files (WI-006 2.11). With problems nothing is locked; without, tabs 1 and 2 lock (Submitted).
  */
 export async function submitTab1(token: string, input: SaveIntakeInput, deps: IntakeDeps = defaultDeps()): Promise<SubmitOutcome> {
   const saved = await saveIntake(token, input, deps);
@@ -178,7 +182,11 @@ export async function submitTab1(token: string, input: SaveIntakeInput, deps: In
   if (!access.ok) return { kind: "expired", message: access.message };
   const section = await intakeAnswersRepo.findIntakeSection(deps.db, access.customer.id, TAB1_SECTION);
   const logo = await documentsRepo.findLatestDocumentUnder(deps.db, access.customer.id, logoObjectPrefix(access.customer.id));
-  const problems = deps.checker.check(section?.answers ?? {}, { hasLogo: Boolean(logo), labels: deps.definition.labels });
+  const problems = [
+    ...deps.checker.check(section?.answers ?? {}, { hasLogo: Boolean(logo), labels: deps.definition.labels }),
+    // Tab 3 (WI-006 2.11): a file without "What is this?", an Other without its note, a policy without version or date.
+    ...(await documentsSubmitProblems(access.customer.id, deps)).map((p) => ({ ...p, question: "Documents", raw: "" })),
+  ];
   if (problems.length) return { kind: "problems", problems, version: saved.version, savedAt: saved.savedAt };
   try {
     await submitIntake(access.customer.id, deps);

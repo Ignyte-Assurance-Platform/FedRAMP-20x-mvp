@@ -77,8 +77,8 @@ async function checksums(file: string): Promise<{ md5: string; crc32c: string }>
 }
 
 /**
- * Local disk stand-in for Cloud Storage. Signed URLs point at the resource route
- * app/routes/api/uploads.$token.ts, which exists only for this driver and calls
+ * Local disk stand-in for Cloud Storage. Signed URLs point at /api/uploads/:token, which the
+ * Hono server (server/index.ts) routes to this driver only, and which calls
  * put() and send() below. Each object gets a sidecar `.meta.json` with its content type,
  * MD5 and CRC32C (and SHA-256 for single uploads), the way Cloud Storage keeps object metadata.
  * Resumable sessions keep their bytes in `<object>.part` until the last byte arrives.
