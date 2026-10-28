@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { storedBytes, uploadResumable, UploadFailedError } from "./resumable-upload";
+import { MAX_STALLS, storedBytes, uploadResumable, UploadFailedError } from "./resumable-upload";
 
 /** The browser side of the resumable session (WI-006 2.5, 2.6) against a fake session that behaves like Cloud Storage's. */
 
@@ -51,6 +51,16 @@ describe("uploadResumable", () => {
     const refused = fakeSession(20, { refuse: 403 });
     await expect(uploadResumable({ url: "https://s", file: new Blob(["x".repeat(20)]), partBytes: 10, fetch: refused.fetch, wait: noWait })).rejects.toThrow("refused (403)");
     expect(refused.ranges).toHaveLength(1);
+  });
+
+  it("gives up when 308s stop moving the offset (Range unreadable) instead of looping", async () => {
+    let calls = 0;
+    const fetch = (async () => {
+      calls++;
+      return new Response(null, { status: 308 });
+    }) as unknown as typeof globalThis.fetch;
+    await expect(uploadResumable({ url: "https://s", file: new Blob(["x".repeat(25)]), partBytes: 10, fetch, wait: noWait })).rejects.toThrow(UploadFailedError);
+    expect(calls).toBe(MAX_STALLS);
   });
 
   it("reads the stored range of a 308", () => {

@@ -8,6 +8,7 @@ import {
   documentProblems,
   DOCUMENT_MAX_BYTES,
   isCertificationOld,
+  todayIso,
   itemsFor,
   signatureMatches,
   type CustomerDocument,
@@ -92,6 +93,9 @@ describe("12-month warning (2.4)", () => {
     expect(isCertificationOld("2025-10-28", "2026-10-28")).toBe(false);
     expect(isCertificationOld("2026-06-30", "2026-10-28")).toBe(false);
     expect(isCertificationOld(null, "2026-10-28")).toBe(false);
+    // 23:30 ET on Oct 27 is already Oct 28 in UTC; the day is ET's.
+    expect(todayIso(new Date("2026-10-28T03:30:00Z"))).toBe("2026-10-27");
+    expect(todayIso(new Date("2026-10-28T04:30:00Z"))).toBe("2026-10-28");
     expect(definition.messages.old).toBe("FedRAMP requires a certification from the past 12 months (FRC-CLA-ASF). You can continue; your consultant will follow up.");
   });
 });

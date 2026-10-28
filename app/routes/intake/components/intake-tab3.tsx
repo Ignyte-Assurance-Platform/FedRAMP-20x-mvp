@@ -21,6 +21,7 @@ import {
 } from "~/lib/documents";
 import { fieldDomId } from "./form-fields";
 import { uploadResumable, UploadFailedError } from "./resumable-upload";
+import { createSerialSave, type SerialSave } from "./serial-save";
 
 /**
  * Screen E tab 3 (WI-006): the certification with its 12-month warning, the drop box, the
@@ -66,32 +67,43 @@ export function IntakeTab3({
 }) {
   const { definition } = view;
   const [certification, setCertification] = useState(view.certification);
-  const [certificationVersion, setCertificationVersion] = useState(view.certificationVersion);
   const [certificationMessage, setCertificationMessage] = useState<string | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [dragging, setDragging] = useState(false);
   const [rowMessages, setRowMessages] = useState<Record<string, string>>({});
   const fileInput = useRef<HTMLInputElement>(null);
+  // Saves go out one at a time, each with the version the previous one returned (#42 review).
+  // `post` is stable (useCallback on the token), so the savers can keep the first one.
+  const documentSavers = useRef(new Map<string, SerialSave<Partial<CustomerDocument>>>());
 
   const items = itemsFor(definition, certification.type);
   const old = isCertificationOld(certification.period_end_date, view.today);
 
-  async function saveCertification(next: CertificationAnswers) {
+  const [certificationSaver] = useState(() => {
+    let version = view.certificationVersion;
+    const saver: SerialSave<CertificationAnswers> = createSerialSave(async (next) => {
+      const result = await post({ intent: "certification-save", certification: next, version });
+      if (result?.status === 200) {
+        version = Number(result.data.version);
+        setCertificationMessage(null);
+      } else if (result?.status === 409) {
+        // Changed in another window: show what is stored, the customer picks again if needed.
+        saver.discard();
+        setCertification(result.data.certification as CertificationAnswers);
+        version = Number(result.data.version);
+        setCertificationMessage("This was changed in another window; it now shows what is saved.");
+      } else if (result && result.status !== 410) {
+        setCertificationMessage(String(result.data.message ?? "Not saved. Try again."));
+      } else if (!result) {
+        setCertificationMessage("Not saved. Check the connection and try again.");
+      }
+    });
+    return saver;
+  });
+
+  function saveCertification(next: CertificationAnswers) {
     setCertification(next);
-    const result = await post({ intent: "certification-save", certification: next, version: certificationVersion });
-    if (result?.status === 200) {
-      setCertificationVersion(Number(result.data.version));
-      setCertificationMessage(null);
-    } else if (result?.status === 409) {
-      // Changed in another window: show what is stored, the customer picks again if needed.
-      setCertification(result.data.certification as CertificationAnswers);
-      setCertificationVersion(Number(result.data.version));
-      setCertificationMessage("This was changed in another window; it now shows what is saved.");
-    } else if (result && result.status !== 410) {
-      setCertificationMessage(String(result.data.message ?? "Not saved. Try again."));
-    } else if (!result) {
-      setCertificationMessage("Not saved. Check the connection and try again.");
-    }
+    void certificationSaver.save(next);
   }
 
   const setRowMessage = (id: string, message: string | null) =>
@@ -128,16 +140,29 @@ export function IntakeTab3({
     for (const file of Array.from(files)) void upload(file);
   }
 
-  async function change(doc: CustomerDocument, fields: Partial<CustomerDocument>) {
+  function change(doc: CustomerDocument, fields: Partial<CustomerDocument>) {
     onDocumentsChange((current) => current.map((d) => (d.id === doc.id ? { ...d, ...fields } : d)));
-    const result = await post({ intent: "document-update", documentId: doc.id, ...fields });
-    if (result?.status === 200) {
-      const saved = result.data.document as CustomerDocument;
-      onDocumentsChange((current) => current.map((d) => (d.id === doc.id ? saved : d)));
-      setRowMessage(doc.id, null);
-    } else {
-      setRowMessage(doc.id, String(result?.data.message ?? "Not saved. Try again."));
+    let saver = documentSavers.current.get(doc.id);
+    if (!saver) {
+      const row: SerialSave<Partial<CustomerDocument>> = createSerialSave(
+        async (pending) => {
+          const result = await post({ intent: "document-update", documentId: doc.id, ...pending });
+          if (result?.status === 200) {
+            // A newer change is still waiting: keep what the customer typed on screen.
+            if (row.hasPending()) return;
+            const saved = result.data.document as CustomerDocument;
+            onDocumentsChange((current) => current.map((d) => (d.id === doc.id ? saved : d)));
+            setRowMessage(doc.id, null);
+          } else {
+            setRowMessage(doc.id, String(result?.data.message ?? "Not saved. Try again."));
+          }
+        },
+        (waiting, next) => ({ ...waiting, ...next }),
+      );
+      saver = row;
+      documentSavers.current.set(doc.id, saver);
     }
+    void saver.save(fields);
   }
 
   async function remove(doc: CustomerDocument) {
@@ -283,7 +308,7 @@ export function IntakeTab3({
                 kinds={items}
                 canRemove={!submitted}
                 message={rowMessages[doc.id] ?? null}
-                onChange={(fields) => void change(doc, fields)}
+                onChange={(fields) => change(doc, fields)}
                 onReplace={(file) => void upload(file, doc.id)}
                 onRemove={() => void remove(doc)}
               />

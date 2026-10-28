@@ -6,6 +6,9 @@
  * and continues from there, never from the start.
  */
 
+/** 308s in a row that do not move the offset before giving up (e.g. the browser cannot read Range). */
+export const MAX_STALLS = 3;
+
 /** Cloud Storage wants parts in multiples of 256 KiB (except the last). */
 export const PART_BYTES = 8 * 1024 * 1024;
 
@@ -48,6 +51,13 @@ export async function uploadResumable(options: ResumableUploadOptions): Promise<
 
   let offset = 0;
   let failures = 0;
+  let stalls = 0;
+  const moveTo = (stored: number) => {
+    if (stored > offset) stalls = 0;
+    else if (++stalls >= MAX_STALLS) throw new UploadFailedError("The upload is not moving forward. Try again.");
+    offset = stored;
+    options.onProgress?.(offset, total);
+  };
   for (;;) {
     const end = Math.min(offset + partBytes, total) - 1;
     const res = await put(`bytes ${offset}-${end}/${total}`, file.slice(offset, end + 1));
@@ -56,9 +66,8 @@ export async function uploadResumable(options: ResumableUploadOptions): Promise<
       return;
     }
     if (res?.status === 308) {
-      offset = storedBytes(res);
       failures = 0;
-      options.onProgress?.(offset, total);
+      moveTo(storedBytes(res));
       continue;
     }
     if (!retryable(res)) throw new UploadFailedError(`The upload was refused (${res?.status}).`);
@@ -70,9 +79,6 @@ export async function uploadResumable(options: ResumableUploadOptions): Promise<
       options.onProgress?.(total, total);
       return;
     }
-    if (status?.status === 308) {
-      offset = storedBytes(status);
-      options.onProgress?.(offset, total);
-    }
+    if (status?.status === 308) moveTo(storedBytes(status));
   }
 }

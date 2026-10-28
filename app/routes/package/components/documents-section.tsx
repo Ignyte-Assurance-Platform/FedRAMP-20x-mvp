@@ -92,7 +92,12 @@ export function DocumentsSection({ customerId, data, busy }: { customerId: strin
                   <a href={documentDownloadHref(customerId, file.id)} className={linkClass}>
                     Download
                   </a>
-                  <Form method="post">
+                  <Form
+                    method="post"
+                    onSubmit={(e) => {
+                      if (!window.confirm(`Remove ${file.displayName}? It disappears for the customer too; the stored copy stays.`)) e.preventDefault();
+                    }}
+                  >
                     <input type="hidden" name="intent" value="remove-document" />
                     <input type="hidden" name="documentId" value={file.id} />
                     <Button type="submit" variant="outline" size="sm" disabled={busy} aria-label={`Remove ${file.displayName}`}>

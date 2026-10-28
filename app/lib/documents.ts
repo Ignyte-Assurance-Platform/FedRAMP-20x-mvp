@@ -139,8 +139,11 @@ export function isCertificationOld(periodEnd: string | null, today: string): boo
   return periodEnd < yearAgo;
 }
 
+const isoDay = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" });
+
+/** Today in FedRAMP's timezone (ET) as YYYY-MM-DD, so the 12-month warning flips at ET midnight. */
 export function todayIso(now: Date = new Date()): string {
-  return now.toISOString().slice(0, 10);
+  return isoDay.format(now);
 }
 
 /** What the customer sees and edits for one current file. */
