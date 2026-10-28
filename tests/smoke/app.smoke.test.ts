@@ -710,6 +710,44 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     expect(await getDb().select().from(schema.documents).where(eq(schema.documents.customerId, id))).toHaveLength(1);
   });
 
+  it("two logo-finishes at the same time both answer the one recorded logo, which stays public (IGN-21)", async () => {
+    const { id, token } = await newCustomer();
+    const start = await api(token, { intent: "logo-start", filename: "logo.png", contentType: "image/png", size: PNG_300.length, width: 300 });
+    const { logoId, upload } = (await start.json()) as { logoId: string; upload: { url: string; method: string; headers: Record<string, string> } };
+    await app.request(upload.url, { method: upload.method, headers: upload.headers, body: new Uint8Array(PNG_300) });
+
+    const services = await import("~server/services");
+    const { getDb, schema } = await import("~server/db");
+    const { getDocumentStore, getLogoPublisher } = await import("~server/storage");
+    const fedramp = await import("~server/fedramp");
+    // Each publish waits until both finishes reach it, so both have found no row before either
+    // inserts: the second insert collides on the primary key, as a double click can.
+    const logos = getLogoPublisher();
+    let arrived = 0;
+    let bothArrived!: () => void;
+    const barrier = new Promise<void>((resolve) => (bothArrived = resolve));
+    const racing = {
+      isPublished: (objectPath: string) => logos.isPublished(objectPath),
+      unpublish: (objectPath: string) => logos.unpublish(objectPath),
+      publish: async (objectPath: string, contentType: string) => {
+        if (++arrived === 2) bothArrived();
+        await barrier;
+        return logos.publish(objectPath, contentType);
+      },
+    };
+    const deps = { db: getDb(), store: getDocumentStore(), logos: racing, logoBaseUrl: undefined, now: () => new Date(), definition: fedramp.getCompanyFormDefinition(), checker: fedramp.createTab1Checker() };
+    const finish = () => services.finishLogoUpload(token, { logoId, filename: "logo.png", contentType: "image/png" }, deps);
+    const outcomes = await Promise.all([finish(), finish()]);
+    expect(arrived).toBe(2);
+    expect(outcomes).toEqual([expect.objectContaining({ kind: "stored", logo: expect.objectContaining({ documentId: logoId }) }), expect.objectContaining({ kind: "stored", logo: expect.objectContaining({ documentId: logoId }) })]);
+
+    const { eq } = await import("drizzle-orm");
+    expect(await getDb().select().from(schema.documents).where(eq(schema.documents.customerId, id))).toHaveLength(1);
+    // The losing finish neither unpublished nor deleted the logo the winner recorded.
+    await expect(access(path.join(logoDir, `customers/${id}/logo/${logoId}.png`))).resolves.toBeUndefined();
+    expect(await getDocumentStore().stat(`customers/${id}/logo/${logoId}.png`)).not.toBeNull();
+  });
+
   it("2.10, 2.12 stores a PNG logo on Ignyte's side and the file uses the hosted URL; a fake PNG is deleted and not recorded", async () => {
     const { id, token } = await newCustomer();
     const stored = await uploadLogo(token, PNG_300);
