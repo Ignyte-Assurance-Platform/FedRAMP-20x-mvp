@@ -79,6 +79,15 @@ export class GcsDocumentStore implements DocumentStore {
     };
   }
 
+  async readStart(objectPath: string, bytes: number): Promise<Buffer | null> {
+    assertObjectPath(objectPath);
+    const file = (await this.bucket()).file(objectPath);
+    const [exists] = await file.exists();
+    if (!exists) return null;
+    const [content] = await file.download({ start: 0, end: bytes - 1 });
+    return content;
+  }
+
   private async bucket(): Promise<Bucket> {
     if (!this.bucketRef) {
       const storage = this.options.storage ?? new (await import("@google-cloud/storage")).Storage();

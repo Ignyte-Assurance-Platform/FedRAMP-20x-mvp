@@ -3,6 +3,8 @@
 # a new revision), adds the traffic block that keeps the serving revision at 100 %, then runs
 # `gcloud run services replace`.
 # Secrets are Secret Manager references only; values never live in this file.
+# The staff allowlist (ADMIN_EMAILS) is in Secret Manager too: emails never live in the repo (WI-002 §3).
+# To add or remove someone: new version of the secret, then run "Deploy dev" by hand.
 # The app reaches the shared Postgres in ignyte-data-dev through the cloud-sql-proxy sidecar,
 # logged in as the web-app service account (IAM database auth, no password).
 apiVersion: serving.knative.dev/v1
@@ -48,12 +50,17 @@ spec:
               value: gcs
             - name: GCS_BUCKET
               value: ignyte-maaz20x-dev-documents
+            - name: GCS_LOGO_BUCKET
+              value: ignyte-customer-logos-dev
             - name: LOGO_PUBLIC_BASE_URL
               value: https://storage.googleapis.com/ignyte-customer-logos-dev/
             - name: GOOGLE_ALLOWED_DOMAIN
               value: ignyteplatform.com
             - name: ADMIN_EMAILS
-              value: jesus.p@ignyteplatform.com
+              valueFrom:
+                secretKeyRef:
+                  name: ADMIN_EMAILS
+                  key: latest
             - name: GOOGLE_CLIENT_ID
               value: 631427647079-j4tupgrigqjuhuafooqrjaqbinakulj7.apps.googleusercontent.com
             - name: GOOGLE_CLIENT_SECRET
