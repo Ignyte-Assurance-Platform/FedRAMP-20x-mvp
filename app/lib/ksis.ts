@@ -49,9 +49,12 @@ export interface ReadinessAnswers {
   need_help: boolean;
 }
 
-/** intake_answers, section "ksis". `rules_version` is stamped by the server on every save, never sent by the browser. */
+/**
+ * Tab 2 answers as the page edits and sends them. The stored section also holds `rules_version`,
+ * stamped by the server on every save; it never comes back in this shape, so a page that reloads
+ * or takes the stored answers sends only what checkKsisAnswers accepts (second opinion, bug A).
+ */
 export interface KsisAnswers {
-  rules_version?: string;
   ksi: Record<string, KsiBlockAnswers>;
   readiness: { vulnerability_detection: ReadinessAnswers };
 }
@@ -98,7 +101,6 @@ export function normalizeKsisAnswers(definition: KsisDefinition, stored: unknown
       vulnerability_detection: { questions: questionsOf(readiness, definition.readiness.questions), need_help: readiness.need_help === true },
     },
   };
-  if (typeof source.rules_version === "string") answers.rules_version = source.rules_version;
   return answers;
 }
 

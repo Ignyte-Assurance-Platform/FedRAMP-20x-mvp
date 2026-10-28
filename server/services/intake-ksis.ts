@@ -166,7 +166,9 @@ export async function getKsisScreen(customerId: string, deps: KsisDeps = default
   const section = await intakeAnswersRepo.findIntakeSection(deps.db, customerId, KSIS_SECTION);
   const answers = normalizeKsisAnswers(def, section?.answers);
   const current = deps.rules.current;
-  const saved = answers.rules_version ? deps.rules.get(answers.rules_version) : undefined;
+  // The stamp lives next to the answers in the stored section, never in the answers the page edits.
+  const stamp = typeof section?.answers.rules_version === "string" ? section.answers.rules_version : undefined;
+  const saved = stamp ? deps.rules.get(stamp) : undefined;
   const rules = saved ?? current;
   const statements = statementsFrom(rules, def.ksis.map((b) => b.code));
   const status = Object.fromEntries(blockSummaries(def, answers).map((b) => [b.key, b.status]));
@@ -207,8 +209,8 @@ export async function getKsisScreen(customerId: string, deps: KsisDeps = default
     rulesVersion: rules.version,
     // A saved version that differs from the current one, or whose folder is no longer vendored.
     rulesNote:
-      answers.rules_version && answers.rules_version !== current.version
-        ? `Answered under FedRAMP rules ${answers.rules_version}; current rules ${current.version}.`
+      stamp && stamp !== current.version
+        ? `Answered under FedRAMP rules ${stamp}; current rules ${current.version}.`
         : null,
     counts: (() => {
       const c = ksiCounts(def, answers);

@@ -200,6 +200,13 @@ describe("checkKsisAnswers (2.12, 2.16, E3, E7)", () => {
     expect(ok({ readiness: { vulnerability_detection: { questions: { "19": "x".repeat(answer + 1) } } } })).toBe(false);
   });
 
+  it("second opinion, bug A: answers loaded from a stored section (with the server's rules_version) pass the check when sent back", () => {
+    const stored = { rules_version: "any", ksi: { "KSI-CMT-LMC": { questions: { "21": "CloudTrail" }, how_often: null, need_help: true } } };
+    const reloaded = normalizeKsisAnswers(definition, stored);
+    expect(reloaded).not.toHaveProperty("rules_version");
+    expect(checkKsisAnswers(definition, reloaded).ok).toBe(true);
+  });
+
   it("stores answers as typed, spaces included", () => {
     const result = checkKsisAnswers(definition, { ksi: { "KSI-CMT-LMC": { questions: { "21": "  CloudTrail \n" } } } });
     expect(result.ok && result.answers.ksi["KSI-CMT-LMC"]!.questions["21"]).toBe("  CloudTrail \n");

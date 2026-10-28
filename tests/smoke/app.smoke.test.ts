@@ -940,7 +940,17 @@ describe("Screen E tab 2, KSIs (WI-005)", () => {
     expect((await tab(token)).version).toBe(0);
     const stale = await saveKsis(token, { ksi: {} }, 0);
     expect(stale.status).toBe(409);
-    expect(await stale.json()).toMatchObject({ kind: "conflict", version: 1, answers: { ksi: { "KSI-IAM-APM": { how_often: "Quarterly" } } } });
+    const conflict = (await stale.json()) as { version: number; answers: Record<string, unknown> };
+    expect(conflict).toMatchObject({ kind: "conflict", version: 1, answers: { ksi: { "KSI-IAM-APM": { how_often: "Quarterly" } } } });
+
+    // Second opinion, bug A: what the page holds after a reload, or after Take theirs, saves again as it is.
+    expect(reopened.answers).not.toHaveProperty("rules_version");
+    expect(conflict.answers).not.toHaveProperty("rules_version");
+    const again = await saveKsis(token, { ...reopened.answers }, reopened.version);
+    expect(again.status, await again.clone().text()).toBe(200);
+    const theirs = await saveKsis(token, conflict.answers, 2);
+    expect(theirs.status, await theirs.clone().text()).toBe(200);
+    expect((await storedSection(id))!.answers.rules_version).toBe(getRulesLibrary().current.version);
   });
 
   it("2.12 refuses a key outside the form definition, rules_version from the browser, an answer over 10,000 or a How often? over 200, and stores nothing", async () => {
