@@ -6,6 +6,12 @@
 export interface DocumentStore {
   readonly driver: "local" | "gcs";
   createUploadUrl(input: UploadUrlInput): Promise<SignedUrl>;
+  /**
+   * Opens a resumable upload session for one object (WI-006 §8): content type and exact size are
+   * fixed when it opens, and the object is only created if it does not exist yet. The browser
+   * sends the bytes in parts with Content-Range and, after a drop, asks for the stored range.
+   */
+  createResumableUpload(input: ResumableUploadInput): Promise<ResumableSession>;
   createDownloadUrl(objectPath: string, options?: DownloadUrlOptions): Promise<SignedUrl>;
   delete(objectPath: string): Promise<void>;
   /** null when the object does not exist. */
@@ -20,6 +26,20 @@ export interface UploadUrlInput {
   /** Upper bound the store enforces, in bytes. */
   maxBytes: number;
   expiresInSeconds?: number;
+}
+
+export interface ResumableUploadInput {
+  objectPath: string;
+  contentType: string;
+  /** Exact size in bytes; the store refuses a final size that differs. */
+  size: number;
+  /** The app's origin, so the browser may talk to the session URL (CORS). */
+  origin: string;
+}
+
+export interface ResumableSession {
+  /** The session URL the browser PUTs parts to. It is the only credential for the upload. */
+  url: string;
 }
 
 export interface DownloadUrlOptions {
@@ -40,6 +60,9 @@ export interface ObjectStat {
   contentType: string;
   /** Hex SHA-256 of the content, when the store knows it. */
   sha256: string | null;
+  /** Base64 MD5 and CRC32C (big-endian) as Cloud Storage reports them; null when the store has none. */
+  md5: string | null;
+  crc32c: string | null;
   updatedAt: Date;
 }
 
