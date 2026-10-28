@@ -36,5 +36,5 @@
 - [x] 2.28 WHEN tab 1's labels are published THEN Screen D names a tab 1 problem with the same label the customer sees
 
 ## 3. Verify
-- [ ] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear 
+- [x] 3.1 Automated review (PB - Review PR) against this spec · `.pb-cache/reviews/pr-25-2026-10-27.md`: 25/28 criteria, 0 blockers, 2 major, 8 minor, 9 nits
+- [x] 3.2 Human triage (gate 7) recorded in Linear IGN-16 · comment 1829b7a8 (2026-10-27, changes requested) and 3c2b90ee (closed: M1, M2, m3, m4, m6–m9 done with tests; m5, m10 accepted)
