@@ -31,7 +31,8 @@ export interface GoogleDirectoryOptions {
  * The google driver (WI-019 E1): Directory API members.hasMember as the runtime service account,
  * which holds the Workspace role Groups Reader. Only a 200 is an answer; every other status
  * (an address unknown to the domain answers 400 "Missing required field: memberKey") is
- * unreachable. The status and Google's message are logged, never the token.
+ * unreachable. The HTTP status and Google's status and reason codes are logged; never the token,
+ * and never Google's free-text message, which may echo the member's email.
  */
 export function googleStaffDirectory(options: GoogleDirectoryOptions): StaffDirectory {
   const auth = options.getAccessToken ? undefined : new GoogleAuth({ scopes: [DIRECTORY_SCOPE] });
@@ -48,9 +49,10 @@ export function googleStaffDirectory(options: GoogleDirectoryOptions): StaffDire
     }
     const url = `${DIRECTORY_URL}/${encodeURIComponent(group)}/hasMember/${encodeURIComponent(email.toLowerCase())}`;
     const response = await (options.fetch ?? fetch)(url, { headers: { authorization: `Bearer ${token}` }, signal });
-    const body = (await response.json().catch(() => ({}))) as { isMember?: unknown; error?: { message?: string } };
+    const body = (await response.json().catch(() => ({}))) as { isMember?: unknown; error?: { status?: string; errors?: { reason?: string }[] } };
     if (response.status === 200 && typeof body.isMember === "boolean") return body.isMember ? "member" : "not_member";
-    log(`staff directory: group ${group} answered ${response.status}: ${body.error?.message ?? "no error message"}`);
+    const reason = [body.error?.status, body.error?.errors?.[0]?.reason].filter(Boolean).join(" ") || "no error code";
+    log(`staff directory: group ${group} answered ${response.status}: ${reason}`);
     return "unreachable";
   }
 

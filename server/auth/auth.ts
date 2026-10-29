@@ -38,6 +38,8 @@ function notAuthorizedRedirect(): APIError {
 /**
  * Users are created only by a Google sign-in, after our getUserInfo found the account in the
  * staff group (WI-019): disableSignUp is off, so no other endpoint may create one.
+ * Any other social provider added later passes this path test too: it must use a getUserInfo
+ * that runs checkStaffAtSignIn, or it would create users without the group check.
  */
 export function assertUserCreatedBySignIn(path: string | undefined): void {
   if (!path?.startsWith("/callback/")) throw notAuthorized();
@@ -76,7 +78,7 @@ export function assertGoogleRefreshToken(account: { providerId?: string; refresh
 
 /** Google's ID token must carry the Ignyte hosted domain and a verified email; the hd login hint alone is never trusted. */
 export function assertIgnyteProfile(profile: GoogleProfile, domain: string): void {
-  if (profile.hd !== domain || profile.email_verified !== true) throw notAuthorizedRedirect();
+  if (profile.hd !== domain || profile.email_verified !== true || typeof profile.email !== "string") throw notAuthorizedRedirect();
 }
 
 /**

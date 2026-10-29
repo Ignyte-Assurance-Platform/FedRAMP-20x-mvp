@@ -56,6 +56,8 @@ describe("sign-in checks (WI-002)", () => {
     expect(await refusalOf({ ...ignyte, hd: "gmail.com" })).toBe(refused);
     expect(await refusalOf({ ...ignyte, hd: undefined })).toBe(refused);
     expect(await refusalOf({ ...ignyte, email_verified: false })).toBe(refused);
+    // A token without an email is refused as well, not a 500 when it is lowercased.
+    expect(await refusalOf({ ...ignyte, email: undefined })).toBe(refused);
     expect(await refusalOf(ignyte)).toBeUndefined();
   });
 

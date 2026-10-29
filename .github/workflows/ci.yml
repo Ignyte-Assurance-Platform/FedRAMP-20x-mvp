@@ -54,10 +54,13 @@ jobs:
           done
           exit 1
       - name: The retired staff allowlist stays gone (WI-019 2.11)
-        # The brackets keep this line from matching itself.
+        # The brackets keep this line from matching itself. grep exits 1 for no match; 0 (a match)
+        # and 2 (an error, such as a missing path) both fail the step.
         run: |
-          if grep -rnE 'ADMIN_[E]MAILS|seed:[a]llowlist' server deploy .github Dockerfile package.json README.md; then
-            echo "The allowlist was retired by WI-019: the staff Google group decides who may sign in."
+          status=0
+          grep -rnE 'ADMIN_[E]MAILS|seed:[a]llowlist' server deploy .github Dockerfile package.json README.md || status=$?
+          if [ "$status" -ne 1 ]; then
+            echo "The allowlist was retired by WI-019: the staff Google group decides who may sign in (grep exit $status)."
             exit 1
           fi
       - run: npm run lint

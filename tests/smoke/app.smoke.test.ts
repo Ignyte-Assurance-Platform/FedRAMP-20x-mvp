@@ -331,7 +331,7 @@ describe("Screen A, the staff guard (WI-002)", () => {
     expect(checked!.lastGroupCheckAt.getTime()).toBeGreaterThan(previous.getTime());
   });
 
-  it("2.11 (WI-019) the container runs the migrations, then the app, and no allowlist seed", async () => {
+  it("2.11 (WI-019) text check: the Dockerfile CMD runs the migrations, then the app, and no script seeds an allowlist", async () => {
     const dockerfile = await readFile(path.join(root, "Dockerfile"), "utf8");
     expect(dockerfile).toContain(`CMD ["sh", "-c", "npm run db:migrate && exec npm start"]`);
     const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8")) as { scripts: Record<string, string> };

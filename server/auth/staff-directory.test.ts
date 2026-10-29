@@ -28,17 +28,25 @@ describe("google staff directory (WI-019 E1)", () => {
   });
 
   it.each([
-    [400, "Missing required field: memberKey"],
-    [403, "Not Authorized to access this resource/api"],
-    [404, "Resource Not Found: groupKey"],
-    [429, "Quota exceeded"],
-    [500, "Backend Error"],
-    [503, "Service unavailable"],
-  ])("answers unreachable for %i and logs the status and Google's message, never the token", async (status, message) => {
-    const { dir, log } = directory(() => Response.json({ error: { code: status, message } }, { status }));
+    [400, "INVALID_ARGUMENT", "required"],
+    [403, "PERMISSION_DENIED", "forbidden"],
+    [404, "NOT_FOUND", "notFound"],
+    [429, "RESOURCE_EXHAUSTED", "rateLimitExceeded"],
+    [500, "INTERNAL", "backendError"],
+    [503, "UNAVAILABLE", "backendError"],
+  ])("answers unreachable for %i and logs the status and Google's codes, never the token or the email", async (code, status, reason) => {
+    const message = "Missing required field: memberKey someone@ignyteplatform.com";
+    const { dir, log } = directory(() => Response.json({ error: { code, message, status, errors: [{ reason, message }] } }, { status: code }));
     expect(await dir.isMember("someone@ignyteplatform.com")).toBe("unreachable");
-    expect(log).toHaveBeenCalledWith(`staff directory: group ${GROUP} answered ${status}: ${message}`);
+    expect(log).toHaveBeenCalledWith(`staff directory: group ${GROUP} answered ${code}: ${status} ${reason}`);
     expect(JSON.stringify(log.mock.calls)).not.toContain(TOKEN);
+    expect(JSON.stringify(log.mock.calls)).not.toContain("someone@");
+  });
+
+  it("logs a non-200 without Google's error body as such", async () => {
+    const { dir, log } = directory(() => new Response("Bad Gateway", { status: 502 }));
+    expect(await dir.isMember("someone@ignyteplatform.com")).toBe("unreachable");
+    expect(log).toHaveBeenCalledWith(`staff directory: group ${GROUP} answered 502: no error code`);
   });
 
   it("answers unreachable for a 200 without a boolean isMember", async () => {
