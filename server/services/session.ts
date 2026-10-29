@@ -1,17 +1,20 @@
 import { decryptOAuthToken } from "better-auth/oauth2";
-import { getAuth } from "~server/auth";
+import { getAuth, getStaffDirectory } from "~server/auth";
 import { NOT_AUTHORIZED_CODE, NOT_AUTHORIZED_MESSAGE } from "~server/auth/auth";
 import { checkGoogleGrant } from "~server/auth/google-token";
 import { evaluateStaffSession, type StaffSessionDeps } from "~server/auth/staff-session";
 import { getEnv } from "~server/config";
 import { getDb } from "~server/db";
-import { sessionsRepo } from "~server/repositories";
+import { sessionsRepo, usersRepo } from "~server/repositories";
 
 export { NOT_AUTHORIZED_MESSAGE };
 export const SIGN_IN_UNFINISHED_MESSAGE = "Sign-in did not finish. Try again.";
 
-/** Codes Better Auth puts on /login?error= when the account itself fails a check (WI-002 error states). */
-const ACCOUNT_REFUSED = [NOT_AUTHORIZED_CODE, "signup_disabled", "account_not_linked", "email_not_found"];
+/**
+ * Codes Better Auth puts on /login?error= when the account itself fails a check (WI-002 error
+ * states). The staff directory not answering (WI-019) is not among them: it "did not finish".
+ */
+const ACCOUNT_REFUSED = [NOT_AUTHORIZED_CODE, "account_not_linked", "email_not_found"];
 
 export interface SessionUser {
   id: string;
@@ -45,7 +48,8 @@ export type StaffResolution = { user: SessionUser } | { refused: "no_session" | 
 
 /**
  * The staff session of a request, read from the database (never the cookie cache) and checked
- * by the one staff guard (WI-002 E1–E3): fixed 8 hours, active user, Google re-check every 15 minutes.
+ * by the one staff guard (WI-002 E1–E3, WI-019 E2): fixed 8 hours, active user, staff group re-check
+ * every 5 minutes, Google re-check every 15 minutes.
  */
 export async function resolveStaffUser(request: Request): Promise<StaffResolution> {
   const found = await getAuth().api.getSession({ headers: request.headers, query: { disableCookieCache: true } });
@@ -56,8 +60,9 @@ export async function resolveStaffUser(request: Request): Promise<StaffResolutio
       userId: found.session.userId,
       expiresAt: new Date(found.session.expiresAt),
       lastGoogleCheckAt: new Date(found.session.lastGoogleCheckAt ?? found.session.createdAt),
+      lastGroupCheckAt: new Date(found.session.lastGroupCheckAt ?? found.session.createdAt),
     },
-    { id: found.user.id, active: found.user.active !== false },
+    { id: found.user.id, email: found.user.email, active: found.user.active !== false },
     staffSessionDeps(),
   );
   if (!verdict.ok) return { refused: verdict.reason };
@@ -71,6 +76,10 @@ function staffSessionDeps(): StaffSessionDeps {
     now: new Date(),
     googleEnabled: env.googleEnabled,
     devLoginEnabled: env.devLoginEnabled,
+    claimGroupCheck: (id, now) => sessionsRepo.claimGroupCheck(db, id, now),
+    releaseGroupCheck: (id, claimedAt, previous) => sessionsRepo.releaseGroupCheck(db, id, claimedAt, previous),
+    isMember: (email) => getStaffDirectory().isMember(email),
+    deactivateUser: (userId) => usersRepo.setUserActive(db, userId, false),
     claimGoogleCheck: (id, now) => sessionsRepo.claimGoogleCheck(db, id, now),
     releaseGoogleCheck: (id, claimedAt, previous) => sessionsRepo.releaseGoogleCheck(db, id, claimedAt, previous),
     findRefreshToken: async (userId) => {
@@ -88,13 +97,15 @@ function staffSessionDeps(): StaffSessionDeps {
 }
 
 /**
- * Runs the dev-only sign-in and returns a redirect home carrying the session cookie.
+ * Runs the dev-only sign-in and returns a redirect home carrying the session cookie; a dev user
+ * outside the staff directory (WI-019) or inactive goes to /login with "not authorized".
  * Returns null when the dev sign-in is off, so the caller answers 404.
  */
 export async function signInDev(request: Request): Promise<Response | null> {
   if (!getEnv().devLoginEnabled) return null;
   const url = new URL("/api/auth/dev/sign-in", request.url);
   const result = await getAuth().handler(new Request(url, { method: "POST", headers: request.headers }));
+  if (result.status === 403) return new Response(null, { status: 303, headers: { Location: `/login?error=${NOT_AUTHORIZED_CODE}` } });
   if (!result.ok) return result;
   return redirectWithCookies("/", result.headers);
 }

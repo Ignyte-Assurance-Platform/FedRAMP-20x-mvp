@@ -255,7 +255,7 @@ describe("Screen A, the staff guard (WI-002)", () => {
     const { eq } = await import("drizzle-orm");
     const db = getDb();
     const [user] = await db.select().from(schema.users).where(eq(schema.users.email, "dev@ignyteplatform.com"));
-    expect(user, "dev user missing: run npm run db:seed:allowlist").toBeDefined();
+    expect(user, "dev user missing: run npm run db:seed").toBeDefined();
     const setActive = (active: boolean) => db.update(schema.users).set({ active }).where(eq(schema.users.id, user!.id));
     const sessionCount = async () => (await db.select().from(schema.sessions).where(eq(schema.sessions.userId, user!.id))).length;
     return { setActive, sessionCount };
@@ -289,41 +289,53 @@ describe("Screen A, the staff guard (WI-002)", () => {
 
       // The dev sign-in goes through the same check.
       const again = await app.request("http://localhost:3000/api/dev-login", { method: "POST" });
-      expect(again.status).not.toBe(303);
+      expect(again.headers.get("location")).toBe("/login?error=not_authorized");
+      expect(again.headers.getSetCookie().some((c) => c.includes("session_token="))).toBe(false);
     } finally {
       await setActive(true);
     }
   });
 
-  it("2.15 applyAllowlist: an email taken off the list is set inactive, keeps its row and loses its sessions", async () => {
+  it("2.12 (WI-019) opens Screen B for the dev user listed in LOCAL_STAFF_EMAILS (default DEV_LOGIN_EMAIL)", async () => {
     const cookie = await signIn();
-    const { sessionCount } = await devUser();
+    const screenB = await app.request("http://localhost:3000/customers", { headers: { cookie } });
+    expect(screenB.status).toBe(200);
+  });
+
+  it("2.8 (WI-019) gives the group re-check to exactly one of several requests of a session, and gives it back", async () => {
+    const cookie = await signIn();
     const { getDb, schema } = await import("~server/db");
-    const { usersRepo } = await import("~server/repositories");
+    const { sessionsRepo } = await import("~server/repositories");
     const { eq } = await import("drizzle-orm");
     const db = getDb();
-    const dev = "dev@ignyteplatform.com";
-    const newcomer = "allowlist-smoke@ignyteplatform.com";
-    const activeBefore = (await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.active, true))).map((u) => u.email);
-    expect(activeBefore).toContain(dev);
-    try {
-      const result = await usersRepo.applyAllowlist(db, [newcomer]);
-      expect(result).toEqual({ active: [newcomer], deactivated: expect.arrayContaining([dev]) });
-      const devRow = await usersRepo.findUserByEmail(db, dev);
-      expect(devRow?.active).toBe(false);
-      expect(await sessionCount()).toBe(0);
-      expect((await usersRepo.findUserByEmail(db, newcomer))?.active).toBe(true);
-      const home = await app.request("/", { headers: { cookie } });
-      expect(home.status).toBe(302);
+    const token = decodeURIComponent(cookie.match(/session_token=([^;.]+)/)![1]!);
+    const [row] = await db.select().from(schema.sessions).where(eq(schema.sessions.token, token));
+    expect(row, "session row of the dev sign-in").toBeDefined();
+    // A sign-in has just checked the group: the first re-check is due 5 minutes later.
+    expect(Date.now() - row!.lastGroupCheckAt.getTime()).toBeLessThan(60_000);
+    expect(await sessionsRepo.claimGroupCheck(db, row!.id, new Date())).toBe(false);
 
-      const back = await usersRepo.applyAllowlist(db, activeBefore);
-      expect(back.deactivated).toEqual([newcomer]);
-      expect((await usersRepo.findUserByEmail(db, dev))?.active).toBe(true);
-      expect((await usersRepo.findUserByEmail(db, newcomer))?.active).toBe(false);
-    } finally {
-      await usersRepo.applyAllowlist(db, activeBefore);
-      await db.delete(schema.users).where(eq(schema.users.email, newcomer));
-    }
+    const previous = new Date(Date.now() - 6 * 60_000);
+    await db.update(schema.sessions).set({ lastGroupCheckAt: previous }).where(eq(schema.sessions.id, row!.id));
+    const now = new Date();
+    const claims = await Promise.all([1, 2, 3, 4].map(() => sessionsRepo.claimGroupCheck(db, row!.id, now)));
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    await sessionsRepo.releaseGroupCheck(db, row!.id, now, previous);
+    const [released] = await db.select().from(schema.sessions).where(eq(schema.sessions.id, row!.id));
+    expect(released!.lastGroupCheckAt).toEqual(previous);
+
+    // The guard then re-checks on the next request; the dev user is a member, so the session goes on.
+    const home = await app.request("http://localhost:3000/customers", { headers: { cookie } });
+    expect(home.status).toBe(200);
+    const [checked] = await db.select().from(schema.sessions).where(eq(schema.sessions.id, row!.id));
+    expect(checked!.lastGroupCheckAt.getTime()).toBeGreaterThan(previous.getTime());
+  });
+
+  it("2.11 (WI-019) the container runs the migrations, then the app, and no allowlist seed", async () => {
+    const dockerfile = await readFile(path.join(root, "Dockerfile"), "utf8");
+    expect(dockerfile).toContain(`CMD ["sh", "-c", "npm run db:migrate && exec npm start"]`);
+    const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8")) as { scripts: Record<string, string> };
+    expect(Object.keys(pkg.scripts).filter((name) => name.includes("allowlist"))).toEqual([]);
   });
 
   it("2.12 logs out: the session row is deleted and /login opens", async () => {

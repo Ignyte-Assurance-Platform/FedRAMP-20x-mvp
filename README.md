@@ -30,7 +30,7 @@ You need Node 22.22+ (24 recommended) and a running container runtime: Docker De
 git clone https://github.com/Ignyte-Assurance-Platform/FedRAMP-20x-mvp.git && cd FedRAMP-20x-mvp
 cp .env.example .env
 npm ci
-npm run db:up     # starts Postgres (compose.yaml), runs migrations, the allowlist seed (dev user) and a sample customer
+npm run db:up     # starts Postgres (compose.yaml), runs migrations and the local seed (the dev user, then a sample customer)
 npm run dev       # http://localhost:3000
 ```
 
@@ -42,7 +42,7 @@ Open http://localhost:3000 and choose **Dev sign-in (local only)**. That button 
 
 | Screen | Route | Who |
 | --- | --- | --- |
-| A, sign in | `/login` | Anyone; Ignyte Google Workspace accounts on the allowlist get in |
+| A, sign in | `/login` | Anyone; Ignyte Google Workspace accounts in the Google group `ignytefedramp20x@ignyteplatform.com` get in |
 | B, customers list | `/customers` (`/` redirects here) | Ignyte staff |
 | C, create customer | `/customers/new` | Ignyte staff |
 | D, customer page (intake link, tab 1 answers, tab 3 documents, Package Overview JSON) | `/customers/:customerId/package`, `/api/customers/:customerId/documents/:documentId/download` (signed attachment URL) | Ignyte staff |
@@ -60,9 +60,8 @@ Every staff route goes through one guard (`requireStaffUser`); a customer link t
 | `npm run build` | Production build into `build/` |
 | `npm run test:smoke` | Boots the built app against the local database (run `build` and `db:up` first) |
 | `npm run db:generate` | New Drizzle migration after a schema change |
-| `npm run db:seed:allowlist` | Makes exactly `ADMIN_EMAILS` the active staff (plus the dev user outside production); removed emails are set inactive and their sessions deleted. The only seed production runs; it fails on an email outside `@ignyteplatform.com` or an empty list in production |
-| `npm run db:seed` | Local fixture seed (a sample customer); refuses to run in production |
-| `npm start` with `NODE_ENV=production` | Runs the built app; reads the real environment, not `.env`. Refuses to start if `DEV_LOGIN` is set, `STORAGE_DRIVER` is not `gcs`, or `GCS_LOGO_BUCKET`, `LOGO_PUBLIC_BASE_URL` or `INTAKE_LINK_KEY` is empty |
+| `npm run db:seed` | Local fixture seed: the dev sign-in user, then a sample customer; refuses to run in production |
+| `npm start` with `NODE_ENV=production` | Runs the built app; reads the real environment, not `.env`. Refuses to start if `DEV_LOGIN` is set, `STORAGE_DRIVER` is not `gcs`, `STAFF_DIRECTORY` is not `google`, `STAFF_GROUP_EMAIL` is empty or outside `@ignyteplatform.com`, or `GCS_LOGO_BUCKET`, `LOGO_PUBLIC_BASE_URL` or `INTAKE_LINK_KEY` is empty |
 | `npm run logos:publish` | Copies to the logos bucket every recorded logo it does not hold yet (one-off for logos from before WI-018); a second run copies nothing |
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, build and the smoke test on every pull request and every push to `main`. It does not deploy.
@@ -73,7 +72,8 @@ Dev runs on Cloud Run: https://ignyte-fedramp-20x-631427647079.us-central1.run.a
 
 - **How `main` reaches dev.** When CI passes on a push to `main`, `.github/workflows/deploy-dev.yml` builds the `Dockerfile` for that exact commit, pushes `web:<short sha>` to Artifact Registry, applies `deploy/cloud-run/ignyte-fedramp-20x.dev.yaml` as a new revision **with no traffic** (tag `candidate`), checks that revision's own `/api/health` and only then sends it 100 % of the traffic. If the check fails the job fails and users stay on the previous revision. It signs in to Google Cloud through Workload Identity Federation as `github-deployer`; the repo holds no Google key. PRs also build the image (CI job "production image builds"), without pushing it.
 - **Deploy by hand.** Actions → "Deploy dev" → Run workflow on `main`. It deploys the tip of `main` and always makes a new revision. Use it after rotating a secret (Cloud Run reads `latest` only when a revision starts), after fixing something on the Google Cloud side that made a deploy fail, or to return to `main` after a rollback.
-- **What runs at start-up.** The container migrates the database, applies the staff allowlist (`ADMIN_EMAILS`), then starts the app. `ADMIN_EMAILS` comes from Secret Manager, so emails never live in the repo: to give or remove access, add a new version of the secret `ADMIN_EMAILS` (comma-separated) and run "Deploy dev" by hand. Settings and secret references live in the service file; secret values live only in Secret Manager.
+- **What runs at start-up.** The container migrates the database, then starts the app.
+- **Who may sign in.** The members of the Google group `ignytefedramp20x@ignyteplatform.com` (WI-019): Max or Adam add or remove people in the Google Admin console, with no deploy. The app asks the Directory API at every sign-in and every 5 minutes per session, as the runtime service account, which holds the Workspace role Groups Reader; someone removed from the group loses access at their next request after at most 5 minutes. If the API does not answer, nobody can sign in, and open sessions end 15 minutes after their last successful check. Locally, `STAFF_DIRECTORY=local` reads `LOCAL_STAFF_EMAILS` (default the dev user). Settings and secret references live in the service file; secret values live only in Secret Manager.
 - **Migrations must work with the previous release.** They run when the new revision starts, while the previous one still serves, and a rollback does not undo them. Add first (columns, tables), remove only in a later release once no running code uses the old shape.
 - **Roll back.** Cloud Run console → service `ignyte-fedramp-20x` → Revisions → send 100 % of traffic to the previous revision, then revert the commit on `main`: the next deploy moves the traffic to the newest revision again.
 

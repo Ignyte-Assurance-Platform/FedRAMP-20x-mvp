@@ -53,6 +53,13 @@ jobs:
             sleep 15
           done
           exit 1
+      - name: The retired staff allowlist stays gone (WI-019 2.11)
+        # The brackets keep this line from matching itself.
+        run: |
+          if grep -rnE 'ADMIN_[E]MAILS|seed:[a]llowlist' server deploy .github Dockerfile package.json README.md; then
+            echo "The allowlist was retired by WI-019: the staff Google group decides who may sign in."
+            exit 1
+          fi
       - run: npm run lint
       - run: npm run typecheck
       - name: Unit tests with coverage floor
@@ -65,7 +72,7 @@ jobs:
           retention-days: 14
       - run: npm run build
       - name: Migrate and seed the database
-        run: npm run db:migrate && npm run db:seed:allowlist && npm run db:seed
+        run: npm run db:migrate && npm run db:seed
         env:
           NODE_ENV: development
       - run: npm run test:smoke

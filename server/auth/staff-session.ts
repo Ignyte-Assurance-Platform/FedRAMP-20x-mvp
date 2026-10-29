@@ -1,18 +1,29 @@
 import type { GoogleCheckResult } from "./google-token";
+import type { MembershipResult } from "./staff-directory";
 
 export const GOOGLE_RECHECK_MS = 15 * 60 * 1000;
 /** Google unreachable: the session survives only this long after its last successful check (decision 2026-10-23). */
 export const GOOGLE_OUTAGE_LIMIT_MS = 60 * 60 * 1000;
+export const GROUP_RECHECK_MS = 5 * 60 * 1000;
+/** Staff directory unreachable: the session survives only this long after its last successful group check (WI-019 E3). */
+export const GROUP_OUTAGE_LIMIT_MS = 15 * 60 * 1000;
 
 export interface StaffSession {
   id: string;
   userId: string;
   expiresAt: Date;
   lastGoogleCheckAt: Date;
+  lastGroupCheckAt: Date;
 }
 
 export interface StaffSessionDeps {
   now: Date;
+  /** Claims the group re-check for one request: true when this request moved last_group_check_at to `now`. */
+  claimGroupCheck(sessionId: string, now: Date): Promise<boolean>;
+  /** Gives the group claim back (directory unreachable) so the next request retries. */
+  releaseGroupCheck(sessionId: string, claimedAt: Date, previous: Date): Promise<void>;
+  isMember(email: string): Promise<MembershipResult>;
+  deactivateUser(userId: string): Promise<void>;
   /** Google sign-in configured: only then are sessions re-checked against Google. */
   googleEnabled: boolean;
   /** Sessions with no Google account (the dev sign-in) skip the re-check only when this is on. */
@@ -33,11 +44,13 @@ export type StaffSessionVerdict = { ok: true } | { ok: false; reason: "expired" 
 
 /**
  * The staff guard's decision for a session read from the database (WI-002 E1–E3): fixed 8-hour
- * lifetime, the user must be active, and every 15 minutes one request re-checks the Google grant.
+ * lifetime, the user must be active, every 5 minutes one request re-checks the staff group
+ * (WI-019 E2, E3) and every 15 minutes one request re-checks the Google grant. When both are
+ * due, the group check runs first.
  */
 export async function evaluateStaffSession(
   session: StaffSession,
-  user: { id: string; active: boolean },
+  user: { id: string; email: string; active: boolean },
   deps: StaffSessionDeps,
 ): Promise<StaffSessionVerdict> {
   const now = deps.now.getTime();
@@ -49,6 +62,8 @@ export async function evaluateStaffSession(
     await deps.deleteUserSessions(user.id);
     return { ok: false, reason: "not_authorized" };
   }
+  const group = await recheckGroup(session, user, deps);
+  if (!group.ok) return group;
   if (!deps.googleEnabled) return { ok: true };
   if (now - session.lastGoogleCheckAt.getTime() < GOOGLE_RECHECK_MS) return { ok: true };
   if (!(await deps.claimGoogleCheck(session.id, deps.now))) return { ok: true };
@@ -70,5 +85,25 @@ export async function evaluateStaffSession(
     return { ok: false, reason: "revoked" };
   }
   await deps.releaseGoogleCheck(session.id, deps.now, session.lastGoogleCheckAt);
+  return { ok: true };
+}
+
+async function recheckGroup(session: StaffSession, user: { id: string; email: string }, deps: StaffSessionDeps): Promise<StaffSessionVerdict> {
+  const now = deps.now.getTime();
+  if (now - session.lastGroupCheckAt.getTime() < GROUP_RECHECK_MS) return { ok: true };
+  if (!(await deps.claimGroupCheck(session.id, deps.now))) return { ok: true };
+
+  const result = await deps.isMember(user.email);
+  if (result === "member") return { ok: true };
+  if (result === "not_member") {
+    await deps.deactivateUser(user.id);
+    await deps.deleteUserSessions(user.id);
+    return { ok: false, reason: "not_authorized" };
+  }
+  if (now - session.lastGroupCheckAt.getTime() > GROUP_OUTAGE_LIMIT_MS) {
+    await deps.deleteSession(session.id);
+    return { ok: false, reason: "revoked" };
+  }
+  await deps.releaseGroupCheck(session.id, deps.now, session.lastGroupCheckAt);
   return { ok: true };
 }
