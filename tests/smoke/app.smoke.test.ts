@@ -617,9 +617,9 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     expect(await res.json()).toMatchObject({ kind: "refused", message: "This page is out of date. Reload it and try again." });
   });
 
-  it("refuses a request body over 256 KB with 413 and stores nothing", async () => {
+  it("refuses a request body over 512 KB with 413 and stores nothing", async () => {
     const { id, token } = await newCustomer();
-    const res = await api(token, { intent: "save", answers: { serviceIdentification: { providerName: "x".repeat(300 * 1024) } }, version: 0 });
+    const res = await api(token, { intent: "save", answers: { serviceIdentification: { providerName: "x".repeat(600 * 1024) } }, version: 0 });
     expect(res.status).toBe(413);
     const { getDb } = await import("~server/db");
     const { intakeAnswersRepo } = await import("~server/repositories");
@@ -853,6 +853,296 @@ describe("Screen E tab 1, the customer's intake (WI-004)", () => {
     const outcome = await services.generatePackageOverviewForCustomer(id, userId);
     const website = outcome.problems.find((p) => p.path === "/serviceIdentification/website");
     expect(website?.question).toBe(getCompanyFormDefinition().labels["/serviceIdentification/website"]);
+  });
+});
+
+describe("Screen E tab 2, KSIs (WI-005)", () => {
+  async function newCustomer() {
+    const services = await import("~server/services");
+    const { getDb, schema } = await import("~server/db");
+    const { eq } = await import("drizzle-orm");
+    const [user] = await getDb().select().from(schema.users).where(eq(schema.users.email, "dev@ignyteplatform.com"));
+    const { customer, link } = await services.createCustomer(
+      { name: `KSI Co ${Date.now()}`, serviceName: "Example Records Platform", serviceDescription: "Records management.", contactName: "Pat", contactEmail: "pat@example.com" },
+      user!.id,
+    );
+    return { id: customer.id, token: link.split("/intake/")[1]!, userId: user!.id };
+  }
+
+  const api = (token: string, body: Record<string, unknown>) =>
+    app.request(`http://localhost:3000/api/intake/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+  const saveKsis = (token: string, answers: Record<string, unknown>, version: number) => api(token, { intent: "save", section: "ksis", answers, version });
+
+  async function tab(token: string) {
+    const view = await (await import("~server/services")).openIntake(token);
+    if (view.kind !== "open") throw new Error(view.kind);
+    return view;
+  }
+
+  async function storedSection(customerId: string) {
+    const { getDb, schema } = await import("~server/db");
+    const { and, eq } = await import("drizzle-orm");
+    const [row] = await getDb()
+      .select()
+      .from(schema.intakeAnswers)
+      .where(and(eq(schema.intakeAnswers.customerId, customerId), eq(schema.intakeAnswers.section, "ksis")));
+    return row;
+  }
+
+  async function submitWithLogo(token: string) {
+    const golden = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
+    const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(56)]);
+    const start = await api(token, { intent: "logo-start", filename: "logo.png", contentType: "image/png", size: PNG.length, width: 300 });
+    const { logoId, upload } = (await start.json()) as { logoId: string; upload: { url: string; method: string; headers: Record<string, string> } };
+    await app.request(upload.url, { method: upload.method, headers: upload.headers, body: new Uint8Array(PNG) });
+    await api(token, { intent: "logo-finish", logoId, filename: "logo.png", contentType: "image/png" });
+    return api(token, { intent: "submit", answers: golden, version: 0 });
+  }
+
+  it("2.1, 2.2 the tab opens with seven KSI blocks in playbook order, each with FedRAMP's name and statement from the vendored rules and their version", async () => {
+    const { token } = await newCustomer();
+    const { getRulesLibrary } = await import("~server/fedramp");
+    const rules = getRulesLibrary().current;
+    const { ksis } = await tab(token);
+    expect(ksis.definition.ksis.map((b) => b.code)).toEqual(Object.keys(ksis.statements));
+    expect(ksis.rulesVersion).toBe(rules.version);
+    for (const [code, shown] of Object.entries(ksis.statements)) {
+      expect(shown).toEqual({ name: rules.ksis[code]!.name, statement: rules.ksis[code]!.statement });
+    }
+    expect(ksis.version).toBe(0);
+    expect(ksis.answers.ksi["KSI-IAM-APM"]).toEqual({ questions: { "14": "", "14b": "" }, how_often: "", need_help: false });
+    // Review of #49: the file's editor comment is not sent to the page.
+    expect(ksis.definition).not.toHaveProperty("$comment");
+  });
+
+  it("2.11 Save stores answers, How often? and flags per KSI with rules_version set by the server; reopening shows them", async () => {
+    const { id, token } = await newCustomer();
+    const answers = {
+      ksi: {
+        "KSI-IAM-APM": { questions: { "14": "FIDO2 for admins", "14b": "Legacy VPN" }, how_often: "Quarterly", need_help: false },
+        "KSI-SVC-SIN": { questions: { "16": "" }, how_often: "", need_help: true },
+      },
+      readiness: { vulnerability_detection: { questions: { "18": "Weekly scans", "19": "" }, need_help: false } },
+    };
+    const saved = await saveKsis(token, answers, 0);
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toMatchObject({ kind: "saved", version: 1 });
+    const { getRulesLibrary } = await import("~server/fedramp");
+    const row = (await storedSection(id))!;
+    expect(row.formDefinitionVersion).toBe("ksis.v1");
+    expect(row.answers).toMatchObject({ rules_version: getRulesLibrary().current.version, ...answers });
+    const reopened = (await tab(token)).ksis;
+    expect(reopened.version).toBe(1);
+    expect(reopened.answers.ksi["KSI-IAM-APM"]).toEqual(answers.ksi["KSI-IAM-APM"]);
+    expect(reopened.answers.ksi["KSI-SVC-SIN"]!.need_help).toBe(true);
+    expect(reopened.answers.readiness.vulnerability_detection.questions["18"]).toBe("Weekly scans");
+
+    // Tab 1 is a separate section: its version is untouched, and a stale tab 2 save conflicts with what is stored.
+    expect((await tab(token)).version).toBe(0);
+    const stale = await saveKsis(token, { ksi: {} }, 0);
+    expect(stale.status).toBe(409);
+    const conflict = (await stale.json()) as { version: number; answers: Record<string, unknown> };
+    expect(conflict).toMatchObject({ kind: "conflict", version: 1, answers: { ksi: { "KSI-IAM-APM": { how_often: "Quarterly" } } } });
+
+    // Second opinion, bug A: what the page holds after a reload, or after Take theirs, saves again as it is.
+    expect(reopened.answers).not.toHaveProperty("rules_version");
+    expect(conflict.answers).not.toHaveProperty("rules_version");
+    const again = await saveKsis(token, { ...reopened.answers }, reopened.version);
+    expect(again.status, await again.clone().text()).toBe(200);
+    const theirs = await saveKsis(token, conflict.answers, 2);
+    expect(theirs.status, await theirs.clone().text()).toBe(200);
+    expect((await storedSection(id))!.answers.rules_version).toBe(getRulesLibrary().current.version);
+  });
+
+  it("2.12 refuses a key outside the form definition, rules_version from the browser, an answer over 10,000 or a How often? over 200, and stores nothing", async () => {
+    const { id, token } = await newCustomer();
+    const refused = [
+      { ksi: { "KSI-MLA-OSM": { questions: { "1": "x" } } } },
+      { ksi: { "KSI-CED-RAT": { questions: { "24": "x" } } } },
+      { readiness: { vulnerability_detection: { questions: { "17": "logs" } } } },
+      { rules_version: "1999.01.01.01", ksi: {} },
+      { ksi: { "KSI-IAM-AAM": { questions: { "15": "x".repeat(10_001) } } } },
+      { ksi: { "KSI-IAM-AAM": { how_often: "y".repeat(201) } } },
+      { ksi: { "KSI-CED-RAT": { how_often: "Monthly" } } },
+    ];
+    for (const answers of refused) {
+      const res = await saveKsis(token, answers, 0);
+      expect(res.status, JSON.stringify(answers).slice(0, 80)).toBe(400);
+      expect(await res.json()).toMatchObject({ kind: "refused" });
+    }
+    expect(await storedSection(id)).toBeUndefined();
+    // Exactly the limits are fine.
+    expect((await saveKsis(token, { ksi: { "KSI-IAM-AAM": { questions: { "15": "x".repeat(10_000) }, how_often: "y".repeat(200) } } }, 0)).status).toBe(200);
+  });
+
+  it("review of #49: every tab 2 answer at its 10,000-character limit in 3-byte characters (about 270 KB) saves", async () => {
+    const { token } = await newCustomer();
+    const services = await import("~server/services");
+    const def = services.getKsisDefinition();
+    const full = "€".repeat(10_000);
+    const answers = {
+      ksi: Object.fromEntries(def.ksis.map((b) => [b.code, { questions: Object.fromEntries(b.questions.map((q) => [q.id, full])) }])),
+      readiness: { vulnerability_detection: { questions: Object.fromEntries(def.readiness.questions.map((q) => [q.id, full])) } },
+    };
+    expect(Buffer.byteLength(JSON.stringify({ intent: "save", section: "ksis", answers, version: 0 }))).toBeGreaterThan(256 * 1024);
+    const res = await saveKsis(token, answers, 0);
+    expect(res.status, (await res.clone().text()).slice(0, 200)).toBe(200);
+  });
+
+  it("review of #49: a tab 2 save with a version the section never had is refused with reload, not a 500", async () => {
+    const { token } = await newCustomer();
+    const res = await saveKsis(token, { ksi: {} }, 5);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ kind: "refused", message: "This page is out of date. Reload it and try again." });
+  });
+
+  it("review of #49: Submit's body is strict too: an extra key gets 400 and nothing is submitted", async () => {
+    const { id, token } = await newCustomer();
+    const res = await api(token, { intent: "submit", answers: {}, version: 0, cmvp_validated: true });
+    expect(res.status).toBe(400);
+    const { getDb } = await import("~server/db");
+    const { customersRepo } = await import("~server/repositories");
+    expect((await customersRepo.findCustomer(getDb(), id))!.status).toBe("not_started");
+  });
+
+  it("E3 the intake action takes a section of company or ksis only, never documents", async () => {
+    const { token } = await newCustomer();
+    const res = await api(token, { intent: "save", section: "documents", answers: {}, version: 0 });
+    expect(res.status).toBe(400);
+    expect((await api(token, { intent: "save", section: "company", answers: {}, version: 0 })).status).toBe(200);
+  });
+
+  it("2.16 the customer's intake action refuses Ignyte's consultant fields, and the intake data never holds them", async () => {
+    const { id, token, userId } = await newCustomer();
+    const services = await import("~server/services");
+    await services.saveKsiReview(id, { cmvpValidated: true, cmvpNote: "Cert #4282, AWS-LC", logContextNote: "CloudWatch, 1 year" }, userId);
+    for (const field of ["cmvp_validated", "cmvp_note", "log_context_note", "cmvpValidated"]) {
+      expect((await api(token, { intent: "save", section: "ksis", answers: { ksi: {} }, version: 0, [field]: true })).status, field).toBe(400);
+      expect((await saveKsis(token, { [field]: true }, 0)).status, field).toBe(400);
+      expect((await saveKsis(token, { ksi: { "KSI-SVC-SIN": { [field]: true } } }, 0)).status, field).toBe(400);
+    }
+    const view = JSON.stringify(await tab(token));
+    for (const text of ["cmvp_validated", "cmvpValidated", "cmvp_note", "cmvpNote", "Cert #4282", "log_context", "logContext", "CloudWatch, 1 year", "CMVP validated"]) expect(view).not.toContain(text);
+    const page = await app.request(`http://localhost:3000/intake/${token}`);
+    const html = await page.text();
+    for (const text of ["Cert #4282", "CloudWatch, 1 year", "CMVP validated", "Log retention and review"]) expect(html).not.toContain(text);
+    // Still stored for Ignyte.
+    expect((await services.getKsisScreen(id)).review).toMatchObject({ cmvpValidated: true, cmvpNote: "Cert #4282, AWS-LC", logContextNote: "CloudWatch, 1 year", updatedBy: userId });
+  });
+
+  it("2.14 after Submit a tab 2 save is refused (423) and stores nothing; after Unlock it saves again", async () => {
+    const { id, token, userId } = await newCustomer();
+    expect((await saveKsis(token, { ksi: { "KSI-CMT-LMC": { questions: { "21": "Before" } } } }, 0)).status).toBe(200);
+    expect((await submitWithLogo(token)).status).toBe(200);
+    const locked = await saveKsis(token, { ksi: { "KSI-CMT-LMC": { questions: { "21": "After" }, need_help: true } } }, 1);
+    expect(locked.status).toBe(423);
+    expect((await storedSection(id))!.answers).toMatchObject({ ksi: { "KSI-CMT-LMC": { questions: { "21": "Before" }, need_help: false } } });
+    expect((await tab(token)).locked).toBe(true);
+
+    const services = await import("~server/services");
+    await services.unlockIntake(id, userId);
+    expect((await saveKsis(token, { ksi: { "KSI-CMT-LMC": { questions: { "21": "After" }, need_help: true } } }, 1)).status).toBe(200);
+  });
+
+  it("2.15 Submit with empty blocks is not blocked; Screen D lists Not answered and Needs help blocks as follow-ups, live, never Partly answered", async () => {
+    const { id, token, userId } = await newCustomer();
+    await saveKsis(
+      token,
+      {
+        ksi: {
+          "KSI-CED-RAT": { questions: { "22": "Quiz results, yearly" } },
+          "KSI-IAM-APM": { questions: { "14": "FIDO2", "14b": "" } },
+          "KSI-SVC-SIN": { questions: { "16": "TLS 1.3, AES-256" }, need_help: true },
+        },
+        readiness: { vulnerability_detection: { questions: { "19": "30 days" } } },
+      },
+      0,
+    );
+    expect((await submitWithLogo(token)).status).toBe(200);
+    const services = await import("~server/services");
+    const screen = await services.getKsisScreen(id);
+    expect(screen.followUps.map((f) => `${f.key}:${f.statusLabel}`)).toEqual([
+      "KSI-CMT-LMC:Not answered",
+      "KSI-CNA-RNT:Not answered",
+      "KSI-IAM-AAM:Not answered",
+      "KSI-INR-RIR:Not answered",
+      "KSI-SVC-SIN:Needs help",
+      "vulnerability_detection:Not answered",
+    ]);
+    expect(screen.blocks.find((b) => b.key === "KSI-IAM-APM")!.statusLabel).toBe("Partly answered");
+    expect(screen.counts).toBe("2/7 answered, 1 needs help");
+
+    // Live: Ignyte unlocks, the customer answers, the follow-up goes away without another Submit.
+    await services.unlockIntake(id, userId);
+    await saveKsis(token, { ksi: { "KSI-CMT-LMC": { questions: { "21": "CloudTrail, daily" } } } }, 1);
+    expect((await services.getKsisScreen(id)).followUps.map((f) => f.key)).not.toContain("KSI-CMT-LMC");
+  });
+
+  it("2.17 an older saved rules_version renders its own statements on Screen D with the note; the next save stamps the current version", async () => {
+    const { id, token } = await newCustomer();
+    const { makeRulesRoot, FAKE_STATEMENT_PREFIX } = await import("../../server/fedramp/testdata/rules-fixture");
+    const fedramp = await import("~server/fedramp");
+    const services = await import("~server/services");
+    const { getDb } = await import("~server/db");
+    const fixture = makeRulesRoot({ newer: true });
+    try {
+      // Saved while the real version was current.
+      expect((await saveKsis(token, { ksi: {} }, 0)).status).toBe(200);
+      expect((await storedSection(id))!.answers.rules_version).toBe(fixture.real);
+
+      // A newer version is vendored.
+      const rules = fedramp.loadRulesLibrary(fixture.root);
+      const deps = { db: getDb(), rules, definition: services.getKsisDefinition(), now: () => new Date() };
+      const before = await services.getKsisScreen(id, deps);
+      expect(before.rulesVersion).toBe(fixture.real);
+      expect(before.rulesNote).toBe(`Answered under FedRAMP rules ${fixture.real}; current rules ${fixture.fake}.`);
+      const real = rules.get(fixture.real)!;
+      expect(before.blocks[0]!.statement).toBe(real.ksis["KSI-CED-RAT"]!.statement);
+      expect(before.blocks[0]!.statement!.startsWith(FAKE_STATEMENT_PREFIX)).toBe(false);
+
+      // The customer's form shows the new statements; saving again moves the stamp.
+      const view = await services.loadKsisTab(id, deps);
+      expect(view.rulesVersion).toBe(fixture.fake);
+      expect(view.statements["KSI-CED-RAT"]!.statement.startsWith(FAKE_STATEMENT_PREFIX)).toBe(true);
+      const saved = await services.saveKsisSection({ id }, { answers: { ksi: {} }, version: 1 }, deps);
+      expect(saved.kind).toBe("saved");
+      expect((await storedSection(id))!.answers.rules_version).toBe(fixture.fake);
+      const after = await services.getKsisScreen(id, deps);
+      expect(after.rulesNote).toBeNull();
+      expect(after.blocks[0]!.statement!.startsWith(FAKE_STATEMENT_PREFIX)).toBe(true);
+
+      // Review of #49: saved under the real version, which a later build no longer vendors.
+      await services.saveKsisSection({ id }, { answers: { ksi: {} }, version: 2 }, { ...deps, rules: { current: rules.get(fixture.real)!, get: () => undefined } });
+      expect((await storedSection(id))!.answers.rules_version).toBe(fixture.real);
+      const onlyFake = { current: rules.current, get: (version: string) => (version === fixture.fake ? rules.current : undefined) };
+      const gone = await services.getKsisScreen(id, { ...deps, rules: onlyFake });
+      expect(gone.rulesVersion).toBe(fixture.fake);
+      expect(gone.rulesNote).toBe(`Answered under FedRAMP rules ${fixture.real}, which is no longer in this build; statements shown are from current rules ${fixture.fake}.`);
+
+      // Review of #49: a version without one of the seven KSIs shows a placeholder, not an error page.
+      const lacking = { ...rules.current, ksis: Object.fromEntries(Object.entries(rules.current.ksis).filter(([code]) => code !== "KSI-CED-RAT")) };
+      const partial = await services.getKsisScreen(id, { ...deps, rules: { current: lacking, get: () => undefined } });
+      expect(partial.blocks[0]).toMatchObject({ key: "KSI-CED-RAT", statement: `Statement not available in FedRAMP rules ${fixture.fake}.` });
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it("review of #49: Screen D for an unknown customer is a 404, not an empty card", async () => {
+    const services = await import("~server/services");
+    await expect(services.getKsisScreen("00000000-0000-4000-8000-000000000000")).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("2.16 Ignyte's review fields: CMVP Not checked / Yes / No and two notes up to 2,000 characters", async () => {
+    const { id, userId } = await newCustomer();
+    const services = await import("~server/services");
+    expect((await services.getKsisScreen(id)).review).toMatchObject({ cmvpValidated: null, cmvpNote: null, logContextNote: null, updatedAt: null });
+    await services.saveKsiReview(id, { cmvpValidated: false, cmvpNote: "  ", logContextNote: "x".repeat(2000) }, userId);
+    expect((await services.getKsisScreen(id)).review).toMatchObject({ cmvpValidated: false, cmvpNote: null, logContextNote: "x".repeat(2000), updatedAt: expect.any(Date) });
+    await expect(services.saveKsiReview(id, { cmvpValidated: null, cmvpNote: "x".repeat(2001), logContextNote: "" }, userId)).rejects.toThrow("2,000");
+    await services.saveKsiReview(id, { cmvpValidated: null, cmvpNote: "", logContextNote: "" }, userId);
+    expect((await services.getKsisScreen(id)).review.cmvpValidated).toBeNull();
   });
 });
 

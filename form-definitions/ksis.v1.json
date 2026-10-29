@@ -1,0 +1,91 @@
+{
+  "$comment": "Tab 2 (WI-005 §3, E2): the seven Class A KSI blocks in playbook order and the Vulnerability detection block. Question ids are the intake numbers; texts are spec §3 verbatim. The KSI name and FedRAMP's statement come from the vendored rules, never from this file. howOften: 'required' = the question itself asks it (no separate line); 'optional' = a separate optional line that never affects the status; 'none' = no line. Changing a line here is a text change, not a code change.",
+  "form": "ksis",
+  "revision": 1,
+  "labels": {
+    "howOften": "How often?",
+    "howOftenHelp": "FedRAMP expects ongoing activities to run on a known, documented cycle.",
+    "needHelp": "I don't know, I need help from Ignyte with this one",
+    "recommended": "Recommended",
+    "rulesVersion": "FedRAMP rules {version}"
+  },
+  "limits": { "answer": 10000, "howOften": 200 },
+  "ksis": [
+    {
+      "code": "KSI-CED-RAT",
+      "howOften": "required",
+      "questions": [
+        { "id": "22", "text": "How do you check that security training works for all staff, high-risk roles, engineering staff, and incident response or recovery staff, and how often?" }
+      ],
+      "why": "FedRAMP asks whether your training actually works, not just whether people took it, for all staff, high-risk roles, engineers, and incident response or recovery staff."
+    },
+    {
+      "code": "KSI-CMT-LMC",
+      "howOften": "none",
+      "questions": [{ "id": "21", "text": "How are production changes logged, who monitors those logs, and how often?" }],
+      "why": "FedRAMP asks that changes to your service are both logged and monitored, including changes made outside your normal deployment process."
+    },
+    {
+      "code": "KSI-CNA-RNT",
+      "howOften": "required",
+      "questions": [
+        {
+          "id": "23",
+          "text": "How do you restrict inbound and outbound traffic, and how often do you review those rules? For example, firewalls, security groups, private subnets, allow-lists."
+        }
+      ],
+      "why": "FedRAMP asks that you limit both incoming and outgoing traffic, and keep checking those limits over time."
+    },
+    {
+      "code": "KSI-IAM-AAM",
+      "howOften": "optional",
+      "questions": [
+        { "id": "15", "text": "Which parts of creating, changing and removing accounts, roles and groups are automated, and which are still manual?" }
+      ],
+      "why": "FedRAMP asks that accounts, roles and groups, and what they can access, are managed through automation rather than by hand."
+    },
+    {
+      "code": "KSI-IAM-APM",
+      "howOften": "optional",
+      "questions": [
+        { "id": "14", "text": "How do administrators and users sign in? Is MFA phishing-resistant (for example FIDO2 keys, passkeys, PIV)?" },
+        { "id": "14b", "text": "Where are passwords still used, and why?" }
+      ],
+      "why": "FedRAMP expects passwordless sign-in where it's feasible; where passwords remain, it expects strong passwords with phishing-resistant MFA, so we need to know where they are."
+    },
+    {
+      "code": "KSI-INR-RIR",
+      "howOften": "required",
+      "questions": [
+        { "id": "20", "text": "How do you review whether your incident response procedures work, how often, and what changed after the last review?" }
+      ],
+      "why": "FedRAMP asks that you keep checking whether your incident response procedures actually work, not only that a plan exists."
+    },
+    {
+      "code": "KSI-SVC-SIN",
+      "howOften": "optional",
+      "questions": [
+        { "id": "16", "text": "How is information protected from unwanted access or modification, at rest and in transit, and which crypto modules are used?" }
+      ],
+      "why": "FedRAMP asks that information is protected from unwanted access or changes. Your consultant checks the encryption modules you list."
+    }
+  ],
+  "readiness": {
+    "key": "vulnerability_detection",
+    "title": "Vulnerability detection",
+    "note": "Not one of the seven Class A KSIs. FedRAMP requires vulnerability detection at Class A; fixing timeframes are recommended, not required.",
+    "questions": [
+      {
+        "id": "18",
+        "text": "How do you find vulnerabilities, using which methods, and how often?",
+        "why": "FedRAMP requires you to keep finding vulnerabilities, using methods that fit your service, such as scanning, testing, threat intelligence and disclosure reports."
+      },
+      {
+        "id": "19",
+        "text": "How are findings fixed, and within what timeframes?",
+        "why": "This helps us plan how quickly findings get fixed. FedRAMP recommends fix timeframes at Class A but doesn't require them.",
+        "recommended": true
+      }
+    ]
+  }
+}

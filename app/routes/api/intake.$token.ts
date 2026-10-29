@@ -3,6 +3,7 @@ import {
   finishDocumentUpload,
   finishLogoUpload,
   removeDocumentByCustomer,
+  SAVE_SECTIONS,
   saveCertification,
   saveIntake,
   startDocumentUpload,
@@ -13,7 +14,8 @@ import {
 import type { Route } from "./+types/intake.$token";
 
 /**
- * Screen E writes, as JSON: tab 1's Save, autosave, Submit and logo upload (WI-004), and tab 3's
+ * Screen E writes, as JSON: tab 1's Save, autosave, Submit and logo upload (WI-004), tab 2's Save
+ * and autosave (WI-005, `section: "ksis"`; anything outside its form definition is refused), and tab 3's
  * certification and documents (WI-006: start/finish an upload, rename and "What is this?", x). The
  * customer comes from the token only (E5). Answers: 200 saved, 409 conflict (the stored answers
  * come back), 410 expired or replaced link, 423 submitted (read-only), 422 Submit problems,
@@ -21,8 +23,14 @@ import type { Route } from "./+types/intake.$token";
  */
 
 const Body = v.variant("intent", [
-  v.object({ intent: v.literal("save"), answers: v.record(v.string(), v.unknown()), version: v.number() }),
-  v.object({ intent: v.literal("submit"), answers: v.record(v.string(), v.unknown()), version: v.number() }),
+  // Strict: an unknown key (Ignyte's consultant fields, rules_version) is refused, not dropped.
+  v.strictObject({
+    intent: v.literal("save"),
+    section: v.optional(v.picklist(SAVE_SECTIONS)),
+    answers: v.record(v.string(), v.unknown()),
+    version: v.number(),
+  }),
+  v.strictObject({ intent: v.literal("submit"), answers: v.record(v.string(), v.unknown()), version: v.number() }),
   v.object({ intent: v.literal("logo-start"), filename: v.string(), contentType: v.string(), size: v.number(), width: v.optional(v.number()) }),
   v.object({ intent: v.literal("logo-finish"), logoId: v.string(), filename: v.string(), contentType: v.string() }),
   v.object({ intent: v.literal("certification-save"), certification: v.record(v.string(), v.unknown()), version: v.number() }),
@@ -48,8 +56,11 @@ function json(body: unknown, status = 200): Response {
 
 const STATUS = { expired: 410, locked: 423, conflict: 409, problems: 422, refused: 400 } as const;
 
-/** Tab 1 answers are a few KB of text; anyone holding a link can post here, so the body is capped. */
-export const INTAKE_BODY_MAX_BYTES = 256 * 1024;
+/**
+ * Anyone holding a link can post here, so the body is capped. Tab 2 allows nine answers of 10,000
+ * characters; in a script of 3-byte characters that is about 270 KB of JSON, so the cap leaves room.
+ */
+export const INTAKE_BODY_MAX_BYTES = 512 * 1024;
 
 /**
  * Reads the body as JSON, stopping at `max` bytes whatever Content-Length claims (chunked
