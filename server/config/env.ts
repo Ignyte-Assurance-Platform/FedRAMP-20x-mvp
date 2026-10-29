@@ -80,6 +80,13 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
         "The dev-only sign-in exists for local development only; remove DEV_LOGIN from the environment.",
     );
   }
+  // WI-005 E1: the vendored rules are the ones in the image; another root is for tests only.
+  if (env.NODE_ENV === "production" && source.FEDRAMP_RULES_DIR !== undefined) {
+    throw new ConfigError(
+      "Refusing to start: FEDRAMP_RULES_DIR is set while NODE_ENV=production. " +
+        "It points the FedRAMP rules loader at test fixtures; remove it from the environment.",
+    );
+  }
   // Local disk on Cloud Run is ephemeral: customer files would vanish on the next restart.
   if (env.NODE_ENV === "production" && env.STORAGE_DRIVER !== "gcs") {
     throw new ConfigError(

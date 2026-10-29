@@ -54,17 +54,24 @@ const isRecord = (x: unknown): x is Record<string, unknown> => typeof x === "obj
 function readManifest(dir: string): Manifest {
   const file = path.join(dir, "manifest.json");
   if (!existsSync(file)) throw new RulesManifestError(`Refusing to start: ${file} is missing.`);
-  const manifest = JSON.parse(readFileSync(file, "utf8")) as Partial<Manifest>;
+  let manifest: Partial<Manifest>;
+  try {
+    manifest = JSON.parse(readFileSync(file, "utf8")) as Partial<Manifest>;
+  } catch (error) {
+    throw new RulesManifestError(`Refusing to start: ${file} is not valid JSON (${(error as Error).message}).`);
+  }
   if (typeof manifest.commit !== "string" || typeof manifest.version !== "string" || !Array.isArray(manifest.files)) {
-    throw new RulesManifestError(`${file} must have a commit, a version and a files list`);
+    throw new RulesManifestError(`Refusing to start: ${file} must have a commit, a version and a files list.`);
   }
   return manifest as Manifest;
 }
 
 function readChecked(dir: string, manifest: Manifest, role: ManifestFile["role"]): unknown {
   const entry = manifest.files.find((f) => f.role === role);
-  if (!entry) throw new RulesManifestError(`${path.join(dir, "manifest.json")} has no ${role} entry`);
-  const bytes = readFileSync(path.join(dir, entry.file));
+  if (!entry) throw new RulesManifestError(`Refusing to start: ${path.join(dir, "manifest.json")} has no ${role} entry.`);
+  const file = path.join(dir, entry.file);
+  if (!existsSync(file)) throw new RulesManifestError(`Refusing to start: ${file} is named in manifest.json but missing.`);
+  const bytes = readFileSync(file);
   const actual = createHash("sha256").update(bytes).digest("hex");
   if (actual !== entry.sha256) {
     throw new RulesManifestError(
@@ -102,11 +109,15 @@ export function loadRulesFolder(dir: string): VendoredRules {
   return { version: doc.info.version, commit: manifest.commit, ksis };
 }
 
-/** The vendored versions, oldest first (versions are YYYY.MM.DD.NN, so they sort as text). */
+/**
+ * The vendored versions, oldest first (versions are YYYY.MM.DD.NN, so they sort as text). Every
+ * subfolder counts, with or without a manifest: loadRulesFolder refuses one without, so a half-copied
+ * version stops start-up instead of the app running on the previous one.
+ */
 export function listRulesVersions(root: string = RULES_DIR): string[] {
   if (!existsSync(root)) return [];
   return readdirSync(root, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && existsSync(path.join(root, d.name, "manifest.json")))
+    .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort();
 }
@@ -129,7 +140,8 @@ export function loadRulesLibrary(root: string = RULES_DIR): RulesLibrary {
 let library: RulesLibrary | undefined;
 /**
  * Loaded once per process; start-up calls it so a bad file stops the app before it listens.
- * FEDRAMP_RULES_DIR points it at another root: tests only (a tampered copy, a fake newer version).
+ * FEDRAMP_RULES_DIR points it at another root: tests only (a tampered copy, a fake newer version);
+ * parseEnv refuses it in production.
  */
 export function getRulesLibrary(): RulesLibrary {
   library ??= loadRulesLibrary(process.env.FEDRAMP_RULES_DIR || RULES_DIR);

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { listRulesVersions, loadRulesFolder, loadRulesLibrary, RULES_DIR, RulesManifestError } from "./rules";
@@ -18,7 +18,7 @@ function rawRules(version: string) {
 
 describe("vendored FedRAMP rules", () => {
   it("finds the rules from the repo root, so the server bundle under build/ reads the same files", () => {
-    expect(RULES_DIR).toBe(path.join(process.cwd(), "server", "fedramp", "rules"));
+    expect(RULES_DIR).toBe(path.resolve(import.meta.dirname, "rules"));
   });
 
   it("2.2 returns the version from .info.version and every Class A KSI's name and statement word for word", () => {
@@ -49,6 +49,34 @@ describe("vendored FedRAMP rules", () => {
     const fixture = makeRulesRoot({ tamper: "schema" });
     try {
       expect(() => loadRulesFolder(path.join(fixture.root, fixture.real))).toThrow(/Refusing to start: rules .* do not match their schema: \/info must have required property 'title'/);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it("2.18 refuses a version folder without a manifest, instead of starting on the previous version", () => {
+    const fixture = makeRulesRoot({ newer: true });
+    try {
+      rmSync(path.join(fixture.root, fixture.fake!, "manifest.json"));
+      expect(listRulesVersions(fixture.root)).toContain(fixture.fake);
+      expect(() => loadRulesLibrary(fixture.root)).toThrow(/Refusing to start: .*manifest.json is missing/);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it("2.18 refuses a manifest that is not valid JSON, or that names a missing file, with the start-up message", () => {
+    const fixture = makeRulesRoot();
+    const dir = path.join(fixture.root, fixture.real);
+    try {
+      const manifest = readFileSync(path.join(dir, "manifest.json"), "utf8");
+      writeFileSync(path.join(dir, "manifest.json"), manifest.slice(0, -5));
+      expect(() => loadRulesFolder(dir)).toThrow(RulesManifestError);
+      expect(() => loadRulesFolder(dir)).toThrow(/Refusing to start: .*manifest.json is not valid JSON/);
+      writeFileSync(path.join(dir, "manifest.json"), manifest);
+      rmSync(path.join(dir, "fedramp-consolidated-rules.json"));
+      expect(() => loadRulesFolder(dir)).toThrow(RulesManifestError);
+      expect(() => loadRulesFolder(dir)).toThrow(/Refusing to start: .*fedramp-consolidated-rules.json is named in manifest.json but missing/);
     } finally {
       fixture.cleanup();
     }

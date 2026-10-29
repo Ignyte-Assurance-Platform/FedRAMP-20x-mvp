@@ -34,6 +34,13 @@ describe("production start-up guard", () => {
 });
 
 describe("vendored rules start-up guard (WI-005 2.18)", () => {
+  it("refuses to start when FEDRAMP_RULES_DIR is set in production", () => {
+    const result = start({ NODE_ENV: "production", FEDRAMP_RULES_DIR: root });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Refusing to start: FEDRAMP_RULES_DIR is set while NODE_ENV=production");
+  });
+
+
   it.each(["hash", "schema"] as const)("refuses to start when the rules file fails its %s check", async (tamper) => {
     const { makeRulesRoot } = await import("../../server/fedramp/testdata/rules-fixture");
     const fixture = makeRulesRoot({ tamper });

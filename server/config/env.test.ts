@@ -29,6 +29,12 @@ describe("parseEnv", () => {
     );
   });
 
+  it.each(["/tmp/rules", ""])("refuses NODE_ENV=production with FEDRAMP_RULES_DIR=%j (WI-005 E1)", (value) => {
+    expect(() => parseEnv({ ...base, NODE_ENV: "production", FEDRAMP_RULES_DIR: value })).toThrowError(
+      /Refusing to start: FEDRAMP_RULES_DIR is set while NODE_ENV=production/,
+    );
+  });
+
   it("accepts production without DEV_LOGIN, on Cloud Storage", () => {
     const env = parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", GCS_LOGO_BUCKET: "maaz-logos", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/", INTAKE_LINK_KEY: KEY });
     expect(env.devLoginEnabled).toBe(false);
