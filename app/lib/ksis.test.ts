@@ -17,7 +17,8 @@ import {
 /** WI-005 §3, E2, E5, E7: the tab 2 form definition and the shared status, count and check rules. */
 
 const definition = ksisJson as KsisDefinition;
-const design = readFileSync(path.join(process.cwd(), "openspec", "changes", "intake-ksis", "design.md"), "utf8");
+// The compiled spec, archived after the IGN-27 triage; the archive folder never moves again.
+const design = readFileSync(path.join(process.cwd(), "openspec", "changes", "archive", "2026-10-29-intake-ksis", "design.md"), "utf8");
 const empty = () => normalizeKsisAnswers(definition, undefined);
 
 function withAnswers(edit: (a: KsisAnswers) => void): KsisAnswers {

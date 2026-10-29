@@ -1,7 +1,7 @@
 # maaz20x-repo-skeleton-local-dev Specification
 
 ## Purpose
-TBD - created by archiving change repo-skeleton-local-dev. Update Purpose after archive.
+The repo skeleton and a local development environment that need no cloud: React Router on Hono, Drizzle with a local Postgres, Better Auth with a dev-only sign-in, a `DocumentStore` with local-disk and Cloud Storage drivers chosen by environment, a typed environment loader, CI and tests. Every cloud dependency sits behind an interface so the app switches to GCP by configuration only. Source: brain work item [[wi-maaz20x-010-repo-skeleton-local-dev]] at brain_commit 58c518d; archived change `2026-10-28-repo-skeleton-local-dev`.
 
 ## Requirements
 
