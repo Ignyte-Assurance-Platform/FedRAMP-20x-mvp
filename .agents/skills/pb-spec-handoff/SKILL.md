@@ -2,7 +2,7 @@
 name: pb-spec-handoff
 description: Freezes an approved work item (stage 3 passed) — verifies the approved spec gate, records handoff.brain_commit, creates or updates the Linear issue via PB - Project Tickets, sets stage handed-off and prints the next step for the project repo. Triggers: "hand off", "handoff", "freeze the spec", "send to the project repo".
 compatibility: Node >= 18 and git. Brain-owned; may commit directly to main under the Handoff Metadata Exception.
-version: 1.0.0
+version: 1.1.0
 ---
 <!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
@@ -35,6 +35,12 @@ node $BRAIN/scripts/linker.mjs --fix && node $BRAIN/scripts/generate.mjs --hub
 ## 3. After handoff
 
 The brain stops tracking stages 4–8 by hand. Status comes from Linear via PB - Delivery Board. An intent change reopens the item (`stage: draft`), needs a new gate-3 approval and produces a new `brain_commit`; the project re-compiles.
+
+**Clarification after handoff.** A change that only writes down what the delivered code already does, or fixes a reference to another item, is not an intent change: what the customer sees and every acceptance criterion stay the same. Then:
+- edit the spec body in a brain PR that names the project PR or review where it came from;
+- keep `stage: handed-off` and `handoff.brain_commit` as they are; no re-compile;
+- append a History line: `<date> · handed-off · <what was clarified> (<source>). No change of intent, no new brain_commit, no re-compile`.
+If the change alters customer-visible behavior or an acceptance criterion, or a reviewer is unsure, it is an intent change: reopen.
 
 ## 4. Never
 
