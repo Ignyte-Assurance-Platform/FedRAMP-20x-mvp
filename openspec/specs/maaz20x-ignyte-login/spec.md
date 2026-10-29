@@ -5,20 +5,20 @@ Ignyte staff sign in to the console with Google, only with an `@ignyteplatform.c
 
 ## Requirements
 
-### Requirement: Screen A — Ignyte login (Sign in with Google, Ignyte Workspace accounts)
+### Requirement: Screen A — Ignyte login (Sign in with Google, members of the staff Google group)
 
-The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-002-ignyte-login]] at brain_commit 554fc7c; scope in proposal.md).
+The system SHALL behave as every scenario below states (brain work item [[wi-maaz20x-002-ignyte-login]] at brain_commit 554fc7c; scope in proposal.md). Access is membership of the staff Google group, not an allowlist (brain work item [[wi-maaz20x-019-staff-access-google-group]] at brain_commit 23b3029, which supersedes the allowlist part of wi-002; its own scenarios are in the capability maaz20x-staff-access-google-group).
 
-#### Scenario: an allowlisted Ignyte account signs in with Google
-- **WHEN** an allowlisted Ignyte account signs in with Google
+#### Scenario: a member of the staff Google group signs in with Google
+- **WHEN** a member of the staff Google group signs in with Google
 - **THEN** a session of 8 hours is created and Screen B opens [pre-prod]
 
 #### Scenario: a Google account outside ignyteplatform.com completes the Google flow
 - **WHEN** a Google account outside ignyteplatform.com completes the Google flow
 - **THEN** no session is created and "not authorized" is shown [unit]
 
-#### Scenario: an Ignyte account that is not in the allowlist signs in
-- **WHEN** an Ignyte account that is not in the allowlist signs in
+#### Scenario: an Ignyte account that is not in the staff Google group signs in
+- **WHEN** an Ignyte account that is not in the staff Google group signs in
 - **THEN** no session is created and "not authorized" is shown [unit]
 
 #### Scenario: an Ignyte route is requested without a session
@@ -64,7 +64,3 @@ The system SHALL behave as every scenario below states (brain work item [[wi-maa
 #### Scenario: a session's last Google check is younger than 15 minutes
 - **WHEN** a session's last Google check is younger than 15 minutes
 - **THEN** no call to Google is made [unit]
-
-#### Scenario: the seed runs with ADMIN_EMAILS
-- **WHEN** the seed runs with ADMIN_EMAILS
-- **THEN** exactly those users are `active` (removed emails are set inactive, rows kept), and an email outside ignyteplatform.com, or an empty ADMIN_EMAILS in production, makes the seed fail [unit]

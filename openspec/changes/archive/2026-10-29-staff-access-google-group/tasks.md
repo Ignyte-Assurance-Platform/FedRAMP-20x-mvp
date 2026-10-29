@@ -18,9 +18,9 @@
 - [x] 2.10 WHEN the app starts with `STAFF_DIRECTORY=local` and `NODE_ENV=production`, or in production without `STAFF_GROUP_EMAIL`, or with a `STAFF_GROUP_EMAIL` outside the allowed domain THEN it refuses to start [unit]
 - [x] 2.11 WHEN the container starts THEN it runs the migrations and the app, and no allowlist seed runs [smoke]; AND `ADMIN_EMAILS` and `seed:allowlist` appear nowhere in `server/`, `deploy/`, `.github/`, `Dockerfile`, `package.json` and `README.md` [CI grep]
 - [x] 2.12 WHEN the dev user signs in with `DEV_LOGIN` and is listed in `LOCAL_STAFF_EMAILS` THEN Screen B opens; WHEN they are not listed THEN "not authorized" is shown [smoke]
-- [ ] 2.13 WHEN a member of ignyteFedramp20x signs in on dev THEN Screen B opens; WHEN a non-member Ignyte account signs in THEN "not authorized" is shown [pre-prod]
-- [ ] 2.14 WHEN Max or Adam removes a signed-in test member from the group THEN that person's first request made more than 5 minutes after their last group check is sent to /login [pre-prod]
+- [ ] 2.13 WHEN a member of ignyteFedramp20x signs in on dev THEN Screen B opens; WHEN a non-member Ignyte account signs in THEN "not authorized" is shown [pre-prod] · member half seen on dev 2026-10-29 (revision 00034: callback 302, /customers 200, no `staff directory` errors); non-member half not run, not blocking (Jesús, 2026-10-29)
+- [ ] 2.14 WHEN Max or Adam removes a signed-in test member from the group THEN that person's first request made more than 5 minutes after their last group check is sent to /login [pre-prod] · not run, not blocking (Jesús, 2026-10-29); covered by [unit] 2.6
 
 ## 3. Verify
-- [ ] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear 
+- [x] 3.1 Automated review (PB - Review PR) against this spec · #57 @ 0e29aa4, report `.pb-cache/reviews/pr-57-2026-10-29.md`: mergeable, 0 blockers, 4 optional nits; second opinion adopted in 7f3aa8a
+- [x] 3.2 Human triage (gate 7) recorded in Linear IGN-28 · review comment 00e07928 (2026-10-29), #57 merged by Jesús (2c1ad1d) and deployed to dev (revision 00033)
