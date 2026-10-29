@@ -1,7 +1,7 @@
 # maaz20x-intake-ksis Specification
 
 ## Purpose
-Tab 2 of the customer intake (Screen E): the seven Class A KSIs with FedRAMP's statement and rules version from the vendored rules, free-text answers, a "need help" skip and per-block status, plus the Vulnerability detection block; read-only on Screen D with live follow-ups and the consultant's CMVP and log-context fields. Source: brain work item wi-maaz20x-005-intake-ksis (IGN-27).
+Tab 2 of the customer intake (Screen E): the seven Class A KSIs with FedRAMP's statement and rules version from the vendored rules, free-text answers, a "need help" skip and per-block status, plus the Vulnerability detection block; read-only on Screen D with live follow-ups and the consultant's CMVP and log-context fields. Source: brain work item [[wi-maaz20x-005-intake-ksis]] at brain_commit 50fdb15; archived change `2026-10-29-intake-ksis`.
 
 ## Requirements
 
