@@ -56,8 +56,11 @@ function json(body: unknown, status = 200): Response {
 
 const STATUS = { expired: 410, locked: 423, conflict: 409, problems: 422, refused: 400 } as const;
 
-/** Tab 1 answers are a few KB of text; anyone holding a link can post here, so the body is capped. */
-export const INTAKE_BODY_MAX_BYTES = 256 * 1024;
+/**
+ * Anyone holding a link can post here, so the body is capped. Tab 2 allows nine answers of 10,000
+ * characters; in a script of 3-byte characters that is about 270 KB of JSON, so the cap leaves room.
+ */
+export const INTAKE_BODY_MAX_BYTES = 512 * 1024;
 
 /**
  * Reads the body as JSON, stopping at `max` bytes whatever Content-Length claims (chunked

@@ -162,6 +162,7 @@ async function saveKsis(token: string, input: { answers: unknown; version: numbe
   const access = await writable(token, deps);
   if ("kind" in access) return access;
   const outcome = await saveKsisSection(access.customer, input, ksisDeps(deps));
+  if (outcome.kind === "stale") return { kind: "refused", message: INTAKE_STALE_MESSAGE };
   return outcome.kind === "conflict" ? { ...outcome, answers: outcome.answers as unknown as Record<string, unknown> } : outcome;
 }
 

@@ -208,6 +208,30 @@ describe("tab 2 saver and Submit's flush (WI-005 E3, E3b)", () => {
     expect(await flushing).toBe("saved");
   });
 
+  it("review of #49: flush during this saver's own Submit ends instead of looping, and sends nothing", async () => {
+    const h = harness(1);
+    h.type({ x: 1 });
+    const submitted = h.saver.submit();
+    await vi.advanceTimersByTimeAsync(0);
+    h.type({ x: 2 }); // typed while the submit is on its way
+    const flushing = h.saver.flush();
+    const timeout = new Promise((resolve) => setTimeout(() => resolve("still looping"), 1000));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await Promise.race([flushing, timeout])).toBe("failed");
+    expect(h.calls).toHaveLength(1);
+    h.calls[0]!.resolve({ status: 422, data: { version: 2 } });
+    await submitted;
+  });
+
+  it("flush after Take theirs has nothing to save and sends no request", async () => {
+    const h = harness(1, "ksis");
+    h.type({ x: 1 });
+    h.saver.takeTheirs({ answers: { x: 0 }, version: 4 });
+    expect(await h.saver.flush()).toBe("saved");
+    expect(h.calls).toHaveLength(0);
+    expect(h.saver.version).toBe(4);
+  });
+
   it("2.13 flush with nothing pending is saved without a request", async () => {
     const h = harness(1, "ksis");
     expect(await h.saver.flush()).toBe("saved");

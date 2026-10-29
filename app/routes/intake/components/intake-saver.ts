@@ -152,6 +152,8 @@ export function createIntakeSaver(options: IntakeSaverOptions): IntakeSaver {
     if (inFlight) await inFlight;
     // Each round saves what was typed while the previous one was on its way; a failure stops it.
     while (dirty && !paused && !done) {
+      // This saver's own Submit is sending: save() would post nothing, so the loop would never end.
+      if (submitting) return "failed";
       last = "saved";
       await save();
       if (last !== "saved") break;

@@ -30,7 +30,10 @@ export const KSIS_SECTION = "ksis";
 let definition: KsisDefinition | undefined;
 
 export function loadKsisDefinition(file = path.join(FORM_DEFINITIONS_DIR, "ksis.v1.json")): KsisDefinition {
-  return JSON.parse(readFileSync(file, "utf8")) as KsisDefinition;
+  // The file's $comment is for editors; the definition is sent to the customer's page.
+  const definition = JSON.parse(readFileSync(file, "utf8")) as KsisDefinition & { $comment?: string };
+  delete definition.$comment;
+  return definition;
 }
 
 export function getKsisDefinition(): KsisDefinition {
@@ -50,12 +53,14 @@ const defaultDeps = (): KsisDeps => ({ db: getDb(), rules: getRulesLibrary(), de
 /** The KSI name and FedRAMP's statement, word for word, from one vendored rules version. */
 export type KsiStatements = Record<string, { name: string; statement: string }>;
 
+export const missingStatement = (version: string) => `Statement not available in FedRAMP rules ${version}.`;
+
+/** A version without one of the codes (renamed or retired) shows a placeholder instead of failing the page. */
 function statementsFrom(rules: VendoredRules, codes: string[]): KsiStatements {
   return Object.fromEntries(
     codes.map((code) => {
       const ksi = rules.ksis[code];
-      if (!ksi) throw new Error(`rules ${rules.version} have no ${code}`);
-      return [code, { name: ksi.name, statement: ksi.statement }];
+      return [code, ksi ? { name: ksi.name, statement: ksi.statement } : { name: code, statement: missingStatement(rules.version) }];
     }),
   );
 }
@@ -91,10 +96,10 @@ function defaultDepsLazy(): Pick<KsisDeps, "rules" | "definition" | "now"> {
 
 export type KsisSaveOutcome =
   | { kind: "refused"; message: string }
+  /** The page's version is one the section never had; the caller says "out of date", as for tab 1. */
+  | { kind: "stale" }
   | { kind: "saved"; version: number; savedAt: Date }
   | { kind: "conflict"; answers: KsisAnswers; version: number; savedAt: Date };
-
-export const KSIS_STALE_MESSAGE = "This page is out of date. Reload it and try again.";
 
 /**
  * Save and autosave of tab 2 (E3) for a customer the caller found writable: only the form
@@ -115,7 +120,7 @@ export async function saveKsisSection(
     answers: { ...checked.answers, rules_version: rules.current.version },
     expectedVersion: input.version,
   });
-  if ("stale" in result) return { kind: "refused", message: KSIS_STALE_MESSAGE };
+  if ("stale" in result) return { kind: "stale" };
   if ("conflict" in result) {
     return { kind: "conflict", answers: normalizeKsisAnswers(def, result.conflict.answers), version: result.conflict.version, savedAt: result.conflict.updatedAt };
   }
@@ -151,7 +156,10 @@ export interface KsiReview {
 export interface KsisScreen {
   /** The version the statements are rendered from: the saved one, or the current one before any save. */
   rulesVersion: string;
-  /** "Answered under FedRAMP rules <saved>; current rules <current>." when they differ. */
+  /**
+   * "Answered under FedRAMP rules <saved>; current rules <current>." when they differ, or, when the
+   * saved version is no longer vendored, a note saying the statements shown are the current ones.
+   */
   rulesNote: string | null;
   counts: string;
   followUps: { key: string; title: string; statusLabel: string }[];
@@ -163,6 +171,8 @@ export interface KsisScreen {
 /** Screen D (2.6, 2.15, 2.16, 2.17): tab 2 read-only, follow-ups computed live from the saved answers, and Ignyte's fields. */
 export async function getKsisScreen(customerId: string, deps: KsisDeps = defaultDeps()): Promise<KsisScreen> {
   const def = deps.definition;
+  const customer = await customersRepo.findCustomer(deps.db, customerId);
+  if (!customer) throw new CustomerError("customer not found", 404);
   const section = await intakeAnswersRepo.findIntakeSection(deps.db, customerId, KSIS_SECTION);
   const answers = normalizeKsisAnswers(def, section?.answers);
   const current = deps.rules.current;
@@ -204,14 +214,14 @@ export async function getKsisScreen(customerId: string, deps: KsisDeps = default
     },
   ];
 
-  const customer = await customersRepo.findCustomer(deps.db, customerId);
   return {
     rulesVersion: rules.version,
-    // A saved version that differs from the current one, or whose folder is no longer vendored.
     rulesNote:
-      stamp && stamp !== current.version
-        ? `Answered under FedRAMP rules ${stamp}; current rules ${current.version}.`
-        : null,
+      !stamp || stamp === current.version
+        ? null
+        : saved
+          ? `Answered under FedRAMP rules ${stamp}; current rules ${current.version}.`
+          : `Answered under FedRAMP rules ${stamp}, which is no longer in this build; statements shown are from current rules ${current.version}.`,
     counts: (() => {
       const c = ksiCounts(def, answers);
       return `${c.answered}/${c.total} answered, ${c.needsHelp} needs help`;
@@ -219,11 +229,11 @@ export async function getKsisScreen(customerId: string, deps: KsisDeps = default
     followUps: followUps(def, answers).map((b) => ({ key: b.key, title: titleOf(b.key), statusLabel: STATUS_LABELS[b.status] })),
     blocks,
     review: {
-      cmvpValidated: customer?.cmvpValidated ?? null,
-      cmvpNote: customer?.cmvpNote ?? null,
-      logContextNote: customer?.logContextNote ?? null,
-      updatedAt: customer?.ksiReviewUpdatedAt ?? null,
-      updatedBy: customer?.ksiReviewUpdatedBy ?? null,
+      cmvpValidated: customer.cmvpValidated,
+      cmvpNote: customer.cmvpNote,
+      logContextNote: customer.logContextNote,
+      updatedAt: customer.ksiReviewUpdatedAt,
+      updatedBy: customer.ksiReviewUpdatedBy,
     },
     savedAt: section?.updatedAt ?? null,
   };
