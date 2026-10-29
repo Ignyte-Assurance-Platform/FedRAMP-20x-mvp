@@ -1,7 +1,7 @@
 # maaz20x-ignyte-login Specification
 
 ## Purpose
-Ignyte staff sign in to the console with Google, only with an `@ignyteplatform.com` account on the staff allowlist; sessions last 8 hours, end when the account is removed or suspended, and customer intake links never need a sign-in (brain wi-maaz20x-002, Screen A).
+Ignyte staff sign in to the console with Google, only with an `@ignyteplatform.com` account that is a member of the staff Google group (wi-maaz20x-019, which replaced the allowlist); sessions last 8 hours, end when the account is removed or suspended, and customer intake links never need a sign-in (brain wi-maaz20x-002, Screen A).
 
 ## Requirements
 

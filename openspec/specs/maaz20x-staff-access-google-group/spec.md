@@ -1,7 +1,7 @@
 # maaz20x-staff-access-google-group Specification
 
 ## Purpose
-TBD - created by archiving change staff-access-google-group. Update Purpose after archive.
+Who may use the Ignyte console: members of the Google group `ignyteFedramp20x`, checked with the Directory API (`hasMember`) as the runtime service account at sign-in and again every 5 minutes, failing closed when the directory cannot answer (sessions survive 15 minutes after the last successful check). It replaces the `ADMIN_EMAILS` allowlist and its start-up seed. Source: brain work item [[wi-maaz20x-019-staff-access-google-group]] at brain_commit 23b3029; archived change `2026-10-29-staff-access-google-group`.
 
 ## Requirements
 
