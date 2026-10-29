@@ -109,7 +109,7 @@ describe("app against the local database", () => {
     expect(data.headers.get("cache-control")).toBe("no-store");
   });
 
-  it("generates, stores and downloads a Package Overview file (WI-007)", async () => {
+  it("generates, stores and downloads a Package Overview file (WI-007), stamped with the vendored rules version (WI-005 2.19)", async () => {
     const services = await import("~server/services");
     const { getDb, schema } = await import("~server/db");
     const goldenAnswers = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
@@ -146,6 +146,10 @@ describe("app against the local database", () => {
     await services.setAssessorConfirmed(customer!.id, true, user!.id, deps);
     const passing = await services.generatePackageOverview(request, deps);
     expect(passing.file).toMatchObject({ valid: true, fileName: "ERP-package-overview.json", schemaVersion: deps.generator.schemaVersion });
+    // WI-005 2.19: the vendored rules version, read from the loader, never null and never a literal.
+    const { getRulesLibrary } = await import("~server/fedramp");
+    expect(passing.file.rulesVersion).toBe(getRulesLibrary().current.version);
+    expect(draft.file.rulesVersion).toBe(getRulesLibrary().current.version);
 
     const status = await services.getPackageOverviewStatus(customer!.id, new Date("2026-10-21T16:00:00Z"), deps);
     expect(status).toMatchObject({ downloadLabel: "Download", answersChanged: true, regenerate: undefined });
