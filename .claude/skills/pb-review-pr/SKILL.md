@@ -2,7 +2,7 @@
 name: pb-review-pr
 description: AI review of a PR diff against the linked approved spec (does the code match intent?), project conventions, security basics and docs impact. Produces a findings report for the human triage gate (stage 7). Never approves or merges. Triggers: "review this PR", "review the diff", "findings for PR #…", "stage 6".
 compatibility: git + gh (gh pr diff). Any repo. Read-only on the PR; may post a comment only if asked.
-version: 1.0.0
+version: 1.1.0
 ---
 <!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
@@ -35,6 +35,8 @@ Write `<report_dir>/pr-<n>-<date>.md`:
 | # | Severity (blocker/major/minor/nit) | Dimension | File:line | Finding | Suggested action |
 Summary: criteria met x/y · blockers n · intent defects n
 ```
+Add a section **Ours (brain)** for findings that are not the developer's: gaps, ambiguities or stale cross-references in the spec or other work items. Leave them out of the PR comment, list them in the day plan, and open a brain PR the same day: a clarification per PB - Spec Handoff §3, or an escalation (stage 2) for an intent defect.
+
 Post as a PR comment only if the user asks. The decision on every finding is the human's (gate 7) and is recorded in Linear, not here.
 
 ## 4. Never
