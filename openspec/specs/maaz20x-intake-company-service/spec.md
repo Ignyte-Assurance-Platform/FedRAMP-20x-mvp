@@ -1,7 +1,7 @@
 # maaz20x-intake-company-service Specification
 
 ## Purpose
-TBD - created by archiving change intake-company-service. Update Purpose after archive.
+Screen E tab 1: the customer fills in company and service details for every Package Overview field except the assessor, in a form generated from the vendored schema, reached by link without login, with autosave, save/resume and Submit, and shown read-only on Screen D. Class A only. Source: brain work item [[wi-maaz20x-004-intake-company-service]] at brain_commit 68881d9; archived change `2026-10-28-intake-company-service`.
 
 ## Requirements
 
