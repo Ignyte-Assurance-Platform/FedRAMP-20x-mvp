@@ -88,6 +88,7 @@ describe("Google callback (WI-002 error states)", () => {
   });
 
   it("2.2 (WI-019) refuses an Ignyte account outside the staff group with no session, no user and no account row", async () => {
+    await deleteUser(ignyte.email); // a row left by an earlier run would hide a regression
     const res = await backFromGoogle(ignyte);
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/login?error=not_authorized");
