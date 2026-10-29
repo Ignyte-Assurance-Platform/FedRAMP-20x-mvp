@@ -27,5 +27,5 @@
 - [x] 2.19 WHEN a Package Overview file is generated THEN its `rules_version` is the vendored rules version, not null
 
 ## 3. Verify
-- [ ] 3.1 Automated review (PB - Review PR) against this spec
-- [ ] 3.2 Human triage (gate 7) recorded in Linear IGN-27
+- [x] 3.1 Automated review (PB - Review PR) against this spec · two rounds with PB - Second Opinion (Fable 5.1) on #48, #49 and #50, reports in the brain's `.pb-cache/second-opinions/mvp-pr-4{8,9}-2026-10-29.md` and `mvp-pr-50-2026-10-29.md`; round 1: 0 blockers, 2 major (#50), round 2: all mergeable
+- [x] 3.2 Human triage (gate 7) recorded in Linear IGN-27 · comment 1ba9315d (2026-10-29): fixes before merge done with tests; optional nits accepted; spec clarifications in brain #56 and #59
