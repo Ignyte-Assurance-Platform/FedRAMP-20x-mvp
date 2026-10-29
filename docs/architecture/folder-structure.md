@@ -31,7 +31,7 @@ FedRAMP-20x-mvp/
 ├── server/                       # server-only. Imported ONLY from loaders, actions, resource routes and server/index.ts
 │   ├── index.ts                  # Hono app: static assets + cache headers (ADR-0005), React Router handler. The only entry point
 │   ├── config/                   # typed environment (Valibot); DEV_LOGIN production guard
-│   ├── auth/                     # Better Auth instance, hd check, allowlist, session cookie cache
+│   ├── auth/                     # Better Auth instance, hd check, staff group (StaffDirectory: local/google), staff guard
 │   ├── db/                       # Drizzle: schema/, migrations/, client.ts, seed.ts
 │   ├── repositories/             # one file per table; the only code that talks to Drizzle
 │   ├── services/                 # use-cases: intake section merge + version check, progress, package build

@@ -23,7 +23,11 @@ const EnvSchema = v.object({
   GOOGLE_CLIENT_ID: optionalText,
   GOOGLE_CLIENT_SECRET: optionalText,
   GOOGLE_ALLOWED_DOMAIN: v.optional(v.string(), "ignyteplatform.com"),
-  ADMIN_EMAILS: v.optional(v.string(), ""),
+  /** Who may use the app (WI-019): google asks the Directory API about STAFF_GROUP_EMAIL; local reads LOCAL_STAFF_EMAILS. */
+  STAFF_DIRECTORY: v.optional(v.picklist(["local", "google"]), "local"),
+  STAFF_GROUP_EMAIL: v.optional(v.pipe(v.string(), v.trim(), v.toLowerCase(), v.transform((s) => (s === "" ? undefined : s)))),
+  /** Comma-separated members for the local driver; default DEV_LOGIN_EMAIL. */
+  LOCAL_STAFF_EMAILS: optionalText,
 
   STORAGE_DRIVER: v.optional(v.picklist(["local", "gcs"]), "local"),
   LOCAL_STORAGE_DIR: v.optional(v.string(), ".data/storage"),
@@ -51,7 +55,8 @@ export type Env = RawEnv & {
   devLoginEnabled: boolean;
   /** Google sign-in is configured but inactive until the OAuth client exists (ADR-0004). */
   googleEnabled: boolean;
-  adminEmails: string[];
+  /** The members of the local staff directory. */
+  localStaffEmails: string[];
   /** INTAKE_LINK_KEY decoded; outside production derived from BETTER_AUTH_SECRET when unset. */
   intakeLinkKey: Buffer;
 };
@@ -114,6 +119,20 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
       "Refusing to start: INTAKE_LINK_KEY must be set in production (it encrypts the stored intake links).",
     );
   }
+  // WI-019: in production the Google group decides who gets in, never a list in the environment.
+  if (env.NODE_ENV === "production" && env.STAFF_DIRECTORY !== "google") {
+    throw new ConfigError(
+      "Refusing to start: STAFF_DIRECTORY must be google in production (the Google group decides who may sign in).",
+    );
+  }
+  if ((env.NODE_ENV === "production" || env.STAFF_DIRECTORY === "google") && !env.STAFF_GROUP_EMAIL) {
+    throw new ConfigError(
+      "Refusing to start: STAFF_GROUP_EMAIL must be set in production and with STAFF_DIRECTORY=google (the staff Google group).",
+    );
+  }
+  if (env.STAFF_GROUP_EMAIL && !env.STAFF_GROUP_EMAIL.endsWith(`@${env.GOOGLE_ALLOWED_DOMAIN.toLowerCase()}`)) {
+    throw new ConfigError(`Invalid environment:\n  - STAFF_GROUP_EMAIL must end in @${env.GOOGLE_ALLOWED_DOMAIN}`);
+  }
   if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
     throw new ConfigError("Invalid environment:\n  - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together");
   }
@@ -122,7 +141,7 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
     ...env,
     devLoginEnabled: env.NODE_ENV === "development" && env.DEV_LOGIN === "1",
     googleEnabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
-    adminEmails: env.ADMIN_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean),
+    localStaffEmails: (env.LOCAL_STAFF_EMAILS ?? env.DEV_LOGIN_EMAIL).split(",").map((e) => e.trim().toLowerCase()).filter(Boolean),
     intakeLinkKey: env.INTAKE_LINK_KEY
       ? Buffer.from(env.INTAKE_LINK_KEY, "base64")
       : createHash("sha256").update(`maaz-intake-link:${env.BETTER_AUTH_SECRET}`).digest(),

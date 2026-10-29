@@ -15,5 +15,5 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app /app
 USER node
 EXPOSE 8080
-# Same start sequence as the manual deploys: migrations, the staff allowlist, then the app.
-CMD ["sh", "-c", "npm run db:migrate && npm run db:seed:allowlist && exec npm start"]
+# Migrations, then the app. Who may sign in is the staff Google group (WI-019), not a seed.
+CMD ["sh", "-c", "npm run db:migrate && exec npm start"]

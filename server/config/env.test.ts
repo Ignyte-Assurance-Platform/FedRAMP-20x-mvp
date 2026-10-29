@@ -6,6 +6,18 @@ const base = {
   BETTER_AUTH_SECRET: "x".repeat(32),
 };
 const KEY = Buffer.alloc(32, 7).toString("base64");
+/** A production environment that starts. */
+const PROD = {
+  ...base,
+  NODE_ENV: "production",
+  STORAGE_DRIVER: "gcs",
+  GCS_BUCKET: "maaz-docs",
+  GCS_LOGO_BUCKET: "maaz-logos",
+  LOGO_PUBLIC_BASE_URL: "https://logos.example.com/",
+  INTAKE_LINK_KEY: KEY,
+  STAFF_DIRECTORY: "google",
+  STAFF_GROUP_EMAIL: "ignytefedramp20x@ignyteplatform.com",
+};
 
 describe("parseEnv", () => {
   it("applies defaults for local development", () => {
@@ -36,8 +48,25 @@ describe("parseEnv", () => {
   });
 
   it("accepts production without DEV_LOGIN, on Cloud Storage", () => {
-    const env = parseEnv({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", GCS_LOGO_BUCKET: "maaz-logos", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/", INTAKE_LINK_KEY: KEY });
+    const env = parseEnv(PROD);
     expect(env.devLoginEnabled).toBe(false);
+    expect(env.STAFF_GROUP_EMAIL).toBe("ignytefedramp20x@ignyteplatform.com");
+  });
+
+  it.each([undefined, "local"])("2.10 refuses production with STAFF_DIRECTORY=%j (WI-019)", (driver) => {
+    expect(() => parseEnv({ ...PROD, STAFF_DIRECTORY: driver })).toThrowError(/Refusing to start: STAFF_DIRECTORY must be google in production/);
+  });
+
+  it.each([undefined, ""])("2.10 refuses production with STAFF_GROUP_EMAIL=%j (WI-019)", (group) => {
+    expect(() => parseEnv({ ...PROD, STAFF_GROUP_EMAIL: group })).toThrowError(/Refusing to start: STAFF_GROUP_EMAIL must be set/);
+    // The google driver needs the group outside production too.
+    expect(() => parseEnv({ ...base, STAFF_DIRECTORY: "google", STAFF_GROUP_EMAIL: group })).toThrowError(/STAFF_GROUP_EMAIL must be set/);
+  });
+
+  it("2.10 refuses a STAFF_GROUP_EMAIL outside the allowed domain, and lowercases it (WI-019)", () => {
+    expect(() => parseEnv({ ...PROD, STAFF_GROUP_EMAIL: "staff@gmail.com" })).toThrowError(/STAFF_GROUP_EMAIL must end in @ignyteplatform.com/);
+    expect(() => parseEnv({ ...PROD, STAFF_GROUP_EMAIL: "staff@ignyteplatform.com.evil.test" })).toThrow(ConfigError);
+    expect(parseEnv({ ...PROD, STAFF_GROUP_EMAIL: " IgnyteFedramp20x@ignyteplatform.com " }).STAFF_GROUP_EMAIL).toBe("ignytefedramp20x@ignyteplatform.com");
   });
 
   it.each([undefined, ""])("refuses production with LOGO_PUBLIC_BASE_URL=%j (WI-007: no file can carry a logo address)", (value) => {
@@ -80,8 +109,11 @@ describe("parseEnv", () => {
     expect(parseEnv({ ...base, GOOGLE_CLIENT_ID: "id", GOOGLE_CLIENT_SECRET: "s" }).googleEnabled).toBe(true);
   });
 
-  it("normalises the admin allowlist", () => {
-    expect(parseEnv({ ...base, ADMIN_EMAILS: " A@ignyteplatform.com, ,b@ignyteplatform.com" }).adminEmails).toEqual([
+  it("uses the local staff directory outside production, with the dev user as its member by default (WI-019)", () => {
+    const env = parseEnv(base);
+    expect(env.STAFF_DIRECTORY).toBe("local");
+    expect(env.localStaffEmails).toEqual(["dev@ignyteplatform.com"]);
+    expect(parseEnv({ ...base, LOCAL_STAFF_EMAILS: " A@ignyteplatform.com, ,b@ignyteplatform.com" }).localStaffEmails).toEqual([
       "a@ignyteplatform.com",
       "b@ignyteplatform.com",
     ]);
@@ -95,7 +127,7 @@ describe("parseEnv", () => {
 });
 
 describe("INTAKE_LINK_KEY (WI-003)", () => {
-  const prod = { ...base, NODE_ENV: "production", STORAGE_DRIVER: "gcs", GCS_BUCKET: "maaz-docs", GCS_LOGO_BUCKET: "maaz-logos", LOGO_PUBLIC_BASE_URL: "https://logos.example.com/" };
+  const prod = { ...PROD, INTAKE_LINK_KEY: undefined };
   it("refuses production without it and rejects a key that is not 32 bytes", () => {
     expect(() => parseEnv(prod)).toThrowError(/INTAKE_LINK_KEY must be set in production/);
     expect(() => parseEnv({ ...prod, INTAKE_LINK_KEY: "c2hvcnQ=" })).toThrowError(/32 bytes/);
