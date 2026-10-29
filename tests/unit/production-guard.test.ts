@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
  */
 const root = path.resolve(import.meta.dirname, "../..");
 const tsx = path.join(root, "node_modules", "tsx", "dist", "cli.mjs");
+// Each start compiles server/index.ts in a fresh process: about 3 s, too close to vitest's 5 s default under a full run.
+const SPAWN_TEST_TIMEOUT = 40_000;
 
 function start(extraEnv: Record<string, string>) {
   return spawnSync(process.execPath, [tsx, "server/index.ts"], {
@@ -30,7 +32,7 @@ describe("production start-up guard", () => {
     const result = start({ NODE_ENV: "production", DEV_LOGIN: value });
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("Refusing to start: DEV_LOGIN is set while NODE_ENV=production");
-  });
+  }, SPAWN_TEST_TIMEOUT);
 });
 
 describe("vendored rules start-up guard (WI-005 2.18)", () => {
@@ -38,8 +40,7 @@ describe("vendored rules start-up guard (WI-005 2.18)", () => {
     const result = start({ NODE_ENV: "production", FEDRAMP_RULES_DIR: root });
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("Refusing to start: FEDRAMP_RULES_DIR is set while NODE_ENV=production");
-  });
-
+  }, SPAWN_TEST_TIMEOUT);
 
   it.each(["hash", "schema"] as const)("refuses to start when the rules file fails its %s check", async (tamper) => {
     const { makeRulesRoot } = await import("../../server/fedramp/testdata/rules-fixture");
@@ -52,5 +53,5 @@ describe("vendored rules start-up guard (WI-005 2.18)", () => {
     } finally {
       fixture.cleanup();
     }
-  });
+  }, SPAWN_TEST_TIMEOUT);
 });
