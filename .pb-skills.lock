@@ -1,6 +1,6 @@
 {
-  "source_commit": "334f96724e7174c93154f924924afeceadb417c0",
-  "synced_at": "2026-10-28T18:41:57.673Z",
+  "source_commit": "0757edc0cb372b2c1f992feddf1146d9733e32b2",
+  "synced_at": "2026-10-29T14:10:19.158Z",
   "skills": {
     "pb-architecture": "1.0.0",
     "pb-create-pr": "1.0.1",
@@ -14,12 +14,12 @@
     "pb-plain-language-brief": "1.0.0",
     "pb-project-directory": "1.0.0",
     "pb-project-tickets": "1.0.0",
-    "pb-requirements-intake": "1.0.0",
-    "pb-review-pr": "1.0.0",
+    "pb-requirements-intake": "1.1.0",
+    "pb-review-pr": "1.1.0",
     "pb-second-opinion": "1.0.0",
     "pb-spec-compile": "1.0.1",
-    "pb-spec-gate": "1.0.0",
-    "pb-spec-handoff": "1.0.0",
+    "pb-spec-gate": "1.1.0",
+    "pb-spec-handoff": "1.1.0",
     "pb-update-base-files": "1.0.0",
     "pb-zettel-linker": "1.0.0"
   }

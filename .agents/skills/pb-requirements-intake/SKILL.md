@@ -2,7 +2,7 @@
 name: pb-requirements-intake
 description: Stages 1–2 of the delivery process in the brain — Harvest every source of intent, then Draft a work-item spec from the kind template (epic, feature, bug, poc, spike, chore, tech-debt, integration-change). Triggers: "new feature", "write the spec", "harvest", "create a work item", "spec this", "promote this poc", "escalate intent change".
 compatibility: Node >= 18. Works from the brain or from a project repo (writes into the brain).
-version: 1.0.0
+version: 1.1.0
 ---
 <!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
@@ -29,8 +29,13 @@ Write them as the `## 1. Harvest` section: one bullet per source with a `[[link]
 2. Copy `shared/delivery/templates/<kind>.md`. Fill every section; "none" is an answer, blank is not.
 3. **Acceptance criteria as WHEN/THEN bullets**, one per line (`- WHEN … THEN …`). PB - Spec Compile turns each into a scenario.
 4. Link: parent epic, integrations touched (`integrations:`), ADRs (`adrs:`; create one via PB - Architecture if the item changes architecture), contract notes.
-5. Set `stage: draft`, `status: open`, `target_repo`. Append a `## History` line.
-6. `linker --fix`, `generate --hub`, commit via PB - Logical Commits, PR.
+5. **Cross-item consistency** (gates.md §1, checked again at gate 3):
+   - When a decision moves a responsibility between work items, update every item that names the old owner in the same PR.
+   - When work is delegated to another item, write this item's needs as a consumer in the receiving item, not only "decided in wi-…".
+   - When a format is named by example ("same format as X"), check X in the code at the referenced commit and list the fields.
+   - For every derived list or count, say for each kind of element whether it is in or out; do not leave one of two parallel rules unstated.
+6. Set `stage: draft`, `status: open`, `target_repo`. Append a `## History` line.
+7. `linker --fix`, `generate --hub`, commit via PB - Logical Commits, PR.
 
 Promotion: a `poc`/`spike` becomes a new `feature` note with `promoted_from`; never change `kind` in place. Intent change from implementation (Escalation Rule): set the existing item back to `stage: draft`, record why in History, re-run gate 3.
 

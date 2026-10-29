@@ -2,7 +2,7 @@
 name: pb-spec-gate
 description: Stage 3 of the delivery process — prepares the gate-3 checklist for a work item and records the HUMAN decision (approved/rejected) in the work item's approvals. It never approves on its own. Triggers: "gate 3", "approve the spec", "record approval", "reject the spec", "ready for validation".
 compatibility: Node >= 18. Brain-owned; works from a project repo via the brain path.
-version: 1.0.0
+version: 1.1.0
 ---
 <!-- managed by ignyte-project-brain — edit upstream in skills/ and re-run scripts/sync-skills -->
 
@@ -17,7 +17,7 @@ Brain-owned artifacts (work items, ADRs, integrations, knowledge notes) are alwa
 ## 1. Prepare the gate
 
 1. The item must be in `stage: validation`. If not, send it back to PB - Requirements Intake.
-2. Build the checklist for its kind from `shared/delivery/gates.md` §1, pointing at the evidence in the spec for each line. Flag gaps.
+2. Build the checklist for its kind from `shared/delivery/gates.md` §1, pointing at the evidence in the spec for each line. Flag gaps. Check the cross-item lines yourself (search the brain for items that name what this one moves or delegates) and list each hit as a gap until it is fixed.
 3. Name the required signers (gates.md §3); `integration-change` needs both integration owners.
 4. Present checklist + gaps to the humans. Then **wait**.
 
