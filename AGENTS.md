@@ -35,7 +35,7 @@ This repo is a sub-project of **Ignyte Project Brain** at `../ignyte-project-bra
 | pb-requirements-intake | 1.1.0 | Stages 1–2 of the delivery process in the brain — Harvest every source of intent, then Draft a work-item spec from the kind template (epic, feature, bug, poc, spike, chore, tech-debt, integration-change) |
 | pb-review-pr | 1.1.0 | AI review of a PR diff against the linked approved spec (does the code match intent?), project conventions, security basics and docs impact |
 | pb-second-opinion | 1.0.0 | Independent, fresh review of decisions that wait on a human (engineer-review decisions, gate-3 checklists, triage verdicts, infra changes, ADR proposals) |
-| pb-spec-compile | 1.0.1 | Stage 4, run INSIDE the target project repo — reads the frozen brain spec (pinned to handoff |
+| pb-spec-compile | 1.1.0 | Stage 4, run INSIDE the target project repo — reads the frozen brain spec (pinned to handoff |
 | pb-spec-gate | 1.1.0 | Stage 3 of the delivery process — prepares the gate-3 checklist for a work item and records the HUMAN decision (approved/rejected) in the work item's approvals |
 | pb-spec-handoff | 1.1.0 | Freezes an approved work item (stage 3 passed) — verifies the approved spec gate, records handoff |
 | pb-update-base-files | 1.0.0 | After meaningful changes, detects which base files (README, AGENTS/CLAUDE, CHANGELOG, onboarding, architecture overview, generated tables) need refreshing by diffing recent commits against the project's base-files list; proposes edits and applies them after confirmation |
