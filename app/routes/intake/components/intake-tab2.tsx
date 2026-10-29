@@ -131,6 +131,7 @@ export function IntakeTab2({
                   <Label htmlFor={ksiDomId(block.code, `q-${q.id}`)}>{q.text}</Label>
                   <textarea
                     id={ksiDomId(block.code, `q-${q.id}`)}
+                    aria-describedby={ksiDomId(block.code, "why")}
                     className={textareaClass}
                     value={saved.questions[q.id] ?? ""}
                     maxLength={limits.answer}
@@ -139,19 +140,24 @@ export function IntakeTab2({
                   />
                 </div>
               ))}
-              <p className="text-sm text-muted-foreground">{block.why}</p>
+              <p id={ksiDomId(block.code, "why")} className="text-sm text-muted-foreground">
+                {block.why}
+              </p>
               {block.howOften === "optional" && (
                 <div className="grid gap-1.5">
                   <Label htmlFor={ksiDomId(block.code, "how-often")}>{definition.labels.howOften}</Label>
                   <input
                     id={ksiDomId(block.code, "how-often")}
+                    aria-describedby={ksiDomId(block.code, "how-often-help")}
                     className={inputClass}
                     value={saved.how_often ?? ""}
                     maxLength={limits.howOften}
                     disabled={locked}
                     onChange={(e) => setKsi(block.code, { how_often: e.target.value })}
                   />
-                  <p className="text-xs text-muted-foreground">{definition.labels.howOftenHelp}</p>
+                  <p id={ksiDomId(block.code, "how-often-help")} className="text-xs text-muted-foreground">
+                    {definition.labels.howOftenHelp}
+                  </p>
                 </div>
               )}
               {needHelp(ksiDomId(block.code, "need-help"), saved.need_help, (value) => setKsi(block.code, { need_help: value }))}
@@ -170,7 +176,9 @@ export function IntakeTab2({
               <StatusLabel status={blockStatus(readiness.questions, saved)} />
             </summary>
             <div className="grid gap-4 border-t px-4 py-4">
-              <p className="text-sm text-muted-foreground">{readiness.note}</p>
+              <p id={ksiDomId(readiness.key, "note")} className="text-sm text-muted-foreground">
+                {readiness.note}
+              </p>
               {readiness.questions.map((q) => (
                 <div key={q.id} className="grid gap-1.5">
                   <Label htmlFor={ksiDomId(readiness.key, `q-${q.id}`)}>
@@ -179,13 +187,16 @@ export function IntakeTab2({
                   </Label>
                   <textarea
                     id={ksiDomId(readiness.key, `q-${q.id}`)}
+                    aria-describedby={`${ksiDomId(readiness.key, "note")} ${ksiDomId(readiness.key, `why-${q.id}`)}`}
                     className={textareaClass}
                     value={saved.questions[q.id] ?? ""}
                     maxLength={limits.answer}
                     disabled={locked}
                     onChange={(e) => setReadiness({ questions: { ...saved.questions, [q.id]: e.target.value } })}
                   />
-                  <p className="text-sm text-muted-foreground">{q.why}</p>
+                  <p id={ksiDomId(readiness.key, `why-${q.id}`)} className="text-sm text-muted-foreground">
+                    {q.why}
+                  </p>
                 </div>
               ))}
               {needHelp(ksiDomId(readiness.key, "need-help"), saved.need_help, (value) => setReadiness({ need_help: value }))}

@@ -373,7 +373,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
                   <dt className="text-muted-foreground">FedRAMP rules version</dt>
                   <dd>
                     {latest.rulesVersion ?? (
-                      <span className="text-muted-foreground">not recorded yet (the rules are vendored with WI-012)</span>
+                      <span className="text-muted-foreground">not recorded (generated before the rules were vendored)</span>
                     )}
                   </dd>
                   <dt className="text-muted-foreground">Created</dt>

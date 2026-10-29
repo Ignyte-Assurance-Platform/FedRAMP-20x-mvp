@@ -8,8 +8,8 @@
 export type Answers = Record<string, unknown>;
 export type PostResult = { status: number; data: Record<string, unknown> } | null;
 export type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: Date } | { kind: "failed"; message?: string };
-/** How flush() ended: nothing left to save, or why something is still unsaved. */
-export type FlushResult = "saved" | "failed" | "conflict" | "closed";
+/** How flush() ended: nothing left to save, or why something is still unsaved ("refused": the server said no to what was sent, e.g. 400). */
+export type FlushResult = "saved" | "failed" | "refused" | "conflict" | "closed";
 export interface Conflict {
   answers: Answers;
   version: number;
@@ -47,6 +47,21 @@ export interface IntakeSaver {
  * other; the first that does not end "saved" stops Submit before it sends anything, so nothing
  * is locked. Otherwise `send` runs (tab 1's checks and its submit).
  */
+/**
+ * Submit, one at a time: a second click while the first Submit is still flushing tab 2 or posting
+ * gets the first one's promise and sends nothing (review of #50: the saver serializes saves, not
+ * the page's Submit).
+ */
+export function oneAtATime(): (run: () => Promise<void>) => Promise<void> {
+  let current: Promise<void> | null = null;
+  return (run) => {
+    current ??= run().finally(() => {
+      current = null;
+    });
+    return current;
+  };
+}
+
 export async function submitAfterFlush<T>(others: Pick<IntakeSaver, "flush">[], send: () => Promise<T>): Promise<{ stopped: FlushResult } | { sent: T }> {
   for (const saver of others) {
     const flushed = await saver.flush();
@@ -109,7 +124,7 @@ export function createIntakeSaver(options: IntakeSaverOptions): IntakeSaver {
       return;
     }
     // Refused as sent (too large, unreadable): retrying the same answers would fail again.
-    last = "failed";
+    last = "refused";
     dirty = true;
     options.onState({ kind: "failed", message: typeof result.data.message === "string" ? result.data.message : undefined });
   }

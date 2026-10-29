@@ -297,6 +297,19 @@ describe("Screen E tab 2, KSIs (WI-005)", () => {
     }
   });
 
+  it("review of #50: each answer box is described by its block's why-we-ask line, and How often? by its grey line", () => {
+    const html = renderTab2();
+    for (const block of ksisDefinition.ksis) {
+      const part = blockHtml(html, block.code);
+      expect(part).toContain(`id="ksi-${block.code}-why"`);
+      for (const q of block.questions) expect(part).toMatch(new RegExp(`aria-describedby="ksi-${block.code}-why"[^>]*id="ksi-${block.code}-q-${q.id}"|id="ksi-${block.code}-q-${q.id}"[^>]*aria-describedby="ksi-${block.code}-why"`));
+      if (block.howOften === "optional") {
+        expect(part).toContain(`id="ksi-${block.code}-how-often-help"`);
+        expect(part).toContain(`aria-describedby="ksi-${block.code}-how-often-help"`);
+      }
+    }
+  });
+
   it("2.4, 2.5 the questions and the why-we-ask lines are the form definition's; intake 24 and 17 are not shown", () => {
     const html = renderTab2();
     for (const block of ksisDefinition.ksis) {
@@ -376,6 +389,20 @@ describe("Screen E tab 2, KSIs (WI-005)", () => {
     const { ksisFlushMessage } = await import("./components/intake-tab1");
     expect(ksisFlushMessage("conflict")).toMatch(/^Nothing was submitted: your answers on tab 2 were changed in another window/);
     expect(ksisFlushMessage("failed")).toMatch(/^Nothing was submitted: your answers on tab 2 could not be saved/);
+    expect(ksisFlushMessage("refused")).toMatch(/^Nothing was submitted: an answer on tab 2 could not be saved. See the message on tab 2/);
     expect(ksisFlushMessage("saved")).toBeNull();
+    // 410/423: the page shows the locked or expired state itself.
+    expect(ksisFlushMessage("closed")).toBeNull();
+  });
+
+  it("review of #50: Submit is off while tab 2 waits for Keep mine / Take theirs, and tab 2's button says so", async () => {
+    const { submitDisabled, tab2Label } = await import("./components/intake-tab1");
+    const idle = { submitting: false, saving: false, conflict: false, ksisConflict: false };
+    expect(submitDisabled(idle)).toBe(false);
+    expect(submitDisabled({ ...idle, ksisConflict: true })).toBe(true);
+    expect(submitDisabled({ ...idle, submitting: true })).toBe(true);
+    expect(tab2Label(false, true)).toBe("2. Security indicators · Changed in another window");
+    expect(tab2Label(false, false)).toBe("2. Security indicators");
+    expect(tab2Label(true, false)).toBe("2. Security indicators · Submitted");
   });
 });

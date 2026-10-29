@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createIntakeSaver, submitAfterFlush, type Conflict, type PostResult, type SaveState } from "./intake-saver";
+import { createIntakeSaver, oneAtATime, submitAfterFlush, type Conflict, type PostResult, type SaveState } from "./intake-saver";
 
 /** Save, autosave and Submit ordering of Screen E tab 1 against a mocked fetch (review M2, m3, m4). */
 
@@ -241,7 +241,7 @@ describe("tab 2 saver and Submit's flush (WI-005 E3, E3b)", () => {
   it.each([
     ["a network error", null, "failed"],
     ["a server error", { status: 500, data: {} }, "failed"],
-    ["a refusal", { status: 400, data: { message: "too long" } }, "failed"],
+    ["a refusal", { status: 400, data: { message: "too long" } }, "refused"],
     ["a conflict", { status: 409, data: { answers: { x: 0 }, version: 9 } }, "conflict"],
     ["a locked intake", { status: 423, data: {} }, "closed"],
   ] as const)("2.13 flush reports %s, so Submit stops", async (_name, answer, expected) => {
@@ -288,7 +288,8 @@ describe("Submit after tab 2 (WI-005 2.13, E3b)", () => {
   it.each([
     ["conflicts", { status: 409, data: { answers: {}, version: 5 } }, "conflict"],
     ["fails", null, "failed"],
-    ["is refused", { status: 400, data: { message: "too long" } }, "failed"],
+    ["is refused", { status: 400, data: { message: "too long" } }, "refused"],
+    ["is locked", { status: 423, data: {} }, "closed"],
   ] as const)("when tab 2's save %s, Submit stops: no submit request is sent, so nothing is locked", async (_name, answer, stopped) => {
     const t = twoTabs();
     t.tab2.changed({ ksi: {} });
@@ -301,6 +302,38 @@ describe("Submit after tab 2 (WI-005 2.13, E3b)", () => {
     expect(await submitting).toEqual({ stopped });
     expect(sent).toBe(false);
     expect(t.calls.map((c) => c.body.intent)).toEqual(["save"]);
+  });
+
+  it("review of #50: two Submit clicks while tab 2 is flushing send one submit", async () => {
+    const t = twoTabs();
+    const once = oneAtATime();
+    t.tab2.changed({ ksi: {} });
+    const click = () => once(async () => void (await submitAfterFlush([t.tab2], () => t.tab1.submit())));
+    const first = click();
+    const second = click(); // pressed again during tab 2's save
+    expect(second).toBe(first);
+    (await t.next()).resolve({ status: 200, data: { version: 2, savedAt: "2026-10-28T10:00:00Z" } });
+    (await t.next()).resolve({ status: 200, data: {} });
+    await first;
+    expect(t.calls.map((c) => c.body.intent)).toEqual(["save", "submit"]);
+    // Once it is over, Submit works again.
+    void click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(t.calls).toHaveLength(2); // tab 1 is done after a 200: nothing more is sent
+  });
+
+  it("review of #50: Keep mine after a tab 2 conflict saves tab 2 again with section ksis and the stored version", async () => {
+    const t = twoTabs();
+    t.tab2.changed({ ksi: { "KSI-CMT-LMC": { questions: { "21": "Mine" } } } });
+    const flushing = t.tab2.flush();
+    (await t.next()).resolve({ status: 409, data: { answers: {}, version: 7 } });
+    expect(await flushing).toBe("conflict");
+    const keep = t.tab2.save(7);
+    const again = await t.next();
+    expect(again.body).toMatchObject({ intent: "save", section: "ksis", version: 7, answers: { ksi: { "KSI-CMT-LMC": { questions: { "21": "Mine" } } } } });
+    again.resolve({ status: 200, data: { version: 8, savedAt: "2026-10-28T10:00:00Z" } });
+    await keep;
+    expect(await t.tab2.flush()).toBe("saved");
   });
 
   it("with nothing pending on tab 2, Submit goes straight to tab 1", async () => {
