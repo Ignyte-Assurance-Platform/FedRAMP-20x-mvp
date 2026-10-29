@@ -5,6 +5,7 @@ import {
   CustomerError,
   generatePackageOverviewForCustomer,
   getDocumentsScreen,
+  getKsisScreen,
   IntakeDocumentError,
   getIntakeLinkSection,
   issueNewIntakeLink,
@@ -12,6 +13,7 @@ import {
   PackageOverviewError,
   removeDocumentByStaff,
   requireStaffUser,
+  saveKsiReview,
   savePackageOverviewInputs,
   setAssessorConfirmed,
   unlockIntake,
@@ -26,6 +28,7 @@ import { PRODUCT_NAME } from "~/lib/product";
 import { AnswersReadOnly, LOGO_PATH } from "./components/answers-read-only";
 import { DocumentsSection } from "./components/documents-section";
 import { IntakeLinkSection } from "./components/intake-link-section";
+import { KsisSection } from "./components/ksis-section";
 import { ProblemList } from "./components/problem-list";
 import { PublishingChecklist } from "./components/publishing-checklist";
 import type { Route } from "./+types/customer-package";
@@ -34,7 +37,8 @@ import type { Route } from "./+types/customer-package";
  * Screen D (WI-007): the customer's tab 1 answers read-only, the Ignyte-only boxes,
  * Generate JSON with its result, the latest file with its versions and the download.
  * WI-003 adds the "Intake link" section (Copy, Issue new link, Unlock) above them; WI-006 adds
- * tab 3: the certification, the received/missing checklist and the files, with Download and Remove.
+ * tab 3: the certification, the received/missing checklist and the files, with Download and Remove;
+ * WI-005 adds tab 2 read-only with its follow-ups and Ignyte's CMVP and log-context fields.
  * Staff only; customer link tokens are refused (requireStaffUser).
  */
 
@@ -52,6 +56,12 @@ const ActionInput = v.variant("intent", [
   v.object({ intent: v.literal("issue-link") }),
   v.object({ intent: v.literal("unlock") }),
   v.object({ intent: v.literal("remove-document"), documentId: v.pipe(v.string(), v.uuid()) }),
+  v.object({
+    intent: v.literal("ksi-review"),
+    cmvpValidated: v.optional(v.picklist(["", "yes", "no"]), ""),
+    cmvpNote: v.optional(v.string(), ""),
+    logContextNote: v.optional(v.string(), ""),
+  }),
 ]);
 
 interface ActionResult {
@@ -63,6 +73,9 @@ interface ActionResult {
   linkError?: string;
   /** Outcome of remove-document, shown in the "Documents" card. */
   documentsError?: string;
+  /** Outcome of ksi-review, shown in the "Security indicators" card. */
+  ksiMessage?: string;
+  ksiError?: string;
   generated: { fileId: string; valid: boolean; problemCount: number } | null;
 }
 
@@ -74,7 +87,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     const screen = await getPackageOverviewScreen(customerId.output);
     const intakeLink = await getIntakeLinkSection(customerId.output);
     const documents = await getDocumentsScreen(customerId.output);
-    return { user, screen, intakeLink, documents };
+    const ksis = await getKsisScreen(customerId.output);
+    return { user, screen, intakeLink, documents, ksis };
   } catch (error) {
     if (error instanceof PackageOverviewError || error instanceof CustomerError) throw data(error.message, { status: error.status });
     throw error;
@@ -107,6 +121,11 @@ export async function action({ request, params }: Route.ActionArgs) {
       case "remove-document":
         await removeDocumentByStaff(customerId.output, input.output.documentId, user.id);
         return data<ActionResult>({ error: null, generated: null });
+      case "ksi-review": {
+        const { cmvpValidated, cmvpNote, logContextNote } = input.output;
+        await saveKsiReview(customerId.output, { cmvpValidated: cmvpValidated === "" ? null : cmvpValidated === "yes", cmvpNote, logContextNote }, user.id);
+        return data<ActionResult>({ error: null, generated: null, ksiMessage: "Saved." });
+      }
       case "generate": {
         const outcome = await generatePackageOverviewForCustomer(customerId.output, user.id);
         return data<ActionResult>({
@@ -122,7 +141,9 @@ export async function action({ request, params }: Route.ActionArgs) {
         ? data<ActionResult>({ error: null, linkError: message, generated: null }, { status })
         : intent === "remove-document"
           ? data<ActionResult>({ error: null, documentsError: message, generated: null }, { status })
-          : data<ActionResult>({ error: message, generated: null }, { status });
+          : intent === "ksi-review"
+            ? data<ActionResult>({ error: null, ksiError: message, generated: null }, { status })
+            : data<ActionResult>({ error: message, generated: null }, { status });
     if (error instanceof IntakeDocumentError) return failed(error.message, error.status);
     if (error instanceof MissingAcronymError) return failed(error.message, 400);
     if (error instanceof PackageOverviewError || error instanceof CustomerError) return failed(error.message, error.status);
@@ -139,7 +160,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 const noticeClass = "rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm";
 
 export default function CustomerPackage({ loaderData, actionData }: Route.ComponentProps) {
-  const { user, screen, intakeLink, documents } = loaderData;
+  const { user, screen, intakeLink, documents, ksis } = loaderData;
   const { customer, inputs, answers, status, latest, schemaVersion } = screen;
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -191,6 +212,16 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
           </CardHeader>
           <CardContent>
             <AnswersReadOnly sections={answers} logoUrl={screen.logoUrl} logoUploaded={screen.logoUploaded} packageIdFallback={screen.packageIdFallback} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Security indicators (tab 2)</CardTitle>
+            <CardDescription>The customer's answers, read-only, with the blocks that need a follow-up first. Answers are only stored.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <KsisSection data={ksis} busy={busy} message={actionData?.ksiMessage} error={actionData?.ksiError} />
           </CardContent>
         </Card>
 
@@ -342,7 +373,7 @@ export default function CustomerPackage({ loaderData, actionData }: Route.Compon
                   <dt className="text-muted-foreground">FedRAMP rules version</dt>
                   <dd>
                     {latest.rulesVersion ?? (
-                      <span className="text-muted-foreground">not recorded yet (the rules are vendored with WI-012)</span>
+                      <span className="text-muted-foreground">not recorded (generated before the rules were vendored)</span>
                     )}
                   </dd>
                   <dt className="text-muted-foreground">Created</dt>
