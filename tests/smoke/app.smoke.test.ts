@@ -1561,20 +1561,29 @@ describe("Screen E tab 3, documents (WI-006)", () => {
     expect(await changed.json()).not.toHaveProperty("certification.changed_after_submit_at");
     const stamp = await label();
     expect(Date.parse(stamp!)).toBeGreaterThanOrEqual(before - 1000);
+    expect(Date.parse(stamp!)).toBeLessThanOrEqual(Date.now() + 1000);
     expect((await tab(token)).certification).not.toHaveProperty("changed_after_submit_at");
 
-    // A later unchanged save keeps the stamp; a client-sent one is ignored.
+    // A later unchanged save keeps the stamp; a client-sent one (null or forged) is ignored.
     await save({ ...SOC2, period_end_date: "2026-04-30", next_report_expected: "2027-01-31", changed_after_submit_at: null }, 4);
     expect(await label()).toBe(stamp);
+    await save({ ...SOC2, period_end_date: "2026-04-30", next_report_expected: "2027-01-31", changed_after_submit_at: "2020-01-01T00:00:00.000Z" }, 5);
+    expect(await label()).toBe(stamp);
+
+    // A second change moves the label to the latest one.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await save({ ...SOC2, period_end_date: "2026-05-31", next_report_expected: "2027-01-31" }, 6);
+    const latest = await label();
+    expect(Date.parse(latest!)).toBeGreaterThan(Date.parse(stamp!));
 
     // Unlock, a change while In progress, and a new Submit keep the label from the first Submit.
     const services = await import("~server/services");
     await services.unlockIntake(id, userId);
-    await save({ ...SOC2, type: "fedramp_ready", next_report_expected: null }, 5);
-    expect(await label()).toBe(stamp);
+    await save({ ...SOC2, type: "fedramp_ready", next_report_expected: null }, 7);
+    expect(await label()).toBe(latest);
     const golden = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
     expect((await api(token, { intent: "submit", answers: golden, version: 1 })).status).toBe(200);
-    expect(await label()).toBe(stamp);
+    expect(await label()).toBe(latest);
   });
 
   it("2.17 the checklist shows each listed item as received when a current file has that kind, and missing otherwise", async () => {
