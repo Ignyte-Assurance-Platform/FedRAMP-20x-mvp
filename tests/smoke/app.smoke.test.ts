@@ -1573,13 +1573,21 @@ describe("Screen E tab 3, documents (WI-006)", () => {
     // A second change moves the label to the latest one.
     await new Promise((resolve) => setTimeout(resolve, 5));
     await save({ ...SOC2, period_end_date: "2026-05-31", next_report_expected: "2027-01-31" }, 6);
+    const second = await label();
+    expect(Date.parse(second!)).toBeGreaterThan(Date.parse(stamp!));
+
+    // The type alone changes it too: FedRAMP Ready → GovRAMP with the same date.
+    await save({ type: "fedramp_ready", period_end_date: "2026-05-31", next_report_expected: null }, 7);
+    const ready = await label();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await save({ type: "govramp", period_end_date: "2026-05-31", next_report_expected: null }, 8);
     const latest = await label();
-    expect(Date.parse(latest!)).toBeGreaterThan(Date.parse(stamp!));
+    expect(Date.parse(latest!)).toBeGreaterThan(Date.parse(ready!));
 
     // Unlock, a change while In progress, and a new Submit keep the label from the first Submit.
     const services = await import("~server/services");
     await services.unlockIntake(id, userId);
-    await save({ ...SOC2, type: "fedramp_ready", next_report_expected: null }, 7);
+    await save({ ...SOC2, type: "fedramp_ready", next_report_expected: null }, 9);
     expect(await label()).toBe(latest);
     const golden = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
     expect((await api(token, { intent: "submit", answers: golden, version: 1 })).status).toBe(200);
