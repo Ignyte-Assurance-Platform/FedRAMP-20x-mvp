@@ -8,7 +8,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Hono } from "hono";
 import type { ServerBuild } from "react-router";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const storageDir = path.join(root, ".data", "smoke-storage");
@@ -1773,5 +1773,26 @@ describe("Ignyte theme (WI-015 §5)", () => {
       expect(html, page).not.toContain("Maaz 20x");
     }
     expect(login).not.toContain("Maaz 20x");
+  });
+});
+
+describe("intake token in error logs (WI-020)", () => {
+  it("2.1, 2.5 GET /intake/<token>/does-not-exist answers 404 and stderr shows /intake/[redacted], never the token", async () => {
+    const { inspect } = await import("node:util");
+    const token = "Zk3p9QvT_x2bLm7NcA-8rWyE4uHs6DfG";
+    const printed: string[] = [];
+    const log = vi.spyOn(console, "error").mockImplementation((...values: unknown[]) => void printed.push(values.map((v) => (typeof v === "string" ? v : inspect(v))).join(" ")));
+    const write = vi.spyOn(process.stderr, "write").mockImplementation((chunk: string | Uint8Array) => (printed.push(String(chunk)), true));
+    try {
+      const res = await app.request(`http://localhost:3000/intake/${token}/does-not-exist`);
+      expect(res.status).toBe(404);
+      await res.text();
+    } finally {
+      log.mockRestore();
+      write.mockRestore();
+    }
+    const stderr = printed.join("\n");
+    expect(stderr).toContain("No route matches URL \"/intake/[redacted]/does-not-exist\"");
+    expect(stderr).not.toContain(token);
   });
 });

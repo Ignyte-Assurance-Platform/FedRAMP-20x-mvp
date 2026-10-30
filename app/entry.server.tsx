@@ -1,13 +1,23 @@
 import { PassThrough } from "node:stream";
 
-import type { EntryContext, RouterContextProvider } from "react-router";
+import type { EntryContext, HandleErrorFunction, RouterContextProvider } from "react-router";
 import { createReadableStreamFromReadable } from "@react-router/node";
 import { ServerRouter } from "react-router";
 import { isbot } from "isbot";
 import type { RenderToPipeableStreamOptions } from "react-dom/server";
 import { renderToPipeableStream } from "react-dom/server";
+import { redactForLog } from "~/lib/redact-intake-token";
 
 export const streamTimeout = 5_000;
+
+/**
+ * Replaces React Router's default (WI-020): same rule (nothing for an aborted request, a route
+ * error response logs its inner error), but the intake token is redacted before it reaches stderr.
+ */
+export const handleError: HandleErrorFunction = (error, { request }) => {
+  if (request.signal.aborted) return;
+  console.error(redactForLog(error));
+};
 
 export default function handleRequest(
   request: Request,
@@ -77,7 +87,7 @@ export default function handleRequest(
           // errors encountered during initial shell rendering since they'll
           // reject and get logged in handleDocumentRequest.
           if (shellRendered) {
-            console.error(error);
+            console.error(redactForLog(error));
           }
         },
       },
