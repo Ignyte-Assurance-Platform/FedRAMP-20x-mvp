@@ -47,7 +47,7 @@ const loaderData: ScreenDProps["loaderData"] = {
     },
   },
   intakeLink: { status: "submitted", statusLabel: "Submitted", link: { url: base.url, expired: false, issuedAt: new Date("2026-10-23T12:00:00Z"), expiresAt: new Date("2026-11-22T12:00:00Z"), issuedBy: "Dev" }, unlockedAt: null, unlockedBy: null },
-  documents: { certification: { label: null, periodEnd: null, nextReport: null, old: false, oldMessage: "" }, checklist: [], files: [] },
+  documents: { certification: { label: null, periodEnd: null, nextReport: null, old: false, oldMessage: "", changedAfterSubmitAt: null }, checklist: [], files: [] },
   ksis: {
     rulesVersion: "r1",
     rulesNote: null,

@@ -1536,6 +1536,47 @@ describe("Screen E tab 3, documents (WI-006)", () => {
     expect((await documentRows(id)).find((r) => r.id === before.documentId)?.addedAfterSubmit).toBe(false);
   });
 
+  it("2.16 a certification change saved while Submitted is labelled on Screen D; the same values, a change before Submit and a client-sent stamp are not; the label survives unlock and resubmit", async () => {
+    const { id, token, userId } = await newCustomer();
+    const save = (certification: Record<string, unknown>, version: number) => api(token, { intent: "certification-save", certification, version });
+    const label = async () => (await screenD(id)).certification.changedAfterSubmitAt;
+    const SOC2 = { type: "soc2_type2", period_end_date: "2026-03-31", next_report_expected: "2026-12-31" };
+
+    // Before Submit: a change, even with a stamp sent by the browser, sets nothing.
+    expect((await save(SOC2, 0)).status).toBe(200);
+    expect((await save({ ...SOC2, period_end_date: "2026-04-30", changed_after_submit_at: "2020-01-01T00:00:00.000Z" }, 1)).status).toBe(200);
+    expect(await label()).toBeNull();
+    expect(await (await submitWithLogo(token)).json()).toEqual({ kind: "submitted" });
+
+    // After Submit: the same values again are not a change.
+    const same = await save({ ...SOC2, period_end_date: "2026-04-30" }, 2);
+    expect(same.status, await same.clone().text()).toBe(200);
+    expect(await label()).toBeNull();
+    expect((await tab(token)).certification).toEqual({ ...SOC2, period_end_date: "2026-04-30" });
+
+    // Each answer counts: the next-report date alone changes it, stamped with the save's time.
+    const before = Date.now();
+    const changed = await save({ ...SOC2, period_end_date: "2026-04-30", next_report_expected: "2027-01-31" }, 3);
+    expect(changed.status, await changed.clone().text()).toBe(200);
+    expect(await changed.json()).not.toHaveProperty("certification.changed_after_submit_at");
+    const stamp = await label();
+    expect(Date.parse(stamp!)).toBeGreaterThanOrEqual(before - 1000);
+    expect((await tab(token)).certification).not.toHaveProperty("changed_after_submit_at");
+
+    // A later unchanged save keeps the stamp; a client-sent one is ignored.
+    await save({ ...SOC2, period_end_date: "2026-04-30", next_report_expected: "2027-01-31", changed_after_submit_at: null }, 4);
+    expect(await label()).toBe(stamp);
+
+    // Unlock, a change while In progress, and a new Submit keep the label from the first Submit.
+    const services = await import("~server/services");
+    await services.unlockIntake(id, userId);
+    await save({ ...SOC2, type: "fedramp_ready", next_report_expected: null }, 5);
+    expect(await label()).toBe(stamp);
+    const golden = (await import("../../server/fedramp/testdata/golden-answers.json")).default;
+    expect((await api(token, { intent: "submit", answers: golden, version: 1 })).status).toBe(200);
+    expect(await label()).toBe(stamp);
+  });
+
   it("2.17 the checklist shows each listed item as received when a current file has that kind, and missing otherwise", async () => {
     const { id, token } = await newCustomer();
     await api(token, { intent: "certification-save", certification: { type: "fedramp_rev5", period_end_date: "2026-05-01", next_report_expected: null }, version: 0 });
