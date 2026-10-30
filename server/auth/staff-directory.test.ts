@@ -43,6 +43,12 @@ describe("google staff directory (WI-019 E1)", () => {
     expect(JSON.stringify(log.mock.calls)).not.toContain("someone@");
   });
 
+  it.each([403, 500])("answers unreachable for %i even when the body says isMember true (only a 200 is an answer)", async (code) => {
+    const { dir, log } = directory(() => Response.json({ isMember: true }, { status: code }));
+    expect(await dir.isMember("someone@ignyteplatform.com")).toBe("unreachable");
+    expect(log).toHaveBeenCalledWith(`staff directory: group ${GROUP} answered ${code}: no error code`);
+  });
+
   it("logs a non-200 without Google's error body as such", async () => {
     const { dir, log } = directory(() => new Response("Bad Gateway", { status: 502 }));
     expect(await dir.isMember("someone@ignyteplatform.com")).toBe("unreachable");

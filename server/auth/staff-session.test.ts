@@ -49,33 +49,33 @@ function deps(lastCheck: Date, overrides: Partial<StaffSessionDeps> = {}, lastGr
 const active = { id: "u1", email: "max@ignyteplatform.com", active: true };
 
 describe("staff guard (WI-002 E1–E3)", () => {
-  it("2.6 ends a session older than 8 hours, however active the user was", async () => {
+  it("WI-002 2.6 ends a session older than 8 hours, however active the user was", async () => {
     const { d } = deps(minutesAgo(5));
     expect(await evaluateStaffSession(session({ expiresAt: minutesAgo(1) }), active, d)).toEqual({ ok: false, reason: "expired" });
     expect(d.deleteSession).toHaveBeenCalledWith("s1");
   });
 
-  it("2.7 refuses an inactive user with not_authorized and deletes all their sessions", async () => {
+  it("WI-002 2.7 refuses an inactive user with not_authorized and deletes all their sessions", async () => {
     const { d } = deps(minutesAgo(5));
     expect(await evaluateStaffSession(session(), { ...active, active: false }, d)).toEqual({ ok: false, reason: "not_authorized" });
     expect(d.deleteUserSessions).toHaveBeenCalledWith("u1");
     expect(d.checkGoogle).not.toHaveBeenCalled();
   });
 
-  it("2.14 does not call Google when the last check is younger than 15 minutes", async () => {
+  it("WI-002 2.14 does not call Google when the last check is younger than 15 minutes", async () => {
     const { d } = deps(minutesAgo(14));
     expect(await evaluateStaffSession(session({ lastGoogleCheckAt: minutesAgo(14) }), active, d)).toEqual({ ok: true });
     expect(d.claimGoogleCheck).not.toHaveBeenCalled();
     expect(d.checkGoogle).not.toHaveBeenCalled();
   });
 
-  it("2.8 ends the session when Google answers invalid_grant", async () => {
+  it("WI-002 2.8 ends the session when Google answers invalid_grant", async () => {
     const { d } = deps(minutesAgo(16), { checkGoogle: vi.fn(async () => "revoked" as const) });
     expect(await evaluateStaffSession(session({ lastGoogleCheckAt: minutesAgo(16) }), active, d)).toEqual({ ok: false, reason: "revoked" });
     expect(d.deleteSession).toHaveBeenCalledWith("s1");
   });
 
-  it("2.8 keeps the session when Google is unreachable and retries on the next request", async () => {
+  it("WI-002 2.8 keeps the session when Google is unreachable and retries on the next request", async () => {
     const { d, row } = deps(minutesAgo(20), { checkGoogle: vi.fn(async () => "unreachable" as const) });
     const s = session({ lastGoogleCheckAt: minutesAgo(20) });
     expect(await evaluateStaffSession(s, active, d)).toEqual({ ok: true });
@@ -85,13 +85,13 @@ describe("staff guard (WI-002 E1–E3)", () => {
     expect(d.deleteSession).not.toHaveBeenCalled();
   });
 
-  it("2.8 ends the session when Google is unreachable and the last successful check is older than 60 minutes", async () => {
+  it("WI-002 2.8 ends the session when Google is unreachable and the last successful check is older than 60 minutes", async () => {
     const { d } = deps(minutesAgo(61), { checkGoogle: vi.fn(async () => "unreachable" as const) });
     expect(await evaluateStaffSession(session({ lastGoogleCheckAt: minutesAgo(61) }), active, d)).toEqual({ ok: false, reason: "revoked" });
     expect(d.deleteSession).toHaveBeenCalledWith("s1");
   });
 
-  it("2.9 calls Google once when several requests of one session arrive after 15 minutes", async () => {
+  it("WI-002 2.9 calls Google once when several requests of one session arrive after 15 minutes", async () => {
     const { d } = deps(minutesAgo(16));
     const s = session({ lastGoogleCheckAt: minutesAgo(16) });
     const verdicts = await Promise.all([1, 2, 3, 4].map(() => evaluateStaffSession(s, active, d)));
@@ -120,7 +120,7 @@ describe("staff guard (WI-002 E1–E3)", () => {
 describe("staff group re-check (WI-019 E2, E3)", () => {
   const due = (m: number) => session({ lastGroupCheckAt: minutesAgo(m) });
 
-  it("2.6 ends every session of a user who left the group, sets them inactive and says not authorized", async () => {
+  it("WI-019 2.6 ends every session of a user who left the group, sets them inactive and says not authorized", async () => {
     const { d } = deps(minutesAgo(5), { isMember: vi.fn(async () => "not_member" as const) }, minutesAgo(6));
     expect(await evaluateStaffSession(due(6), active, d)).toEqual({ ok: false, reason: "not_authorized" });
     expect(d.isMember).toHaveBeenCalledWith("max@ignyteplatform.com");
@@ -128,21 +128,21 @@ describe("staff group re-check (WI-019 E2, E3)", () => {
     expect(d.deleteUserSessions).toHaveBeenCalledWith("u1");
   });
 
-  it("2.6 keeps a member's session and moves the last group check to now", async () => {
+  it("WI-019 2.6 keeps a member's session and moves the last group check to now", async () => {
     const { d, row } = deps(minutesAgo(5), {}, minutesAgo(6));
     expect(await evaluateStaffSession(due(6), active, d)).toEqual({ ok: true });
     expect(row.group).toEqual(NOW);
     expect(d.deactivateUser).not.toHaveBeenCalled();
   });
 
-  it("2.7 does not call the directory when the last group check is younger than 5 minutes", async () => {
+  it("WI-019 2.7 does not call the directory when the last group check is younger than 5 minutes", async () => {
     const { d } = deps(minutesAgo(5), {}, minutesAgo(4.9));
     expect(await evaluateStaffSession(due(4.9), active, d)).toEqual({ ok: true });
     expect(d.claimGroupCheck).not.toHaveBeenCalled();
     expect(d.isMember).not.toHaveBeenCalled();
   });
 
-  it("2.8 calls the directory once when several requests of one session arrive with the check due", async () => {
+  it("WI-019 2.8 calls the directory once when several requests of one session arrive with the check due", async () => {
     const { d } = deps(minutesAgo(5), {}, minutesAgo(6));
     const verdicts = await Promise.all([1, 2, 3, 4].map(() => evaluateStaffSession(due(6), active, d)));
     expect(verdicts.every((v) => v.ok)).toBe(true);
@@ -150,7 +150,7 @@ describe("staff group re-check (WI-019 E2, E3)", () => {
     expect(d.isMember).toHaveBeenCalledTimes(1);
   });
 
-  it("2.9 keeps the session when the directory is unreachable and retries on the next request", async () => {
+  it("WI-019 2.9 keeps the session when the directory is unreachable and retries on the next request", async () => {
     const { d, row } = deps(minutesAgo(5), { isMember: vi.fn(async () => "unreachable" as const) }, minutesAgo(7));
     expect(await evaluateStaffSession(due(7), active, d)).toEqual({ ok: true });
     // The claim is given back, so the last successful check is unchanged and the next request asks again.
@@ -160,7 +160,7 @@ describe("staff group re-check (WI-019 E2, E3)", () => {
     expect(d.deleteSession).not.toHaveBeenCalled();
   });
 
-  it("2.9 keeps the session up to 15 minutes after the last successful group check, then ends it", async () => {
+  it("WI-019 2.9 keeps the session up to 15 minutes after the last successful group check, then ends it", async () => {
     const unreachable = { isMember: vi.fn(async () => "unreachable" as const) };
     expect(await evaluateStaffSession(due(15), active, deps(minutesAgo(5), unreachable, minutesAgo(15)).d)).toEqual({ ok: true });
     const { d } = deps(minutesAgo(5), unreachable, minutesAgo(15.1));

@@ -211,7 +211,7 @@ export function createAuth(env: Env, db: Database, directory: StaffDirectory = c
       database: { generateId: () => crypto.randomUUID() },
     },
     telemetry: { enabled: false },
-    plugins: env.devLoginEnabled ? [devLoginPlugin({ email: env.DEV_LOGIN_EMAIL, isMember: (email) => directory.isMember(email) })] : [],
+    plugins: env.devLoginEnabled ? [devLoginPlugin({ email: env.DEV_LOGIN_EMAIL, staffDirectory: env.STAFF_DIRECTORY, isMember: (email) => directory.isMember(email) })] : [],
   } satisfies BetterAuthOptions;
 
   return betterAuth(options);
