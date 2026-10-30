@@ -7,11 +7,11 @@ import { formatBytes } from "~/lib/documents";
  * Screen D, tab 3 (WI-006 §3): the certification with its dates and the 12-month warning, the
  * received/missing checklist of every item shown to this customer, and every current file with
  * its kind, policy fields, "added after submission" and its earlier versions ("replaced on"),
- * each downloadable. Remove is soft: the file disappears on both sides, the object stays.
+ * each downloadable. A certification changed while Submitted says "changed after submission on [date]" (2.16). Remove is soft: the file disappears on both sides, the object stays.
  */
 
 export interface DocumentsSectionData {
-  certification: { label: string | null; periodEnd: string | null; nextReport: string | null; old: boolean; oldMessage: string };
+  certification: { label: string | null; periodEnd: string | null; nextReport: string | null; old: boolean; oldMessage: string; changedAfterSubmitAt: string | null };
   checklist: { kind: string; label: string; present: boolean }[];
   files: {
     id: string;
@@ -43,7 +43,12 @@ export function DocumentsSection({ customerId, data, busy }: { customerId: strin
     <div className="grid gap-6">
       <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[minmax(12rem,auto)_1fr]">
         <dt className="text-muted-foreground">Certification</dt>
-        <dd>{certification.label ?? <span className="text-muted-foreground">not chosen yet</span>}</dd>
+        <dd className="flex flex-wrap items-center gap-2">
+          {certification.label ?? <span className="text-muted-foreground">not chosen yet</span>}
+          {certification.changedAfterSubmitAt && (
+            <span className="rounded bg-amber-500/15 px-1.5 text-xs">changed after submission on {formatDate(certification.changedAfterSubmitAt)}</span>
+          )}
+        </dd>
         <dt className="text-muted-foreground">Report period end or assessment date</dt>
         <dd>{certification.periodEnd ? formatIsoDate(certification.periodEnd) : <span className="text-muted-foreground">not given</span>}</dd>
         {certification.nextReport && (

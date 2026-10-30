@@ -14,7 +14,7 @@ function render(data: DocumentsSectionData): string {
 }
 
 const base: DocumentsSectionData = {
-  certification: { label: "SOC 2 Type II", periodEnd: "2025-06-30", nextReport: "2026-12-31", old: true, oldMessage: OLD },
+  certification: { label: "SOC 2 Type II", periodEnd: "2025-06-30", nextReport: "2026-12-31", old: true, oldMessage: OLD, changedAfterSubmitAt: null },
   checklist: [
     { kind: "soc2_report", label: "Complete SOC 2 Type II report", present: true },
     { kind: "policies", label: "Security policies and procedures", present: false },
@@ -73,5 +73,11 @@ describe("Screen D documents (WI-006)", () => {
     expect(html).not.toContain("added after submission");
     expect(html).not.toContain("replaced on");
     expect(formatIsoDate("2026-06-30")).toBe("Jun 30, 2026");
+  });
+
+  it("2.16 a certification changed after Submit says 'changed after submission on [date]' in the 'replaced on' format; otherwise nothing", () => {
+    const changed = render({ ...base, certification: { ...base.certification, changedAfterSubmitAt: "2026-10-29T15:00:00.000Z" } });
+    expect(changed).toContain("changed after submission on Oct 29, 2026");
+    expect(render(base)).not.toContain("changed after submission");
   });
 });

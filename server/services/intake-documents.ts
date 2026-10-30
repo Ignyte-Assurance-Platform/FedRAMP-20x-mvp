@@ -101,10 +101,24 @@ export function toCustomerDocument(row: DocumentRow): CustomerDocument {
   };
 }
 
+/** The three answers only: the server's changed_after_submit_at never goes to the browser. */
 function certificationOf(answers: Record<string, unknown> | undefined): CertificationAnswers {
   const stored = answers?.certification as Partial<CertificationAnswers> | undefined;
-  return { ...EMPTY_CERTIFICATION, ...stored };
+  return {
+    type: stored?.type ?? EMPTY_CERTIFICATION.type,
+    period_end_date: stored?.period_end_date ?? EMPTY_CERTIFICATION.period_end_date,
+    next_report_expected: stored?.next_report_expected ?? EMPTY_CERTIFICATION.next_report_expected,
+  };
 }
+
+/** When the certification last changed while the customer was Submitted (2.16), or null. Set by the server only. */
+function changedAfterSubmitAtOf(answers: Record<string, unknown> | undefined): string | null {
+  const stored = answers?.certification as { changed_after_submit_at?: unknown } | undefined;
+  return typeof stored?.changed_after_submit_at === "string" ? stored.changed_after_submit_at : null;
+}
+
+const sameCertification = (a: CertificationAnswers, b: CertificationAnswers) =>
+  a.type === b.type && a.period_end_date === b.period_end_date && a.next_report_expected === b.next_report_expected;
 
 export interface DocumentsTabView {
   definition: DocumentsDefinition;
@@ -152,7 +166,11 @@ export type CertificationOutcome =
   | { kind: "saved"; version: number; certification: CertificationAnswers; old: boolean }
   | { kind: "conflict"; version: number; certification: CertificationAnswers };
 
-/** The certification and its dates (2.1–2.4): saved with the same version rule as tab 1, before and after Submit. The 12-month warning never blocks. */
+/**
+ * The certification and its dates (2.1–2.4): saved with the same version rule as tab 1, before and after Submit. The 12-month warning never blocks.
+ * 2.16: a change saved while Submitted stamps changed_after_submit_at; any other save keeps the stored stamp, so it survives unlock and resubmit.
+ * The input schema has no such field, so one sent by the browser is dropped.
+ */
 export async function saveCertification(token: string, input: v.InferInput<typeof CertificationInput>, deps: IntakeDocumentsDeps = defaultDeps()): Promise<CertificationOutcome> {
   const parsed = v.parse(CertificationInput, input);
   const found = await access(token, deps);
@@ -161,11 +179,15 @@ export async function saveCertification(token: string, input: v.InferInput<typeo
     ...parsed.certification,
     next_report_expected: asksNextReport(deps.definition, parsed.certification.type) ? parsed.certification.next_report_expected : null,
   };
+  // Compared with the stored row; if another save moved it since, the version check below refuses this one.
+  const stored = (await intakeAnswersRepo.findIntakeSection(deps.db, found.customer.id, DOCUMENTS_SECTION))?.answers;
+  const changedAfterSubmitAt =
+    found.submitted && !sameCertification(certificationOf(stored), certification) ? deps.now().toISOString() : changedAfterSubmitAtOf(stored);
   const result = await intakeAnswersRepo.saveIntakeSection(deps.db, {
     customerId: found.customer.id,
     section: DOCUMENTS_SECTION,
     formDefinitionVersion: `documents.v${deps.definition.revision}`,
-    answers: { certification },
+    answers: { certification: { ...certification, changed_after_submit_at: changedAfterSubmitAt } },
     expectedVersion: parsed.version,
   });
   if ("stale" in result) return { kind: "refused", message: "This page is out of date. Reload it and try again." };
@@ -397,12 +419,12 @@ export interface ScreenDFile {
 }
 
 export interface DocumentsScreen {
-  certification: { label: string | null; periodEnd: string | null; nextReport: string | null; old: boolean; oldMessage: string };
+  certification: { label: string | null; periodEnd: string | null; nextReport: string | null; old: boolean; oldMessage: string; changedAfterSubmitAt: string | null };
   checklist: { kind: string; label: string; present: boolean }[];
   files: ScreenDFile[];
 }
 
-/** Screen D (2.13, 2.15, 2.17): the certification, the received/missing checklist and every current file with its earlier versions. */
+/** Screen D (2.13, 2.15, 2.16, 2.17): the certification, the received/missing checklist and every current file with its earlier versions. */
 export async function getDocumentsScreen(customerId: string, deps: Pick<IntakeDocumentsDeps, "db" | "now" | "definition"> = defaultDeps()): Promise<DocumentsScreen> {
   const section = await intakeAnswersRepo.findIntakeSection(deps.db, customerId, DOCUMENTS_SECTION);
   const certification = certificationOf(section?.answers);
@@ -438,6 +460,7 @@ export async function getDocumentsScreen(customerId: string, deps: Pick<IntakeDo
       nextReport: certification.next_report_expected,
       old: isCertificationOld(certification.period_end_date, todayIso(deps.now())),
       oldMessage: deps.definition.messages.old,
+      changedAfterSubmitAt: changedAfterSubmitAtOf(section?.answers),
     },
     checklist: itemsFor(deps.definition, certification.type).map((item) => ({ kind: item.kind, label: item.label, present: kinds.has(item.kind) })),
     files,

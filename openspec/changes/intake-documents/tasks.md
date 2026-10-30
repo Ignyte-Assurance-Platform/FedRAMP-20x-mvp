@@ -3,7 +3,7 @@
 > Brain work item: [[wi-maaz20x-006-intake-documents]] · brain_commit a8e6ccc7d635c524a9aee82d5646f946cbaafa38 · ignyte-project-brain/projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md
 
 ## 1. Setup
-- [ ] 1.1 Read the frozen brain spec at brain_commit a8e6ccc; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md`)
+- [x] 1.1 Read the frozen brain spec at brain_commit a8e6ccc; confirm nothing changed upstream (`git log -1 -- projects/maaz20x/work-items/wi-maaz20x-006-intake-documents.md`)
 
 ## 2. Implement
 - [x] 2.1 WHEN the customer picks SOC 2 Type II THEN the list shows the SOC 2 items and the "Everyone" items, and the "Expected date of the next report" date field
@@ -21,7 +21,7 @@
 - [x] 2.13 WHEN the customer replaces a file THEN they see only the new version and Ignyte sees "replaced on [date]" with both versions downloadable
 - [x] 2.14 WHEN the customer has submitted THEN tabs 1 and 2 are read-only, tab 3 still accepts uploads, renames, replacements and certification changes, and the x is not shown
 - [x] 2.15 WHEN a file is uploaded after Submit THEN Screen D labels it "added after submission"
-- [ ] 2.16 WHEN the customer has submitted and changes the certification, its date or the expected date of the next report THEN the change is saved and Screen D shows "changed after submission on [date]" next to the certification; saving the same values again, or a change made before Submit, shows no label
+- [x] 2.16 WHEN the customer has submitted and changes the certification, its date or the expected date of the next report THEN the change is saved and Screen D shows "changed after submission on [date]" next to the certification; saving the same values again, or a change made before Submit, shows no label
 - [x] 2.17 WHEN Screen D opens THEN each listed item shows a check if a current file has that kind, and "missing" otherwise
 - [x] 2.18 WHEN Ignyte removes a file THEN it disappears from both sides and the object stays in the bucket
 
