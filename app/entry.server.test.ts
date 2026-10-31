@@ -1,10 +1,18 @@
 import { inspect } from "node:util";
 import { UNSAFE_ErrorResponseImpl as ErrorResponseImpl, RouterContextProvider } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { generateIntakeToken } from "~server/services";
 import { handleError } from "./entry.server";
+import { redactIntakeToken } from "./lib/redact-intake-token";
 
 const TOKEN = "Zk3p9QvT_x2bLm7NcA-8rWyE4uHs6DfG";
 const args = (signal?: AbortSignal) => ({ request: new Request(`http://localhost/intake/${TOKEN}/x`, { signal }), params: {}, context: new RouterContextProvider() });
+
+describe("intake token format (WI-020)", () => {
+  it("the helper redacts tokens from the real generator, so a change of token format fails here", () => {
+    for (let i = 0; i < 50; i++) expect(redactIntakeToken(`/intake/${generateIntakeToken()}/x`)).toBe("/intake/[redacted]/x");
+  });
+});
 
 describe("handleError (WI-020 2.1, 2.4)", () => {
   afterEach(() => vi.restoreAllMocks());

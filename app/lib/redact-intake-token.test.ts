@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { UNSAFE_ErrorResponseImpl as ErrorResponseImpl } from "react-router";
 import { describe, expect, it } from "vitest";
 import { redactForLog, redactIntakeToken } from "./redact-intake-token";
@@ -17,7 +18,15 @@ describe("redactIntakeToken (WI-020 2.1–2.3)", () => {
     expect(redactIntakeToken(input)).toBe(expected);
   });
 
-  it.each(["/customers/123/package", "/login", "/api/customers/8a3c/documents/1/download", "intake form saved"])("leaves %s unchanged", (input) => {
+  it.each([
+    "/customers/123/package",
+    "/login",
+    "/api/customers/8a3c/documents/1/download",
+    "intake form saved",
+    'You made a POST request to "/intake/x" but did not provide an `action` for route "routes/intake/intake-page"',
+    "    at loader (C:/Work/FedRAMP-20x-mvp/app/routes/intake/intake-page.tsx:12:5)",
+    "/customer-intake/settings",
+  ])("leaves %s unchanged", (input) => {
     expect(redactIntakeToken(input)).toBe(input);
   });
 });
@@ -34,9 +43,26 @@ describe("redactForLog (WI-020 2.1, 2.5)", () => {
     expect(error.message).toContain(TOKEN);
   });
 
-  it("redacts the inner error of a route error response, and its text data when it has none", () => {
+  it("keeps cause, AggregateError's errors and other own properties, each redacted (second opinion)", () => {
+    const cause = new Error(`fetch failed for /intake/${TOKEN}`);
+    const error = Object.assign(new AggregateError([new Error(`one /intake/${TOKEN}`)], `failed /intake/${TOKEN}`, { cause }), { input: `/intake/${TOKEN}`, code: "ERR_X" });
+    const logged = redactForLog(error) as AggregateError & { input: string; code: string };
+    expect(logged).toBeInstanceOf(AggregateError);
+    expect((logged.cause as Error).message).toBe("fetch failed for /intake/[redacted]");
+    expect(logged.errors[0].message).toBe("one /intake/[redacted]");
+    expect(logged.input).toBe("/intake/[redacted]");
+    expect(logged.code).toBe("ERR_X");
+    const printed = inspect(logged);
+    expect(printed).toContain("[cause]");
+    expect(printed).toContain("[errors]");
+    expect(printed).not.toContain(TOKEN);
+  });
+
+  it("redacts the inner error of a route error response; without one it logs the response itself, redacted", () => {
     const inner = new Error(`No route matches URL "/intake/${TOKEN}/x"`);
     expect((redactForLog(new ErrorResponseImpl(404, "Not Found", inner, true)) as Error).stack).toContain("/intake/[redacted]/x");
-    expect(JSON.stringify(redactForLog(new ErrorResponseImpl(404, "Not Found", `/intake/${TOKEN}`)))).not.toContain(TOKEN);
+    const logged = redactForLog(new ErrorResponseImpl(404, "Not Found", `/intake/${TOKEN}`));
+    expect(logged).toBeInstanceOf(ErrorResponseImpl);
+    expect(inspect(logged)).not.toContain(TOKEN);
   });
 });
